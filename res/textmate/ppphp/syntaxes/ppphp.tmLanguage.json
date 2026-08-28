@@ -1,0 +1,96 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "++PHP",
+  "scopeName": "source.ppphp",
+  "patterns": [
+    { "include": "#when-expression" },
+    { "include": "#throws-clause" },
+    { "include": "#readonly-local" },
+    { "include": "#generic-declaration" },
+    { "include": "#generic-type" },
+    { "include": "source.php" }
+  ],
+  "repository": {
+    "when-expression": {
+      "patterns": [
+        {
+          "name": "keyword.control.conditional.when.ppphp",
+          "match": "\\bwhen\\b"
+        }
+      ]
+    },
+    "throws-clause": {
+      "begin": "\\b(throws)\\b",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.throws.ppphp" }
+      },
+      "end": "(?=\\{|;)",
+      "patterns": [
+        {
+          "name": "entity.name.type.error.ppphp",
+          "match": "\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*"
+        },
+        {
+          "name": "punctuation.separator.comma.ppphp",
+          "match": ","
+        }
+      ]
+    },
+    "readonly-local": {
+      "name": "storage.modifier.readonly.local.ppphp",
+      "match": "\\breadonly\\b(?=\\s+(?:\\??\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*|array\\s*<)[^;=]*\\$[A-Za-z_])"
+    },
+    "generic-declaration": {
+      "begin": "\\b(class|interface|trait|function)\\s+&?\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(<)",
+      "beginCaptures": {
+        "1": { "name": "storage.type.declaration.ppphp" },
+        "2": { "name": "entity.name.type.generic.ppphp" },
+        "3": { "name": "punctuation.definition.generic.begin.ppphp" }
+      },
+      "end": "(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.generic.end.ppphp" }
+      },
+      "patterns": [
+        {
+          "name": "variable.parameter.type.ppphp",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        },
+        {
+          "name": "punctuation.separator.constraint.ppphp",
+          "match": "[:,]"
+        },
+        {
+          "name": "entity.name.type.bound.ppphp",
+          "match": "\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*"
+        }
+      ]
+    },
+    "generic-type": {
+      "begin": "\\b(array|iterable|[A-Z][A-Za-z0-9_\\\\]*)\\s*(<)",
+      "beginCaptures": {
+        "1": { "name": "support.type.generic.ppphp" },
+        "2": { "name": "punctuation.definition.generic.begin.ppphp" }
+      },
+      "end": "(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.generic.end.ppphp" }
+      },
+      "patterns": [
+        { "include": "#generic-type" },
+        {
+          "name": "support.type.builtin.php",
+          "match": "\\b(?:array|bool|callable|false|float|int|iterable|mixed|never|null|object|string|true|void)\\b"
+        },
+        {
+          "name": "entity.name.type.ppphp",
+          "match": "\\??\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*"
+        },
+        {
+          "name": "punctuation.separator.comma.ppphp",
+          "match": ","
+        }
+      ]
+    }
+  }
+}

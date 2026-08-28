@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode-test/
+*.iml
+
+node_modules/
+coverage/
+dist/
+*.vsix
+editors/vscode/LICENSE
+
+.gradle/
+build/
+editors/phpstorm/.intellijPlatform/
+editors/phpstorm/.kotlin/

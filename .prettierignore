@@ -1,0 +1,6 @@
+**/build/
+**/coverage/
+**/dist/
+**/node_modules/
+editors/phpstorm/gradle/wrapper/gradle-wrapper.jar
+package-lock.json

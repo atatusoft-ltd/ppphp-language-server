@@ -1,0 +1,34 @@
+{
+  "name": "ppphp-language",
+  "displayName": "++PHP Language Basics",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ppphp",
+        "aliases": [
+          "++PHP",
+          "PPPHP"
+        ],
+        "extensions": [
+          ".phplus"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ppphp",
+        "scopeName": "source.ppphp",
+        "path": "./syntaxes/ppphp.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.php": "php"
+        }
+      }
+    ]
+  }
+}

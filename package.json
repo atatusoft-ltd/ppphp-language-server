@@ -1,0 +1,41 @@
+{
+  "name": "ppphp-language-server-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Editor tooling and a language server for ++PHP.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "editors/vscode"
+  ],
+  "scripts": {
+    "build": "npm run sync:resources && npm run build:server && npm run build:vscode",
+    "build:server": "npm run build --workspace @ppphp/language-server",
+    "build:vscode": "npm run build --workspace ppphp-vscode",
+    "check": "npm run sync:resources:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "package:vscode": "npm run build && npm run package --workspace ppphp-vscode",
+    "sync:resources": "node scripts/sync-language-resources.mjs",
+    "sync:resources:check": "node scripts/sync-language-resources.mjs --check",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.4.0",
+    "@types/vscode": "1.134.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vscode/vsce": "3.9.2",
+    "esbuild": "0.28.2",
+    "eslint": "10.9.1",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vitest": "4.1.11"
+  }
+}

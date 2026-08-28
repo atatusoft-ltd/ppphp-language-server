@@ -1,0 +1,21 @@
+{
+  "name": "@ppphp/language-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Language Server Protocol implementation for ++PHP.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/server.cjs",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "esbuild src/node.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/server.cjs --banner:js=\"#!/usr/bin/env node\"",
+    "test": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "vscode-languageserver": "10.1.1",
+    "vscode-languageserver-textdocument": "1.0.14"
+  }
+}

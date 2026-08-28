@@ -1,0 +1,92 @@
+{
+  "name": "ppphp-vscode",
+  "displayName": "++PHP",
+  "description": "Syntax highlighting and language intelligence for ++PHP.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "atatusoft",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "php",
+    "ppphp",
+    "phplus",
+    "language-server",
+    "lsp"
+  ],
+  "activationEvents": [
+    "onLanguage:ppphp"
+  ],
+  "main": "./dist/extension.cjs",
+  "files": [
+    "dist/**",
+    "language-configuration.json",
+    "syntaxes/**",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "ppphp",
+        "aliases": [
+          "++PHP",
+          "PPPHP"
+        ],
+        "extensions": [
+          ".phplus"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ppphp",
+        "scopeName": "source.ppphp",
+        "path": "./syntaxes/ppphp.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.php": "php"
+        }
+      }
+    ],
+    "configuration": {
+      "title": "++PHP",
+      "properties": {
+        "ppphp.compiler.path": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Absolute path to the ppphp compiler. When empty, workspace vendor/bin/ppphp and then PATH are searched."
+        },
+        "ppphp.diagnostics.compiler.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Run ppphp check when a .phplus document is opened or saved."
+        },
+        "ppphp.diagnostics.compiler.timeoutMilliseconds": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 100,
+          "scope": "resource",
+          "description": "Maximum duration of an individual compiler diagnostic run."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "vsce package --allow-missing-repository --no-dependencies --out ../../build/ppphp-vscode.vsix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.0"
+  }
+}
