@@ -2,7 +2,7 @@
 
 ## 0.1 foundation
 
-- Shared `.ppp` TextMate syntax for VS Code and PhpStorm
+- `.ppp` syntax coverage through VS Code TextMate grammar and PhpStorm's native PHP dialect
 - Compiler-backed diagnostics on open/save
 - ++PHP snippets and contextual hover help
 - Lexical document outline
@@ -21,7 +21,7 @@
 Once the compiler protocol exists:
 
 - Go to definition and find references
-- Semantic tokens layered over TextMate highlighting
+- Semantic tokens layered over each editor's lexical highlighting
 - Signature help and type-aware completion
 - Workspace symbols
 - Safe rename and focused code actions

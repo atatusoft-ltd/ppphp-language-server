@@ -8,11 +8,12 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <depends>org.jetbrains.plugins.textmate</depends>
+    <depends>com.jetbrains.php</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <fileType name="++PHP" implementationClass="com.atatusoft.ppphp.PpphpFileType" fieldName="INSTANCE" language="++PHP" extensions="ppp" />
+        <lang.syntaxHighlighterFactory language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpSyntaxHighlighterFactory" />
+        <highlightErrorFilter implementation="com.atatusoft.ppphp.PpphpSyntaxErrorFilter" />
         <platform.lsp.integrationProvider implementation="com.atatusoft.ppphp.PpphpLspIntegrationProvider" />
-        <textmate.bundleProvider implementation="com.atatusoft.ppphp.PpphpTextMateBundleProvider" />
-        <fileIconProvider implementation="com.atatusoft.ppphp.PpphpFileIconProvider" />
     </extensions>
 </idea-plugin>

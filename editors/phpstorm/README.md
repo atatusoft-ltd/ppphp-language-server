@@ -1,8 +1,8 @@
 # ++PHP for PhpStorm
 
-The PhpStorm plugin registers `.ppp` syntax highlighting and the ++PHP emblem from shared resources, then starts the bundled ++PHP language server through JetBrains' native LSP integration.
+The PhpStorm plugin registers `.ppp` as a dialect of PhpStorm's native PHP language, adds ++PHP contextual-keyword highlighting and the ++PHP emblem, then starts the bundled ++PHP language server through JetBrains' native LSP integration.
 
-Plugin releases track the ++PHP toolchain's Doria-style CalVer. The current target is `2026.03.1-canary`.
+Plugin releases track the ++PHP toolchain's Doria-style CalVer. The current target is `2026.3.1`.
 
 ## Local requirements
 
@@ -16,7 +16,7 @@ PhpStorm started from the desktop may not inherit your shell's Node.js path. Set
 -Dppphp.language.server.node.path=/absolute/path/to/node
 ```
 
-After installing or updating the plugin from disk, restart PhpStorm so its TextMate bundle is registered.
+After installing or updating the plugin from disk, restart PhpStorm so the `.ppp` language association is refreshed.
 
 Build the distributable plugin from the repository root with:
 

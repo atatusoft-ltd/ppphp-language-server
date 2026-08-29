@@ -1,8 +1,8 @@
 {
   "name": "ppphp-language",
   "displayName": "++PHP Language Basics",
-  "version": "2026.3.1-canary",
-  "ppphpToolchainVersion": "2026.03.1-canary",
+  "version": "2026.3.1",
+  "ppphpToolchainVersion": "2026.3.1",
   "private": true,
   "engines": {
     "vscode": "^1.95.0"

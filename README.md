@@ -7,7 +7,7 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 | Capability                 | VS Code | PhpStorm | Notes                                        |
 | -------------------------- | ------- | -------- | -------------------------------------------- |
 | `.ppp` file recognition    | Yes     | Yes      | Shared language definition and emblem icon   |
-| Syntax highlighting        | Yes     | Yes      | Shared TextMate grammar layered over PHP     |
+| Syntax highlighting        | Yes     | Yes      | TextMate in VS Code; native PHP in PhpStorm  |
 | Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save          |
 | ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when` |
 | Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                   |
@@ -45,7 +45,7 @@ The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin
 
 ## Versioning
 
-Language-server and editor releases track the ++PHP toolchain using Doria-style CalVer. The current canonical target is `2026.03.1-canary`. Ecosystems whose version fields require SemVer-compatible numeric components use the equivalent unpadded `2026.3.1-canary` while retaining the canonical toolchain version in separate metadata.
+Language-server and editor releases track the ++PHP toolchain using Doria-style CalVer. The current version is `2026.3.1` across every package and editor manifest.
 
 See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
 
@@ -66,7 +66,7 @@ packages/language-server/  Editor-neutral TypeScript LSP server
 res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
-editors/phpstorm/          JetBrains LSP/TextMate integration
+editors/phpstorm/          JetBrains LSP/native PHP dialect integration
 docs/                      Architecture and roadmap decisions
 scripts/                   Reproducible repository tooling
 ```
