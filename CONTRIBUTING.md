@@ -2,14 +2,23 @@
 
 ## Development setup
 
-Install Node.js 22 and Java 25, then run:
+Install PHP 8.4, Node.js 22, and Java 25, then run:
 
 ```shell
 npm ci
 npm run check
+php scripts/build.php help
 ```
 
-Use the checked-in Gradle wrapper for PhpStorm work:
+Use the PHP build entrypoint for installable editor artifacts:
+
+```shell
+php scripts/build.php vscode
+php scripts/build.php phpstorm
+php scripts/build.php editors
+```
+
+Use the checked-in Gradle wrapper directly when running the complete PhpStorm verification suite:
 
 ```shell
 ./editors/phpstorm/gradlew -p editors/phpstorm check buildPlugin verifyPluginStructure verifyPluginProjectConfiguration verifyPlugin
@@ -26,7 +35,7 @@ Each pull request should explain the user-visible behavior, list verification pe
 `res/textmate/ppphp` is canonical. Do not edit generated grammar copies under `editors/vscode` directly. Run:
 
 ```shell
-npm run sync:resources
+php scripts/sync_language_resources.php
 ```
 
 ## Adding LSP capabilities

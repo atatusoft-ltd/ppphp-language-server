@@ -13,7 +13,7 @@ The canonical, user-facing form is `YYYY.Q.patch[-channel]`:
 
 Every package manifest, editor manifest, lockfile entry, and `ppphpToolchainVersion` field uses this exact version. There is no separate padded or ecosystem-specific form.
 
-`VERSION` is the repository source of truth. Run `npm run check:version` after any version change; it rejects drift between `VERSION`, npm manifests and lockfile, editor metadata, and documentation. Release tags use the version prefixed with `v`, such as `v2026.3.1`.
+`VERSION` is the repository source of truth. Run `php scripts/check_release_version.php` after any version change; it rejects drift between `VERSION`, npm manifests and lockfile, editor metadata, and documentation. The `npm run check:version` alias remains available for npm workflows. Release tags use the version prefixed with `v`, such as `v2026.3.1`.
 
 ## Release checklist
 
@@ -21,8 +21,8 @@ Every package manifest, editor manifest, lockfile entry, and `ppphpToolchainVers
 2. Update `VERSION`, every package and editor manifest, the lockfile, all changelogs, and compatibility notes to the same value.
 3. Run `npm install --package-lock-only --ignore-scripts` to refresh the lockfile.
 4. Run `npm run check`.
-5. Build the VS Code VSIX and smoke-test highlighting and language-server startup.
-6. Run the complete PhpStorm check, plugin build, structure validation, configuration validation, and Plugin Verifier suite.
+5. Run `php scripts/build.php vscode`, then smoke-test highlighting and language-server startup.
+6. Run `php scripts/build.php phpstorm`, then run the complete structure validation, configuration validation, and Plugin Verifier suite.
 7. Install both local packages and smoke-test `.ppp` recognition, highlighting, diagnostics, completion, hover, and symbols.
 8. Create a `v*` tag only after every manifest and artifact reports the same version.
 

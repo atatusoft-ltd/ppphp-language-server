@@ -19,6 +19,7 @@ The server intentionally does not advertise semantic refactors until it can prov
 
 ## Requirements
 
+- PHP 8.4 or newer for repository tooling and build orchestration
 - Node.js 22 or newer
 - npm 10 or newer
 - The ++PHP compiler, either:
@@ -29,16 +30,20 @@ The server intentionally does not advertise semantic refactors until it can prov
 
 ## Local development
 
+Repository automation is deliberately written in PHP, following the Doria tooling convention. TypeScript is confined to the Node-based language server and VS Code client, while Kotlin is confined to the JetBrains plugin.
+
 ```shell
 npm ci
 npm run check
+php scripts/build.php help
 ```
 
-Build editor packages:
+Build either editor package, or both:
 
 ```shell
-npm run package:vscode
-./editors/phpstorm/gradlew -p editors/phpstorm buildPlugin
+php scripts/build.php vscode
+php scripts/build.php phpstorm
+php scripts/build.php editors
 ```
 
 The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin archive is written below `editors/phpstorm/build/distributions/`.
@@ -68,10 +73,10 @@ res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
 editors/phpstorm/          JetBrains LSP/native PHP dialect integration
 docs/                      Architecture and roadmap decisions
-scripts/                   Reproducible repository tooling
+scripts/                   PHP build orchestration and repository guardrails
 ```
 
-Edit grammar and language configuration files only under `res/textmate/ppphp/`, then run `npm run sync:resources`. CI rejects stale generated VS Code copies.
+Edit grammar and language configuration files only under `res/textmate/ppphp/`, then run `php scripts/sync_language_resources.php`. The `npm run sync:resources` alias remains available for npm workflows. CI rejects stale generated VS Code copies.
 
 ## Contributing and security
 

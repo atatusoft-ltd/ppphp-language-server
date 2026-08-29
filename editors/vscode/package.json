@@ -89,7 +89,8 @@
     }
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "php ../../scripts/build.php vscode-extension",
+    "bundle": "esbuild src/extension.ts --bundle --external:vscode --format=cjs --outfile=dist/extension.cjs --platform=node --target=node20",
     "package": "vsce package --allow-missing-repository --no-dependencies --out ../../build/ppphp-vscode.vsix",
     "typecheck": "tsc --noEmit"
   },
