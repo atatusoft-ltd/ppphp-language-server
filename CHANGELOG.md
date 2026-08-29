@@ -1,11 +1,12 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to this project will be documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use the Doria-style CalVer described in [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
 ### Added
 
+- Coordinated `YYYY.QQ.patch[-channel]` toolchain versioning with automated cross-package consistency checks.
 - Canonical ++PHP emblem branding for extension listings and `.ppp` file icons.
 - Editor-neutral Language Server Protocol foundation.
 - Shared TextMate syntax and language configuration for `.ppp` files.

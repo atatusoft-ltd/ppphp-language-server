@@ -1,6 +1,6 @@
 {
   "name": "ppphp-language-server-workspace",
-  "version": "0.1.1",
+  "version": "2026.3.1-canary",
   "private": true,
   "description": "Editor tooling and a language server for ++PHP.",
   "license": "Apache-2.0",
@@ -15,7 +15,8 @@
     "build": "npm run sync:resources && npm run build:server && npm run build:vscode",
     "build:server": "npm run build --workspace @ppphp/language-server",
     "build:vscode": "npm run build --workspace ppphp-vscode",
-    "check": "npm run sync:resources:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "check": "npm run check:version && npm run sync:resources:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "check:version": "node scripts/check-release-version.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

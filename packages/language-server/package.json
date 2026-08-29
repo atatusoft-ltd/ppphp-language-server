@@ -1,6 +1,7 @@
 {
   "name": "@ppphp/language-server",
-  "version": "0.1.1",
+  "version": "2026.3.1-canary",
+  "ppphpToolchainVersion": "2026.03.1-canary",
   "private": true,
   "description": "Language Server Protocol implementation for ++PHP.",
   "license": "Apache-2.0",

@@ -2,6 +2,8 @@
 
 The PhpStorm plugin registers `.ppp` syntax highlighting and the ++PHP emblem from shared resources, then starts the bundled ++PHP language server through JetBrains' native LSP integration.
 
+Plugin releases track the ++PHP toolchain's Doria-style CalVer. The current target is `2026.03.1-canary`.
+
 ## Local requirements
 
 - PhpStorm 2026.2 or newer

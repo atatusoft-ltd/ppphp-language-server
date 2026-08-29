@@ -8,6 +8,7 @@ import {
   type InitializeParams,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import packageMetadata from "../package.json";
 import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 
@@ -40,7 +41,10 @@ connection.onInitialize((params: InitializeParams) => {
   }
 
   return {
-    serverInfo: { name: "++PHP Language Server", version: "0.1.1" },
+    serverInfo: {
+      name: "++PHP Language Server",
+      version: packageMetadata.ppphpToolchainVersion,
+    },
     capabilities: {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       documentSymbolProvider: true,

@@ -43,6 +43,12 @@ npm run package:vscode
 
 The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin archive is written below `editors/phpstorm/build/distributions/`.
 
+## Versioning
+
+Language-server and editor releases track the ++PHP toolchain using Doria-style CalVer. The current canonical target is `2026.03.1-canary`. Ecosystems whose version fields require SemVer-compatible numeric components use the equivalent unpadded `2026.3.1-canary` while retaining the canonical toolchain version in separate metadata.
+
+See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
+
 ## Configuration
 
 VS Code exposes these workspace/resource settings:
