@@ -6,11 +6,13 @@ import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
+import com.intellij.platform.lsp.api.LspServerSupportProvider
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.jetbrains.php.lang.PhpLanguage
+import java.nio.file.Path
 
 class PpphpPluginIntegrationTest : BasePlatformTestCase() {
     fun testPppFilesUseThePhpLanguageDialect() {
@@ -20,6 +22,23 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
         assertSame(PpphpLanguage.INSTANCE, (fileType as LanguageFileType).language)
         assertTrue(PpphpLanguage.INSTANCE.isKindOf(PhpLanguage.INSTANCE))
         assertNotNull(LanguageParserDefinitions.INSTANCE.forLanguage(PpphpLanguage.INSTANCE))
+    }
+
+    fun testStableLspSupportProviderIsRegistered() {
+        val providers = LspServerSupportProvider.EP_NAME.extensionList
+
+        assertEquals(
+            1,
+            providers.count { provider -> provider is PpphpLspServerSupportProvider },
+        )
+    }
+
+    fun testLspDescriptorSupportsOnlyPppFiles() {
+        val descriptor = PpphpLspServerDescriptor(project, Path.of("unused-in-this-test"))
+
+        assertTrue(descriptor.isSupportedFile(LightVirtualFile("example.ppp")))
+        assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.php")))
+        assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.txt")))
     }
 
     fun testStandardPhpTokensUseNativePhpHighlighting() {

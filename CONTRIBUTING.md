@@ -2,7 +2,7 @@
 
 ## Development setup
 
-Install PHP 8.4, Node.js 22, and Java 25, then run:
+Install PHP 8.4, Node.js 22, and Java 21 or newer, then run:
 
 ```shell
 npm ci

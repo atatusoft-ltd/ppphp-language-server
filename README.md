@@ -26,7 +26,7 @@ The server intentionally does not advertise semantic refactors until it can prov
   - at `vendor/bin/ppphp` in the opened project,
   - available as `ppphp` on `PATH`, or
   - configured explicitly in the editor or through `PPPHP_COMPILER_PATH`
-- For the PhpStorm plugin build: Java 25; the checked-in Gradle wrapper supplies Gradle itself
+- For the PhpStorm plugin build: Java 21 or newer; the checked-in Gradle wrapper supplies Gradle itself
 
 ## Local development
 

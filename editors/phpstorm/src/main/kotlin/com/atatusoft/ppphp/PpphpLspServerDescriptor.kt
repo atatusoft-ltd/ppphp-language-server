@@ -5,25 +5,31 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.platform.lsp.api.ProjectWideLspClientDescriptor
+import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
 import java.nio.file.Files
 import java.nio.file.Path
 
-class PpphpLspClientDescriptor(project: Project, private val pluginRoot: Path) :
-    ProjectWideLspClientDescriptor(project, "++PHP") {
+class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
+    ProjectWideLspServerDescriptor(project, "++PHP") {
 
     override fun isSupportedFile(file: VirtualFile): Boolean =
         file.extension.equals("ppp", ignoreCase = true)
 
     override fun createCommandLine(): GeneralCommandLine {
         val node = findNodeExecutable()
+        val server = findBundledServer()
+
+        return GeneralCommandLine(node.toString(), server.toString(), "--stdio").also {
+            project.basePath?.let(it::withWorkDirectory)
+        }
+    }
+
+    private fun findBundledServer(): Path {
         val server = pluginRoot.resolve("server/server.cjs")
         if (!Files.isRegularFile(server)) {
             throw ExecutionException("The bundled ++PHP language server is missing: $server")
         }
-
-        return GeneralCommandLine(node.toString(), server.toString(), "--stdio")
-            .withWorkDirectory(project.basePath)
+        return server
     }
 
     private fun findNodeExecutable(): Path {

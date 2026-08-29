@@ -8,7 +8,7 @@ Plugin releases track the ++PHP toolchain's Doria-style CalVer. The current targ
 
 ## Local requirements
 
-- PhpStorm 2026.2 or newer
+- PhpStorm 2025.2 or newer
 - Node.js 22 or newer
 - The `ppphp` compiler in the project at `vendor/bin/ppphp`, on `PATH`, or configured through `PPPHP_COMPILER_PATH`
 

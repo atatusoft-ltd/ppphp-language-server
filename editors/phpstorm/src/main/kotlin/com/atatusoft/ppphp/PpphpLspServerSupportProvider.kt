@@ -4,20 +4,23 @@ import com.intellij.openapi.extensions.PluginAware
 import com.intellij.openapi.extensions.PluginDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.platform.lsp.api.LspIntegrationProvider
-import com.intellij.platform.lsp.api.LspIntegrationProvider.LspClientStarter
+import com.intellij.platform.lsp.api.LspServerSupportProvider
 import java.nio.file.Path
 
-class PpphpLspIntegrationProvider : LspIntegrationProvider, PluginAware {
+class PpphpLspServerSupportProvider : LspServerSupportProvider, PluginAware {
     private lateinit var pluginRoot: Path
 
     override fun setPluginDescriptor(pluginDescriptor: PluginDescriptor) {
         pluginRoot = pluginDescriptor.pluginPath
     }
 
-    override fun fileOpened(project: Project, file: VirtualFile, clientStarter: LspClientStarter) {
+    override fun fileOpened(
+        project: Project,
+        file: VirtualFile,
+        serverStarter: LspServerSupportProvider.LspServerStarter,
+    ) {
         if (file.extension.equals("ppp", ignoreCase = true)) {
-            clientStarter.ensureClientStarted(PpphpLspClientDescriptor(project, pluginRoot))
+            serverStarter.ensureServerStarted(PpphpLspServerDescriptor(project, pluginRoot))
         }
     }
 }

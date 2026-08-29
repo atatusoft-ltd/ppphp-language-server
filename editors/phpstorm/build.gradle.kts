@@ -23,19 +23,19 @@ dependencies {
 
     intellijPlatform {
         testFramework(TestFrameworkType.Platform)
-        phpstorm("2026.2.0.1")
+        phpstorm("2025.2.1")
         bundledPlugin("com.jetbrains.php")
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_25
+        jvmTarget = JvmTarget.JVM_21
     }
 }
 
@@ -46,7 +46,14 @@ intellijPlatform {
         version = project.version.toString()
 
         ideaVersion {
-            sinceBuild = "262"
+            sinceBuild = "252"
+        }
+    }
+
+    pluginVerification {
+        ides {
+            create("PS", "2025.2.1")
+            create("PS", "2026.2.0.1")
         }
     }
 }
