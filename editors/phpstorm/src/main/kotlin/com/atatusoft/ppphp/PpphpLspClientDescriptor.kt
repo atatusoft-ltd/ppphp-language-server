@@ -9,7 +9,7 @@ import com.intellij.platform.lsp.api.ProjectWideLspClientDescriptor
 import java.nio.file.Files
 import java.nio.file.Path
 
-class PpphpLspClientDescriptor(project: Project) :
+class PpphpLspClientDescriptor(project: Project, private val pluginRoot: Path) :
     ProjectWideLspClientDescriptor(project, "++PHP") {
 
     override fun isSupportedFile(file: VirtualFile): Boolean =
@@ -17,7 +17,7 @@ class PpphpLspClientDescriptor(project: Project) :
 
     override fun createCommandLine(): GeneralCommandLine {
         val node = findNodeExecutable()
-        val server = PpphpPluginPaths.root().resolve("server/server.cjs")
+        val server = pluginRoot.resolve("server/server.cjs")
         if (!Files.isRegularFile(server)) {
             throw ExecutionException("The bundled ++PHP language server is missing: $server")
         }

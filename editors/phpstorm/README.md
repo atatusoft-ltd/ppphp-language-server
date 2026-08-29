@@ -14,6 +14,8 @@ PhpStorm started from the desktop may not inherit your shell's Node.js path. Set
 -Dppphp.language.server.node.path=/absolute/path/to/node
 ```
 
+After installing or updating the plugin from disk, restart PhpStorm so its TextMate bundle is registered.
+
 Build the distributable plugin from the repository root with:
 
 ```shell

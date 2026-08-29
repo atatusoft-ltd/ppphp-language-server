@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -18,7 +19,10 @@ repositories {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+
     intellijPlatform {
+        testFramework(TestFrameworkType.Platform)
         phpstorm("2026.2.0.1")
         bundledPlugin("org.jetbrains.plugins.textmate")
     }
