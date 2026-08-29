@@ -6,7 +6,7 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 | Capability                 | VS Code | PhpStorm | Notes                                        |
 | -------------------------- | ------- | -------- | -------------------------------------------- |
-| `.phplus` file recognition | Yes     | Yes      | Shared language definition                   |
+| `.ppp` file recognition    | Yes     | Yes      | Shared language definition and emblem icon   |
 | Syntax highlighting        | Yes     | Yes      | Shared TextMate grammar layered over PHP     |
 | Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save          |
 | ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when` |
@@ -58,6 +58,7 @@ For clients without settings support, set `PPPHP_COMPILER_PATH`. The PhpStorm ho
 ```text
 packages/language-server/  Editor-neutral TypeScript LSP server
 res/textmate/ppphp/        Canonical shared language and grammar resources
+res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
 editors/phpstorm/          JetBrains LSP/TextMate integration
 docs/                      Architecture and roadmap decisions

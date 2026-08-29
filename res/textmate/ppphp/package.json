@@ -1,7 +1,7 @@
 {
   "name": "ppphp-language",
   "displayName": "++PHP Language Basics",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "engines": {
     "vscode": "^1.95.0"
@@ -15,7 +15,7 @@
           "PPPHP"
         ],
         "extensions": [
-          ".phplus"
+          ".ppp"
         ],
         "configuration": "./language-configuration.json"
       }

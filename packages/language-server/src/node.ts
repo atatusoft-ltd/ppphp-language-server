@@ -40,7 +40,7 @@ connection.onInitialize((params: InitializeParams) => {
   }
 
   return {
-    serverInfo: { name: "++PHP Language Server", version: "0.1.0" },
+    serverInfo: { name: "++PHP Language Server", version: "0.1.1" },
     capabilities: {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       documentSymbolProvider: true,
@@ -85,7 +85,7 @@ async function validate(document: TextDocument): Promise<void> {
   const generation = (validationGenerations.get(document.uri) ?? 0) + 1;
   validationGenerations.set(document.uri, generation);
   const filePath = filePathFromUri(document.uri);
-  if (!filePath || path.extname(filePath).toLowerCase() !== ".phplus") return;
+  if (!filePath || path.extname(filePath).toLowerCase() !== ".ppp") return;
 
   const workspaceRoot = findWorkspaceRoot(filePath);
   const settings = await getSettings(document.uri);

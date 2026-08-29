@@ -1,6 +1,6 @@
 # ++PHP for PhpStorm
 
-The PhpStorm plugin registers `.phplus` syntax highlighting from the shared TextMate bundle and starts the bundled ++PHP language server through JetBrains' native LSP integration.
+The PhpStorm plugin registers `.ppp` syntax highlighting and the ++PHP emblem from shared resources, then starts the bundled ++PHP language server through JetBrains' native LSP integration.
 
 ## Local requirements
 

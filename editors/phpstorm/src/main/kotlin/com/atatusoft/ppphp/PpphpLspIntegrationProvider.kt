@@ -7,7 +7,7 @@ import com.intellij.platform.lsp.api.LspIntegrationProvider.LspClientStarter
 
 class PpphpLspIntegrationProvider : LspIntegrationProvider {
     override fun fileOpened(project: Project, file: VirtualFile, clientStarter: LspClientStarter) {
-        if (file.extension.equals("phplus", ignoreCase = true)) {
+        if (file.extension.equals("ppp", ignoreCase = true)) {
             clientStarter.ensureClientStarted(PpphpLspClientDescriptor(project))
         }
     }

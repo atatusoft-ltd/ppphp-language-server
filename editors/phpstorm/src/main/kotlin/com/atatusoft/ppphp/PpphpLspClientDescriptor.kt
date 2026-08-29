@@ -13,7 +13,7 @@ class PpphpLspClientDescriptor(project: Project) :
     ProjectWideLspClientDescriptor(project, "++PHP") {
 
     override fun isSupportedFile(file: VirtualFile): Boolean =
-        file.extension.equals("phplus", ignoreCase = true)
+        file.extension.equals("ppp", ignoreCase = true)
 
     override fun createCommandLine(): GeneralCommandLine {
         val node = findNodeExecutable()

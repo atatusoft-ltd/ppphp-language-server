@@ -73,6 +73,25 @@ tasks.withType<PrepareSandboxTask>().configureEach {
     }
 }
 
+tasks.processResources {
+    from(repositoryRoot.file("res/images/ppphp-emblem.svg")) {
+        into("META-INF")
+        rename { "pluginIcon.svg" }
+        filter { line: String ->
+            line.replace("width=\"1024\"", "width=\"40\"")
+                .replace("height=\"1024\"", "height=\"40\"")
+        }
+    }
+    from(repositoryRoot.file("res/images/ppphp-emblem.svg")) {
+        into("icons")
+        rename { "ppphp.svg" }
+        filter { line: String ->
+            line.replace("width=\"1024\"", "width=\"16\"")
+                .replace("height=\"1024\"", "height=\"16\"")
+        }
+    }
+}
+
 tasks {
     buildSearchableOptions {
         enabled = false

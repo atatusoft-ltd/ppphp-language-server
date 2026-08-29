@@ -2,7 +2,7 @@
 
 ## 0.1 foundation
 
-- Shared `.phplus` TextMate syntax for VS Code and PhpStorm
+- Shared `.ppp` TextMate syntax for VS Code and PhpStorm
 - Compiler-backed diagnostics on open/save
 - ++PHP snippets and contextual hover help
 - Lexical document outline

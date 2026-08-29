@@ -2,10 +2,11 @@
   "name": "ppphp-vscode",
   "displayName": "++PHP",
   "description": "Syntax highlighting and language intelligence for ++PHP.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "publisher": "atatusoft",
   "license": "Apache-2.0",
+  "icon": "images/ppphp-emblem-128.png",
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -16,7 +17,7 @@
   "keywords": [
     "php",
     "ppphp",
-    "phplus",
+    "ppp",
     "language-server",
     "lsp"
   ],
@@ -26,6 +27,7 @@
   "main": "./dist/extension.cjs",
   "files": [
     "dist/**",
+    "images/**",
     "language-configuration.json",
     "syntaxes/**",
     "CHANGELOG.md",
@@ -41,9 +43,13 @@
           "PPPHP"
         ],
         "extensions": [
-          ".phplus"
+          ".ppp"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./images/ppphp-emblem.svg",
+          "dark": "./images/ppphp-emblem.svg"
+        }
       }
     ],
     "grammars": [
@@ -69,7 +75,7 @@
           "type": "boolean",
           "default": true,
           "scope": "resource",
-          "description": "Run ppphp check when a .phplus document is opened or saved."
+          "description": "Run ppphp check when a .ppp document is opened or saved."
         },
         "ppphp.diagnostics.compiler.timeoutMilliseconds": {
           "type": "number",

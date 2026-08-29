@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1024"
+     height="1024"
+     viewBox="108 99 1064 1064"
+     role="img"
+     aria-labelledby="title desc">
+  <title id="title">++PHP Emblem</title>
+  <desc id="desc">Two vertically stacked plus signs beside a stylized letter P, rendered in a purple-to-blue gradient.</desc>
+
+  <defs>
+    <linearGradient id="ppphp-gradient"
+                    x1="0" y1="215"
+                    x2="0" y2="1021"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A600FF"/>
+      <stop offset="0.48" stop-color="#5B32FF"/>
+      <stop offset="1" stop-color="#009DFF"/>
+    </linearGradient>
+  </defs>
+
+  <g fill="url(#ppphp-gradient)">
+    <!-- Upper plus sign -->
+    <rect x="254" y="275" width="100" height="309" rx="48"/>
+    <rect x="148" y="380" width="312" height="100" rx="48"/>
+
+    <!-- Lower plus sign -->
+    <rect x="254" y="648" width="100" height="307" rx="48"/>
+    <rect x="148" y="753" width="312" height="100" rx="48"/>
+
+    <!-- Stylized P -->
+    <path d="
+      M 524 241
+      H 883
+      C 1023 241, 1132 365, 1132 519
+      C 1132 675, 1021 788, 882 788
+      H 729
+      C 711 788, 696 798, 692 815
+      L 647 970
+      C 638 1001, 612 1021, 580 1021
+      H 508
+      C 486 1021, 470 1003, 475 981
+      L 542 680
+      C 550 646, 574 625, 605 625
+      H 841
+      C 897 625, 942 578, 942 519
+      C 942 458, 895 410, 835 410
+      H 520
+      C 503 410, 490 396, 490 378
+      V 280
+      C 490 258, 505 241, 524 241
+      Z"/>
+  </g>
+</svg>
