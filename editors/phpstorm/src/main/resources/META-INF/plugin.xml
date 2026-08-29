@@ -15,5 +15,7 @@
         <lang.syntaxHighlighterFactory language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpSyntaxHighlighterFactory" />
         <highlightErrorFilter implementation="com.atatusoft.ppphp.PpphpSyntaxErrorFilter" />
         <platform.lsp.integrationProvider implementation="com.atatusoft.ppphp.PpphpLspIntegrationProvider" />
+        <directoryIndexExcludePolicy implementation="com.atatusoft.ppphp.PpphpCompilerDirectoriesExcludePolicy" />
+        <postStartupActivity implementation="com.atatusoft.ppphp.PpphpProjectActivity" />
     </extensions>
 </idea-plugin>

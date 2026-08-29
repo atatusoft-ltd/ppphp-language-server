@@ -31,6 +31,8 @@ PhpStorm registers ++PHP as a dialect of its bundled PHP language. Its syntax hi
 
 The VS Code extension bundles the server and uses the official `vscode-languageclient` transport. It relies on the extension host's Node runtime.
 
+PhpStorm reads only the path fields needed for host integration from a bounded `ppphp.json` file. It automatically excludes compiler-owned output and cache directories from indexing, validates that exclusions remain inside the project and do not overlap source or stub roots, and refreshes the project index when the configuration changes.
+
 The PhpStorm plugin targets 2026.2, depends on its bundled PHP plugin, registers the `.ppp` dialect and native LSP integration provider, and starts the bundled server with a separately installed Node.js 22 runtime.
 
 ## Capability policy

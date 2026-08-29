@@ -2,6 +2,8 @@
 
 The PhpStorm plugin registers `.ppp` as a dialect of PhpStorm's native PHP language, adds ++PHP contextual-keyword highlighting and the ++PHP emblem, then starts the bundled ++PHP language server through JetBrains' native LSP integration.
 
+For projects with `ppphp.json`, the configured compiler-owned `output` and `cache` directories are automatically excluded from PhpStorm indexing. This keeps emitted `.php` files from appearing as duplicate declarations of their `.ppp` sources. Unsafe paths that escape or overlap protected project directories are never excluded.
+
 Plugin releases track the ++PHP toolchain's Doria-style CalVer. The current target is `2026.3.1`.
 
 ## Local requirements
