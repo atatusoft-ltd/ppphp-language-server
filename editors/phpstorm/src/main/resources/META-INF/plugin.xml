@@ -17,7 +17,34 @@
         <lang.syntaxHighlighterFactory language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpSyntaxHighlighterFactory" />
         <lang.parserDefinition language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpParserDefinition" />
         <textmate.bundleProvider implementation="com.atatusoft.ppphp.PpphpTextMateBundleProvider" />
+        <internalFileTemplate name="++PHP File" />
+        <internalFileTemplate name="++PHP Class" />
+        <internalFileTemplate name="++PHP Interface" />
+        <internalFileTemplate name="++PHP Trait" />
+        <internalFileTemplate name="++PHP Enum" />
         <directoryIndexExcludePolicy implementation="com.atatusoft.ppphp.PpphpCompilerDirectoriesExcludePolicy" />
         <postStartupActivity implementation="com.atatusoft.ppphp.PpphpProjectActivity" />
     </extensions>
+
+    <actions>
+        <action
+            id="com.atatusoft.ppphp.actions.PpphpCreateFileAction"
+            class="com.atatusoft.ppphp.PpphpCreateFileAction"
+            text="++PHP File"
+            description="Create an empty ++PHP source file"
+            icon="/icons/ppphp.svg">
+            <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile" />
+        </action>
+        <action
+            id="com.atatusoft.ppphp.actions.PpphpCreateClassAction"
+            class="com.atatusoft.ppphp.PpphpCreateClassAction"
+            text="++PHP Class"
+            description="Create a ++PHP class, interface, trait, or enum"
+            icon="/icons/ppphp.svg">
+            <add-to-group
+                group-id="NewGroup"
+                anchor="after"
+                relative-to-action="com.atatusoft.ppphp.actions.PpphpCreateFileAction" />
+        </action>
+    </actions>
 </idea-plugin>

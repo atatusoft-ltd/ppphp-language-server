@@ -4,16 +4,17 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 ## Current capabilities
 
-| Capability                 | VS Code | PhpStorm | Notes                                          |
-| -------------------------- | ------- | -------- | ---------------------------------------------- |
-| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon     |
-| Syntax highlighting        | Yes     | Yes      | Canonical TextMate plus shared semantic tokens |
-| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save            |
-| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`   |
-| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                     |
-| Document symbols           | Yes     | Yes      | Safe lexical outline                           |
-| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index      |
-| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter         |
+| Capability                 | VS Code | PhpStorm | Notes                                           |
+| -------------------------- | ------- | -------- | ----------------------------------------------- |
+| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon      |
+| Syntax highlighting        | Yes     | Yes      | Canonical TextMate plus shared semantic tokens  |
+| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save             |
+| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`    |
+| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                      |
+| Document symbols           | Yes     | Yes      | Safe lexical outline                            |
+| File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions |
+| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index       |
+| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter          |
 
 The server intentionally does not advertise semantic refactors until it can prove symbol identity across scopes and files. This keeps editor actions predictable and avoids destructive textual renames.
 

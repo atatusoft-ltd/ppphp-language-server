@@ -37,6 +37,8 @@ PhpStorm reads only the path fields needed for host integration from a bounded `
 
 The PhpStorm plugin targets the 2025.2 compatibility baseline, uses bundled PHP tokenization for shallow PSI, bundled TextMate support for lexical highlighting, and native LSP semantic highlighting for ++PHP constructs. It registers the `.ppphp` language and starts the bundled server with a separately installed Node.js 22 runtime.
 
+PhpStorm source-creation actions are host-native adapters rather than language-server behavior. They reuse PhpStorm's PHP/Composer namespace provider and PHP file-header template, then create independent `.ppphp` PSI files from PHP-shaped class, interface, trait, and enum templates. Language syntax is surfaced only when the compiler marks that feature active; currently the templates emit ordinary PHP declarations.
+
 ## Capability policy
 
 Completion snippets, contextual documentation, and lexical semantic tokens are non-destructive and may be served locally. Compiler diagnostics remain authoritative. Rename, references, refactoring, and formatting require explicit protocol contracts and compiler support before the server advertises them.

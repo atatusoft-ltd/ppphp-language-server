@@ -146,6 +146,41 @@ require_source_contains(
     '<lang.parserDefinition language="++PHP"',
 );
 require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'id="com.atatusoft.ppphp.actions.PpphpCreateFileAction"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'id="com.atatusoft.ppphp.actions.PpphpCreateClassAction"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    '<internalFileTemplate name="++PHP Class" />',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'PhpNamespaceCompositeProvider.INSTANCE',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'removeSuffix(".ppphp")',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP File.ppphp.ft',
+    '#parse("PHP File Header.php")',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP Class.ppphp.ft',
+    'class ${NAME}${INHERITANCE} {',
+);
+require_check(
+    !str_contains(
+        read_text($root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP Class.ppphp.ft'),
+        'TYPE_PARAMETERS',
+    ),
+    'the class creation template must not emit inactive ++PHP generic syntax',
+);
+require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpLanguage.kt',
     'Language("++PHP")',
 );
@@ -237,7 +272,7 @@ function relative_path(string $path): string
 function text_files(array $roots): array
 {
     $files = [];
-    $allowedExtensions = ['json', 'kt', 'kts', 'md', 'php', 'ts', 'xml'];
+    $allowedExtensions = ['ft', 'json', 'kt', 'kts', 'md', 'php', 'ts', 'xml'];
 
     foreach ($roots as $path) {
         if (is_file($path)) {

@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file. The format 
 - Shared TextMate syntax and language configuration for `.ppphp` files.
 - VS Code extension with diagnostics, completions, hover help, and document symbols.
 - PhpStorm 2025.2-or-newer plugin using native JetBrains LSP and a dedicated ++PHP presentation language.
+- PhpStorm `++PHP File` and `++PHP Class` actions with PHP-shaped `.ppphp` templates, Composer-aware namespace suggestions, and class, interface, trait, and enum creation.
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed

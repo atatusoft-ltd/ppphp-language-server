@@ -6,6 +6,7 @@
 - Compiler-backed diagnostics on open/save
 - ++PHP snippets and contextual hover help
 - Lexical document outline
+- PhpStorm actions for creating `.ppphp` files, classes, interfaces, traits, and enums
 - Reproducible editor packages and CI
 
 ## Next: compiler/editor protocol
