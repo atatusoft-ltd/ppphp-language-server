@@ -1,14 +1,48 @@
-import { SemanticTokensBuilder, type SemanticTokens } from "vscode-languageserver/node";
+import { SemanticTokensBuilder, type Range, type SemanticTokens } from "vscode-languageserver/node";
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import grammar from "../../../res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json";
 import { maskNonCode } from "./language-features.js";
 
+export const SEMANTIC_TOKEN_TYPES = [
+  "namespace",
+  "class",
+  "enum",
+  "interface",
+  "typeParameter",
+  "parameter",
+  "variable",
+  "property",
+  "enumMember",
+  "function",
+  "method",
+  "keyword",
+  "type",
+  "decorator",
+] as const;
+
+export const SEMANTIC_TOKEN_MODIFIERS = [
+  "declaration",
+  "readonly",
+  "static",
+  "abstract",
+  "defaultLibrary",
+] as const;
+
+export type SemanticTokenType = (typeof SEMANTIC_TOKEN_TYPES)[number];
+export type SemanticTokenModifier = (typeof SEMANTIC_TOKEN_MODIFIERS)[number];
+
+export interface SemanticTokenClassification {
+  range: Range;
+  type: SemanticTokenType;
+  modifiers: SemanticTokenModifier[];
+}
+
 export const SEMANTIC_TOKEN_LEGEND = {
-  tokenTypes: ["keyword", "type"],
-  tokenModifiers: [],
+  tokenTypes: [...SEMANTIC_TOKEN_TYPES],
+  tokenModifiers: [...SEMANTIC_TOKEN_MODIFIERS],
 };
 
-type SemanticRole = "keyword" | "type";
+type FallbackRole = "keyword" | "type";
 
 interface TextMateRule {
   begin?: string;
@@ -16,10 +50,11 @@ interface TextMateRule {
   patterns?: TextMateRule[];
 }
 
-interface ClassifiedRange {
+interface OffsetClassification {
   offset: number;
   length: number;
-  role: SemanticRole;
+  type: SemanticTokenType;
+  modifiers: SemanticTokenModifier[];
 }
 
 const repository = grammar.repository as Record<string, TextMateRule>;
@@ -33,31 +68,87 @@ const whenPattern = requirePattern(
   "when-expression.patterns[0].match",
 );
 const typeNamePattern = /\\?[A-Za-z_][A-Za-z0-9_\\]*/gu;
-const nonTypeNames = new Set(["readonly", "val", "var"]);
+const nonTypeNames = new Set([
+  "array",
+  "bool",
+  "callable",
+  "false",
+  "float",
+  "int",
+  "iterable",
+  "mixed",
+  "never",
+  "null",
+  "object",
+  "parent",
+  "readonly",
+  "self",
+  "static",
+  "string",
+  "true",
+  "val",
+  "var",
+  "void",
+]);
 
-export function semanticTokens(document: TextDocument): SemanticTokens {
-  const ranges = classify(document.getText());
+/**
+ * Merge compiler-owned PHP/++PHP semantic roles with the small grammar-derived
+ * fallback. Compiler tokens win; the fallback keeps extension coloring useful
+ * while the compiler is missing or the current document cannot be parsed.
+ */
+export function semanticTokens(
+  document: TextDocument,
+  compilerTokens: SemanticTokenClassification[] = [],
+): SemanticTokens {
+  const classified = compilerTokens.map((token) => toOffsetClassification(document, token));
+
+  for (const fallback of classifyFallback(document.getText())) {
+    if (!classified.some((candidate) => overlaps(candidate, fallback))) {
+      classified.push(fallback);
+    }
+  }
+
+  classified.sort((left, right) => left.offset - right.offset || left.length - right.length);
   const builder = new SemanticTokensBuilder();
 
-  for (const range of ranges) {
-    const start = document.positionAt(range.offset);
-    builder.push(
-      start.line,
-      start.character,
-      range.length,
-      SEMANTIC_TOKEN_LEGEND.tokenTypes.indexOf(range.role),
-      0,
-    );
+  for (const token of classified) {
+    const start = document.positionAt(token.offset);
+    const type = SEMANTIC_TOKEN_LEGEND.tokenTypes.indexOf(token.type);
+    const modifiers = token.modifiers.reduce((mask, modifier) => {
+      const index = SEMANTIC_TOKEN_LEGEND.tokenModifiers.indexOf(modifier);
+      return index < 0 ? mask : mask | (1 << index);
+    }, 0);
+
+    builder.push(start.line, start.character, token.length, type, modifiers);
   }
 
   return builder.build();
 }
 
-function classify(source: string): ClassifiedRange[] {
+function toOffsetClassification(
+  document: TextDocument,
+  token: SemanticTokenClassification,
+): OffsetClassification {
+  const offset = document.offsetAt(token.range.start);
+  const end = document.offsetAt(token.range.end);
+
+  return {
+    offset,
+    length: end - offset,
+    type: token.type,
+    modifiers: token.modifiers,
+  };
+}
+
+function overlaps(left: OffsetClassification, right: OffsetClassification): boolean {
+  return left.offset < right.offset + right.length && right.offset < left.offset + left.length;
+}
+
+function classifyFallback(source: string): OffsetClassification[] {
   const searchable = maskNonCode(source);
-  const ranges = new Map<string, ClassifiedRange>();
-  const add = (offset: number, length: number, role: SemanticRole): void => {
-    ranges.set(`${offset}:${length}`, { offset, length, role });
+  const ranges = new Map<string, OffsetClassification>();
+  const add = (offset: number, length: number, type: FallbackRole): void => {
+    ranges.set(`${offset}:${length}`, { offset, length, type, modifiers: [] });
   };
 
   for (const match of matches(searchable, whenPattern)) {
@@ -92,7 +183,7 @@ function addTypeNames(
   source: string,
   start: number,
   end: number,
-  add: (offset: number, length: number, role: SemanticRole) => void,
+  add: (offset: number, length: number, role: FallbackRole) => void,
 ): void {
   for (const match of source.slice(start, end).matchAll(typeNamePattern)) {
     if (match.index === undefined) continue;

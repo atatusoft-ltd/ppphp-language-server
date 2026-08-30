@@ -1,0 +1,54 @@
+package com.atatusoft.ppphp
+
+import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.platform.lsp.api.customization.LspSemanticTokensSupport
+import com.intellij.psi.PsiFile
+import com.jetbrains.php.lang.highlighter.PhpHighlightingData
+
+/**
+ * Enables compiler-owned semantic highlighting for ++PHP PSI files and renders
+ * standard LSP roles with PhpStorm's native PHP colour-scheme keys.
+ */
+class PpphpSemanticTokensSupport : LspSemanticTokensSupport() {
+    override fun shouldAskServerForSemanticTokens(psiFile: PsiFile): Boolean =
+        psiFile.language === PpphpLanguage.INSTANCE
+
+    override fun getTextAttributesKey(
+        tokenType: String,
+        modifiers: List<String>,
+    ): TextAttributesKey? = when (tokenType) {
+        "namespace" -> PhpHighlightingData.IDENTIFIER
+        "class", "enum", "typeParameter" -> PhpHighlightingData.CLASS
+        "type" -> if ("defaultLibrary" in modifiers) {
+            PhpHighlightingData.PRIMITIVE_TYPE_HINT
+        } else {
+            PhpHighlightingData.CLASS
+        }
+        "interface" -> PhpHighlightingData.INTERFACE
+        "parameter" -> PhpHighlightingData.PARAMETER
+        "variable" -> PhpHighlightingData.VAR
+        "property" -> if ("static" in modifiers) {
+            PhpHighlightingData.STATIC_FIELD
+        } else {
+            PhpHighlightingData.INSTANCE_FIELD
+        }
+        "enumMember" -> if ("defaultLibrary" in modifiers) {
+            PhpHighlightingData.PREDEFINED_SYMBOL
+        } else {
+            PhpHighlightingData.CONSTANT
+        }
+        "function" -> if ("declaration" in modifiers) {
+            PhpHighlightingData.FUNCTION
+        } else {
+            PhpHighlightingData.FUNCTION_CALL
+        }
+        "method" -> when {
+            "declaration" in modifiers -> PhpHighlightingData.FUNCTION
+            "static" in modifiers -> PhpHighlightingData.STATIC_METHOD_CALL
+            else -> PhpHighlightingData.INSTANCE_METHOD_CALL
+        }
+        "keyword" -> PhpHighlightingData.KEYWORD
+        "decorator" -> PhpHighlightingData.ATTRIBUTE
+        else -> super.getTextAttributesKey(tokenType, modifiers)
+    }
+}
