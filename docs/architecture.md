@@ -25,7 +25,7 @@ The lexical scanner masks comments, strings, and heredocs before extracting docu
 
 The canonical TextMate bundle lives at `res/textmate/ppphp`. It layers ++PHP constructs over the PHP TextMate grammar. The PhpStorm plugin packages this directory directly; a synchronization script copies it into the VS Code package, and CI compares the generated copies byte-for-byte.
 
-PhpStorm registers `.ppphp` as an independent ++PHP language with a shallow delimiter parser and PSI. Its syntax highlighter delegates to JetBrains TextMate integration and the same canonical bundle used by VS Code. The parser lexer wraps PHP tokens only to build resilient PSI; it does not classify ++PHP constructs. The PHP parser and PHP inspections never run against `.ppphp` PSI, so future syntax does not require one-off suppression rules.
+PhpStorm registers `.ppphp` as an independent ++PHP language with a shallow delimiter parser and PSI. Its syntax highlighter delegates to JetBrains TextMate integration and the same canonical bundle used by VS Code. The editor uses TextMate's scope-aware token storage because TextMate scopes are dynamic and cannot be placed in PhpStorm's global registered-token table. The parser lexer wraps PHP tokens only to build resilient PSI; it does not classify ++PHP constructs. The PHP parser and PHP inspections never run against `.ppphp` PSI, so future syntax does not require one-off suppression rules.
 
 The shared editor grammar is intentionally lexical. The language server derives typed-binding candidates from its canonical matcher and supplies editor-neutral semantic tokens for ++PHP keywords and type names. Compiler diagnostics remain the authority for validity and semantics; the adapters do not invent competing rules.
 

@@ -147,6 +147,14 @@ require_source_contains(
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    '<editorHighlighterProvider filetype="++PHP" implementationClass="com.atatusoft.ppphp.PpphpEditorHighlighterProvider" />',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpEditorHighlighterProvider.kt',
+    'TextMateEditorHighlighterProvider()',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
     'id="com.atatusoft.ppphp.actions.PpphpCreateFileAction"',
 );
 require_source_contains(

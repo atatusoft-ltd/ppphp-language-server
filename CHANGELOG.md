@@ -22,3 +22,4 @@ All notable changes to this project will be documented in this file. The format 
 - PhpStorm automatically excludes the compiler-owned `output` and `cache` directories configured by `ppphp.json`, preventing generated PHP from producing duplicate-declaration warnings.
 - PhpStorm resolves its bundled language server through the plugin descriptor, including when plugin classes have no protection-domain code source.
 - PhpStorm installation and updates request the restart needed to refresh the `.ppphp` language association.
+- PhpStorm stores dynamic TextMate scopes through its scope-aware editor highlighter, preserving syntax colors without unregistered-token failures.

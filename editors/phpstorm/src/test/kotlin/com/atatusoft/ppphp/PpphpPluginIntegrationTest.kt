@@ -1,6 +1,7 @@
 package com.atatusoft.ppphp
 
 import com.intellij.lang.LanguageParserDefinitions
+import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
@@ -75,6 +76,30 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
                 scope.contains(".php"),
             )
         }
+    }
+
+    fun testEditorHighlighterStoresTextMateScopesWithoutDroppingSyntaxColors() {
+        val source = "<?php\n\nuse My\\App\\Core\\Person;\n\necho \"Hello World!\\n\";\n"
+        val file = myFixture.configureByText(PpphpFileType.INSTANCE, source)
+        val highlighter = EditorHighlighterFactory.getInstance()
+            .createEditorHighlighter(project, file.virtualFile)
+
+        highlighter.setText(source)
+        val iterator = highlighter.createIterator(0)
+        var highlightedTokens = 0
+        var echoIsHighlighted = false
+        val echoOffset = source.indexOf("echo")
+        while (!iterator.atEnd()) {
+            val keys = iterator.textAttributesKeys
+            if (keys.isNotEmpty()) highlightedTokens++
+            if (echoOffset in iterator.start until iterator.end) {
+                echoIsHighlighted = keys.isNotEmpty()
+            }
+            iterator.advance()
+        }
+
+        assertTrue("Expected styled TextMate tokens", highlightedTokens > 0)
+        assertTrue("Expected PHP echo to retain syntax highlighting", echoIsHighlighted)
     }
 
     fun testRecognizedPpphpSyntaxUsesItsOwnPsiWithoutPhpParserErrors() {
