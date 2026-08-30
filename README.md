@@ -4,21 +4,23 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 ## Current capabilities
 
-| Capability                 | VS Code | PhpStorm | Notes                                           |
-| -------------------------- | ------- | -------- | ----------------------------------------------- |
-| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon      |
-| Syntax highlighting        | Yes     | Yes      | Native PHP baseline plus shared semantic tokens |
-| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save             |
-| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`    |
-| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                      |
-| Document symbols           | Yes     | Yes      | Safe lexical outline                            |
-| Go to definition           | Yes     | Yes      | Compiler-owned project symbols and member types |
-| File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions |
-| Code-style settings        | No      | Yes      | PHP formatter controls with ++PHP-owned values  |
-| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index       |
-| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter          |
+| Capability                 | VS Code | PhpStorm | Notes                                             |
+| -------------------------- | ------- | -------- | ------------------------------------------------- |
+| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon        |
+| Syntax highlighting        | Yes     | Yes      | PHP lexical baseline plus compiler semantic roles |
+| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save               |
+| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`      |
+| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                        |
+| Document symbols           | Yes     | Yes      | Safe lexical outline                              |
+| Go to definition           | Yes     | Yes      | Compiler-owned project symbols and member types   |
+| File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions   |
+| Code-style settings        | No      | Yes      | PHP formatter controls with ++PHP-owned values    |
+| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index         |
+| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter            |
 
 Go to definition uses compiler-owned symbol identity across scopes and files. The server still does not advertise semantic refactors until the compiler protocol also supplies complete reference sets and safe edit contracts. This keeps editor actions predictable and avoids destructive textual renames.
+
+Syntax highlighting follows the same ownership boundary in both editors: each host supplies complete PHP lexical coloring, and the compiler classifies AST-backed roles such as classes, functions, methods, properties, parameters, variables, generic parameters, and ++PHP keywords. The language server converts the compiler's UTF-8 ranges into standard LSP semantic tokens. A small grammar-derived ++PHP fallback remains available when the compiler cannot parse the current buffer.
 
 ## Requirements
 

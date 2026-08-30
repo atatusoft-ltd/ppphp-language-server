@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "../src/semantic-tokens.js";
+import type { SemanticTokenClassification } from "../src/semantic-tokens.js";
 
 interface DecodedToken {
   text: string;
@@ -29,16 +30,12 @@ function load(string $id): Person throws StorageFailure, NetworkFailure
     );
 
     expect(decode(document)).toEqual([
-      { text: "string", type: "type" },
       { text: "throws", type: "keyword" },
       { text: "StorageFailure", type: "type" },
       { text: "NetworkFailure", type: "type" },
       { text: "readonly", type: "keyword" },
-      { text: "array", type: "type" },
-      { text: "string", type: "type" },
       { text: "Person", type: "type" },
       { text: "Person", type: "type" },
-      { text: "string", type: "type" },
       { text: "when", type: "keyword" },
     ]);
   });
@@ -52,15 +49,53 @@ function load(string $id): Person throws StorageFailure, NetworkFailure
     );
 
     const tokens = decode(document);
-    expect(tokens).toEqual([
-      { text: "string", type: "type" },
-      { text: "when", type: "keyword" },
-    ]);
+    expect(tokens).toEqual([{ text: "when", type: "keyword" }]);
+  });
+
+  it("merges compiler-owned PHP symbol roles with the ++PHP fallback", () => {
+    const document = TextDocument.create(
+      "file:///Box.ppphp",
+      "ppphp",
+      1,
+      `<?php
+class Box<T>
+{
+    public function getValue(): T
+    {
+        return $this->value;
+    }
+}
+
+readonly Box<string> $box = new Box();
+$box->getValue();
+`,
+    );
+    const compilerTokens: SemanticTokenClassification[] = [
+      token(document, "Box", 1, "class", ["declaration"]),
+      token(document, "getValue", 1, "method", ["declaration"]),
+      token(document, "value", 1, "property"),
+      token(document, "getValue", 2, "method"),
+    ];
+
+    expect(decode(document, compilerTokens)).toEqual(
+      expect.arrayContaining([
+        { text: "Box", type: "class" },
+        { text: "getValue", type: "method" },
+        { text: "value", type: "property" },
+        { text: "readonly", type: "keyword" },
+      ]),
+    );
+    expect(
+      decode(document, compilerTokens).filter((entry) => entry.text === "getValue"),
+    ).toHaveLength(2);
   });
 });
 
-function decode(document: TextDocument): DecodedToken[] {
-  const data = semanticTokens(document).data;
+function decode(
+  document: TextDocument,
+  compilerTokens: SemanticTokenClassification[] = [],
+): DecodedToken[] {
+  const data = semanticTokens(document, compilerTokens).data;
   const decoded: DecodedToken[] = [];
   let line = 0;
   let character = 0;
@@ -81,4 +116,29 @@ function decode(document: TextDocument): DecodedToken[] {
   }
 
   return decoded;
+}
+
+function token(
+  document: TextDocument,
+  text: string,
+  occurrence: number,
+  type: SemanticTokenClassification["type"],
+  modifiers: SemanticTokenClassification["modifiers"] = [],
+): SemanticTokenClassification {
+  let offset = -1;
+
+  for (let index = 0; index < occurrence; index++) {
+    offset = document.getText().indexOf(text, offset + 1);
+  }
+
+  if (offset < 0) throw new Error(`Could not find occurrence ${occurrence} of ${text}.`);
+
+  return {
+    type,
+    modifiers,
+    range: {
+      start: document.positionAt(offset),
+      end: document.positionAt(offset + text.length),
+    },
+  };
 }
