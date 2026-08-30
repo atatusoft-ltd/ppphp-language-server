@@ -35,6 +35,27 @@ class PpphpOutputExclusionTest : BasePlatformTestCase() {
             assertNull(PpphpProjectConfiguration.load(root))
         }
 
+    fun testOutputThatOverlapsSymlinkedSourceTargetIsNotExcluded() =
+        withProjectDirectory { root ->
+            Files.createDirectories(root.resolve("real-src"))
+            Files.createSymbolicLink(root.resolve("src-link"), Path.of("real-src"))
+            writeConfiguration(root, validConfiguration(source = "src-link", output = "real-src"))
+
+            assertNull(PpphpProjectConfiguration.load(root))
+        }
+
+    fun testOutputThatOverlapsSymlinkedStubTargetIsNotExcluded() =
+        withProjectDirectory { root ->
+            Files.createDirectories(root.resolve("real-stubs"))
+            Files.createSymbolicLink(root.resolve("stubs-link"), Path.of("real-stubs"))
+            writeConfiguration(
+                root,
+                validConfiguration(stubs = "stubs-link", output = "real-stubs"),
+            )
+
+            assertNull(PpphpProjectConfiguration.load(root))
+        }
+
     fun testOutputOutsideProjectIsNotExcluded() =
         withProjectDirectory { root ->
             writeConfiguration(root, validConfiguration(output = "../generated"))
@@ -77,16 +98,18 @@ class PpphpOutputExclusionTest : BasePlatformTestCase() {
     }
 
     private fun validConfiguration(
+        source: String = "src",
         output: String = "build/ppphp",
         cache: String = ".ppphp-cache",
+        stubs: String = "stubs",
     ): String =
         """
         {
-          "source": ["src"],
+          "source": ["$source"],
           "output": "$output",
           "cache": "$cache",
           "targetPhpVersion": "8.4",
-          "stubs": ["stubs"],
+          "stubs": ["$stubs"],
           "exclude": ["vendor", "build", ".ppphp-cache"]
         }
         """.trimIndent()

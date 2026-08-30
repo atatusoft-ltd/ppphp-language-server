@@ -82,7 +82,9 @@ internal object PpphpProjectConfiguration {
         val stubPaths = stubs.map { resolve(root, it) ?: return null }
         val outputPath = resolve(root, output) ?: return null
         val cachePath = resolve(root, cache) ?: return null
-        val protectedPaths = sourcePaths + stubPaths + configuration
+        val protectedPaths = (sourcePaths + stubPaths + configuration).map { path ->
+            canonicalizeProtectedPath(root, path) ?: return null
+        }
 
         if (!isSafeOwnedDirectory(root, outputPath, protectedPaths)) return null
         if (!isSafeOwnedDirectory(root, cachePath, protectedPaths)) return null
@@ -120,6 +122,20 @@ internal object PpphpProjectConfiguration {
         } catch (_: InvalidPathException) {
             null
         }
+
+    private fun canonicalizeProtectedPath(root: Path, path: Path): Path? {
+        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return path
+
+        val canonical = try {
+            path.toRealPath()
+        } catch (_: IOException) {
+            return null
+        } catch (_: SecurityException) {
+            return null
+        }
+
+        return canonical.takeIf { resolved -> resolved.startsWith(root) }
+    }
 
     private fun isSafeOwnedDirectory(
         root: Path,
