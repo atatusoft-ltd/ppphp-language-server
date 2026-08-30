@@ -19,6 +19,8 @@ VS Code client  ---> editor-neutral LSP server <---  PhpStorm LSP provider
 
 Compiler processes use argument arrays rather than a shell, run with a ten-second default timeout and a ten-megabyte output limit, and accept only version 1 diagnostic or definition envelopes. Unknown envelopes fail closed and are logged without inventing editor results. Compiler byte offsets are converted explicitly to LSP UTF-16 positions, including Unicode and CRLF documents.
 
+Editor configuration is treated as untrusted client input. Missing, null, malformed, or rejected configuration responses fall back to bounded defaults without terminating the server. Compiler subprocesses preserve the host path and add only existing platform-standard binary directories, which keeps project-local and explicitly configured compilers authoritative while supporting desktop-launched editors whose environment omits common package-manager paths.
+
 The lexical scanner masks comments, strings, and heredocs before extracting document symbols. It is deliberately suitable for navigation outlines, not symbol identity. Go to definition instead follows compiler-owned stable symbol IDs, resolved imports, local and parameter bindings, declared receiver types, return/property chains, traits, and inheritance.
 
 ## Syntax resources

@@ -27,7 +27,7 @@ Go to definition uses compiler-owned symbol identity across scopes and files. Th
 - npm 10 or newer
 - The ++PHP compiler, either:
   - at `vendor/bin/ppphp` in the opened project,
-  - available as `ppphp` on `PATH`, or
+  - available as `ppphp` on `PATH` or in a platform-standard binary directory, or
   - configured explicitly in the editor or through `PPPHP_COMPILER_PATH`
 - For the PhpStorm plugin build: Java 21 or newer; the checked-in Gradle wrapper supplies Gradle itself
 
@@ -65,7 +65,7 @@ VS Code exposes these workspace/resource settings:
 - `ppphp.diagnostics.compiler.enabled`
 - `ppphp.diagnostics.compiler.timeoutMilliseconds`
 
-For clients without settings support, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
+Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
 
 Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
 

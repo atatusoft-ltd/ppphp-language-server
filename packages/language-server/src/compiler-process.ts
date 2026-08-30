@@ -41,6 +41,7 @@ export function executeCompiler(
       {
         cwd,
         encoding: "utf8",
+        env: compilerProcessEnvironment(),
         maxBuffer: 10 * 1024 * 1024,
         timeout: timeoutMilliseconds,
       },
@@ -59,4 +60,34 @@ export function executeCompiler(
       child.stdin?.end(input);
     }
   });
+}
+
+export function compilerProcessEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+  directoryExists: (candidate: string) => boolean = existsSync,
+): NodeJS.ProcessEnv {
+  const result = { ...environment };
+  const pathKey = Object.keys(result).find((key) => key.toLowerCase() === "path") ?? "PATH";
+  const delimiter = platform === "win32" ? ";" : ":";
+  const configuredDirectories = (result[pathKey] ?? "").split(delimiter).filter(Boolean);
+  const fallbackDirectories =
+    platform === "darwin"
+      ? ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
+      : platform === "win32"
+        ? []
+        : ["/usr/local/bin", "/usr/bin"];
+  const seen = new Set<string>();
+  const directories = [
+    ...configuredDirectories,
+    ...fallbackDirectories.filter(directoryExists),
+  ].filter((directory) => {
+    const identity = platform === "win32" ? directory.toLowerCase() : directory;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+
+  result[pathKey] = directories.join(delimiter);
+  return result;
 }

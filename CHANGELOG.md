@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Fixed
 
+- PhpStorm clients that advertise workspace configuration but return no `ppphp` settings no longer terminate the language server; defaults are applied and compiler-backed features remain available.
+- Compiler subprocesses retain the host executable path and add existing platform-standard binary directories, allowing desktop-launched editors to find globally installed `ppphp` and PHP executables.
 - `.ppphp` is the exclusive source extension across editor manifests, file watchers, language-server validation, fixtures, and documentation.
 - PhpStorm uses its native PHP lexical highlighter for complete PHP-token and color-scheme parity, then layers shared language-server semantic tokens for typed bindings, generic types, `readonly`, `throws`, and `when`, without routing `.ppphp` files through PHP parser inspections.
 - PhpStorm automatically excludes the compiler-owned `output` and `cache` directories configured by `ppphp.json`, preventing generated PHP from producing duplicate-declaration warnings.
