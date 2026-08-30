@@ -8,7 +8,7 @@ class PpphpFileType private constructor() : LanguageFileType(PpphpLanguage.INSTA
 
     override fun getDescription(): String = "++PHP source file"
 
-    override fun getDefaultExtension(): String = "ppp"
+    override fun getDefaultExtension(): String = "ppphp"
 
     override fun getIcon(): Icon = PpphpIcons.FILE
 

@@ -5,7 +5,7 @@ import { documentSymbols, hoverAt, maskNonCode } from "../src/language-features.
 describe("language features", () => {
   it("finds declarations but ignores comments and strings", () => {
     const document = TextDocument.create(
-      "file:///example.ppp",
+      "file:///example.ppphp",
       "ppphp",
       1,
       `<?php
@@ -37,7 +37,7 @@ function identity<T>(T $value): T { return $value; }
 
   it("preserves UTF-16 offsets after astral characters", () => {
     const document = TextDocument.create(
-      "file:///unicode.ppp",
+      "file:///unicode.ppphp",
       "ppphp",
       1,
       "<?php\n$message = '👋';\nclass Greeting {}\n",
@@ -49,7 +49,7 @@ function identity<T>(T $value): T { return $value; }
 
   it("provides hover help for ++PHP contextual keywords", () => {
     const document = TextDocument.create(
-      "file:///example.ppp",
+      "file:///example.ppphp",
       "ppphp",
       1,
       "string $label = when ($ready) { return 'yes'; } else { return 'no'; };",

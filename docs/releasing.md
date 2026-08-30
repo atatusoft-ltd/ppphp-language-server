@@ -2,7 +2,7 @@
 
 ## Version policy
 
-Language-server and editor releases track the compatible ++PHP toolchain using the same CalVer system as Doria. The current target is `2026.3.1`.
+Language-server and editor releases track the compatible ++PHP toolchain using quarterly CalVer. The current target is `2026.3.1`.
 
 The canonical, user-facing form is `YYYY.Q.patch[-channel]`:
 
@@ -23,7 +23,7 @@ Every package manifest, editor manifest, lockfile entry, and `ppphpToolchainVers
 4. Run `npm run check`.
 5. Run `php scripts/build.php vscode`, then smoke-test highlighting and language-server startup.
 6. Run `php scripts/build.php phpstorm`, then run the complete structure validation, configuration validation, and Plugin Verifier suite.
-7. Install both local packages and smoke-test `.ppp` recognition, highlighting, diagnostics, completion, hover, and symbols.
+7. Install both local packages and smoke-test `.ppphp` recognition, highlighting, diagnostics, completion, hover, and symbols.
 8. Create a `v*` tag only after every manifest and artifact reports the same version.
 
 Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or binary remains an explicit maintainer action.

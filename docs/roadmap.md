@@ -2,7 +2,7 @@
 
 ## 0.1 foundation
 
-- `.ppp` syntax coverage through VS Code TextMate grammar and PhpStorm's native PHP dialect
+- `.ppphp` syntax coverage through VS Code TextMate grammar and PhpStorm's dedicated ++PHP presentation language
 - Compiler-backed diagnostics on open/save
 - ++PHP snippets and contextual hover help
 - Lexical document outline

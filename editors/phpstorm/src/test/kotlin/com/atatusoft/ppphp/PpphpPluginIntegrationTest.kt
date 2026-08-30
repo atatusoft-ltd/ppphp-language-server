@@ -1,7 +1,6 @@
 package com.atatusoft.ppphp
 
 import com.intellij.lang.LanguageParserDefinitions
-import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
@@ -12,16 +11,25 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.jetbrains.php.lang.PhpLanguage
+import com.jetbrains.php.lang.inspections.PhpUndefinedConstantInspection
 import java.nio.file.Path
+import org.jetbrains.plugins.textmate.TextMateService
 
 class PpphpPluginIntegrationTest : BasePlatformTestCase() {
-    fun testPppFilesUseThePhpLanguageDialect() {
-        val fileType = FileTypeManager.getInstance().getFileTypeByExtension("ppp")
+    fun testPpphpFilesUseTheDistinctPpphpPresentationLanguage() {
+        val fileType = FileTypeManager.getInstance().getFileTypeByExtension("ppphp")
 
         assertSame(PpphpFileType.INSTANCE, fileType)
         assertSame(PpphpLanguage.INSTANCE, (fileType as LanguageFileType).language)
-        assertTrue(PpphpLanguage.INSTANCE.isKindOf(PhpLanguage.INSTANCE))
-        assertNotNull(LanguageParserDefinitions.INSTANCE.forLanguage(PpphpLanguage.INSTANCE))
+        assertFalse(PpphpLanguage.INSTANCE.isKindOf(PhpLanguage.INSTANCE))
+        assertTrue(
+            LanguageParserDefinitions.INSTANCE.forLanguage(PpphpLanguage.INSTANCE) is
+                PpphpParserDefinition,
+        )
+        assertNotSame(
+            PpphpFileType.INSTANCE,
+            FileTypeManager.getInstance().getFileTypeByExtension("ppp"),
+        )
     }
 
     fun testStableLspSupportProviderIsRegistered() {
@@ -33,88 +41,96 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
         )
     }
 
-    fun testLspDescriptorSupportsOnlyPppFiles() {
+    fun testLspDescriptorSupportsOnlyPpphpFiles() {
         val descriptor = PpphpLspServerDescriptor(project, Path.of("unused-in-this-test"))
 
-        assertTrue(descriptor.isSupportedFile(LightVirtualFile("example.ppp")))
+        assertTrue(descriptor.isSupportedFile(LightVirtualFile("example.ppphp")))
+        assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.ppp")))
         assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.php")))
         assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.txt")))
     }
 
-    fun testStandardPhpTokensUseNativePhpHighlighting() {
+    fun testCanonicalTextMateBundleIsRegistered() {
+        val descriptor = requireNotNull(
+            TextMateService.getInstance().getLanguageDescriptorByFileName("example.ppphp"),
+        )
+
+        assertEquals("source.ppphp", descriptor.scopeName.toString())
+        assertNull(TextMateService.getInstance().getLanguageDescriptorByFileName("example.ppp"))
+    }
+
+    fun testStandardPhpSyntaxFallsBackToTheCanonicalPhpGrammar() {
         val source = "<?php\n\nuse My\\App\\Core\\Person;\n\necho \"Hello World!\\n\";\n"
-        val phpFileType = FileTypeManager.getInstance().getFileTypeByExtension("php")
-        val phpHighlighter =
-            requireNotNull(
-                SyntaxHighlighterFactory.getSyntaxHighlighter(
-                    phpFileType,
-                    project,
-                    LightVirtualFile("example.php", phpFileType, source),
-                ),
-            )
-        val ppphpHighlighter =
-            requireNotNull(
-                SyntaxHighlighterFactory.getSyntaxHighlighter(
-                    PpphpFileType.INSTANCE,
-                    project,
-                    LightVirtualFile("example.ppp", PpphpFileType.INSTANCE, source),
-                ),
-            )
+        val highlighter = ppphpHighlighter(source)
 
-        for (token in listOf("<?php", "use", "echo", "Person")) {
-            assertEquals(
-                "Expected .ppp token '$token' to use PHP's native attributes",
-                attributesFor(phpHighlighter, source, token).toList(),
-                attributesFor(ppphpHighlighter, source, token).toList(),
+        for (offset in listOf(
+            source.indexOf("<?php"),
+            source.indexOf("use"),
+            source.indexOf("echo"),
+            source.indexOf("Person"),
+        )) {
+            val scope = scopeAt(highlighter, source, offset)
+            assertTrue(
+                "Expected ordinary PHP syntax to include a PHP grammar scope at $offset; got $scope",
+                scope.contains(".php"),
             )
         }
     }
 
-    fun testPpphpContextualKeywordsAreHighlighted() {
-        val source = "<?php\nwhen (true) {}\nfunction run() throws Error {}\n"
-        val highlighter =
-            requireNotNull(
-                SyntaxHighlighterFactory.getSyntaxHighlighter(
-                    PpphpFileType.INSTANCE,
-                    project,
-                    LightVirtualFile("example.ppp", PpphpFileType.INSTANCE, source),
-                ),
-            )
+    fun testRecognizedPpphpSyntaxUsesItsOwnPsiWithoutPhpParserErrors() {
+        val source = fixture("recognized-syntax.ppphp")
+        val file = myFixture.configureByText(PpphpFileType.INSTANCE, source)
 
-        for (keyword in listOf("when", "throws")) {
-            assertContainsElements(
-                attributesFor(highlighter, source, keyword).map { it.externalName },
-                "PPPHP_CONTEXTUAL_KEYWORD",
-            )
-        }
+        assertTrue(file is PpphpPsiFile)
+        assertNull(PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java))
     }
 
-    fun testPhpParserErrorsAreNotPresentedAsPpphpDiagnostics() {
-        val file =
-            myFixture.configureByText(
+    fun testPhpInspectionsDoNotInterpretPpphpExtensionSyntax() {
+        myFixture.enableInspections(PhpUndefinedConstantInspection())
+        myFixture.configureByText(
+            PpphpFileType.INSTANCE,
+            """<?php
+class Person {}
+Person ${'$'}person = new Person();
+""",
+        )
+
+        assertFalse(
+            myFixture.doHighlighting().any { highlight ->
+                highlight.description?.contains("Undefined constant") == true
+            },
+        )
+    }
+
+    private fun ppphpHighlighter(source: String): SyntaxHighlighter =
+        requireNotNull(
+            SyntaxHighlighterFactory.getSyntaxHighlighter(
                 PpphpFileType.INSTANCE,
-                "<?php\nfunction run() throws Error {}\n",
-            )
-        val parserError = PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java)
+                project,
+                LightVirtualFile("example.ppphp", PpphpFileType.INSTANCE, source),
+            ),
+        )
 
-        assertNotNull("The PHP parser should reject ++PHP's throws clause", parserError)
-        assertFalse(PpphpSyntaxErrorFilter().shouldHighlightErrorElement(parserError!!))
-    }
+    private fun fixture(name: String): String =
+        requireNotNull(javaClass.classLoader.getResource(name)) {
+            "Missing editor fixture $name"
+        }.readText()
 
-    private fun attributesFor(
+    private fun scopeAt(
         highlighter: SyntaxHighlighter,
         source: String,
-        expectedToken: String,
-    ): Array<TextAttributesKey> {
+        expectedOffset: Int,
+    ): String {
+        assertTrue("Expected token offset must exist", expectedOffset >= 0)
         val lexer = highlighter.highlightingLexer
         lexer.start(source)
         while (lexer.tokenType != null) {
-            if (lexer.tokenText == expectedToken) {
-                return highlighter.getTokenHighlights(lexer.tokenType!!)
+            if (expectedOffset in lexer.tokenStart until lexer.tokenEnd) {
+                return lexer.tokenType.toString()
             }
             lexer.advance()
         }
-        fail("The syntax highlighter did not emit token '$expectedToken'")
-        return emptyArray()
+        fail("The syntax highlighter did not emit a token at offset $expectedOffset")
+        return ""
     }
 }

@@ -4,17 +4,19 @@
     <vendor>Atatusoft</vendor>
 
     <description><![CDATA[
-        Syntax highlighting and Language Server Protocol support for ++PHP (.ppp) files.
+        Syntax highlighting and Language Server Protocol support for ++PHP (.ppphp) files.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.jetbrains.php</depends>
+    <depends>org.jetbrains.plugins.textmate</depends>
     <depends optional="true" config-file="ppphp-lsp.xml">com.intellij.modules.lsp</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <fileType name="++PHP" implementationClass="com.atatusoft.ppphp.PpphpFileType" fieldName="INSTANCE" language="++PHP" extensions="ppp" />
+        <fileType name="++PHP" implementationClass="com.atatusoft.ppphp.PpphpFileType" fieldName="INSTANCE" language="++PHP" extensions="ppphp" />
         <lang.syntaxHighlighterFactory language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpSyntaxHighlighterFactory" />
-        <highlightErrorFilter implementation="com.atatusoft.ppphp.PpphpSyntaxErrorFilter" />
+        <lang.parserDefinition language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpParserDefinition" />
+        <textmate.bundleProvider implementation="com.atatusoft.ppphp.PpphpTextMateBundleProvider" />
         <directoryIndexExcludePolicy implementation="com.atatusoft.ppphp.PpphpCompilerDirectoriesExcludePolicy" />
         <postStartupActivity implementation="com.atatusoft.ppphp.PpphpProjectActivity" />
     </extensions>

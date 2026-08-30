@@ -14,7 +14,7 @@ describe("compiler diagnostic mapping", () => {
             title: "Example warning",
             message: "Something needs attention.",
             location: {
-              file: "src/example.ppp",
+              file: "src/example.ppphp",
               range: {
                 start: { offset: 6, line: 2, column: 3 },
                 end: { offset: 9, line: 2, column: 6 },
@@ -27,7 +27,7 @@ describe("compiler diagnostic mapping", () => {
         ],
         summary: { errors: 0, warnings: 1, notes: 0 },
       }),
-      "/workspace/src/example.ppp",
+      "/workspace/src/example.ppphp",
       "/workspace",
     );
 
@@ -45,8 +45,8 @@ describe("compiler diagnostic mapping", () => {
   });
 
   it("rejects unknown diagnostic envelope versions", () => {
-    expect(() => parseCompilerOutput('{"version":2,"diagnostics":[]}', "/a.ppp", "/")).toThrowError(
-      "unsupported diagnostic envelope",
-    );
+    expect(() =>
+      parseCompilerOutput('{"version":2,"diagnostics":[]}', "/a.ppphp", "/"),
+    ).toThrowError("unsupported diagnostic envelope");
   });
 });

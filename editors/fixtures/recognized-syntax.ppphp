@@ -1,0 +1,30 @@
+<?php
+
+namespace Example;
+
+use Example\Failure\StorageFailure;
+use Example\Model\Person;
+
+function loadPerson(string $id): Person throws StorageFailure
+{
+    readonly string $requestedId = $id;
+    Person $person = new Person($requestedId);
+    ?Person $cached = null;
+
+    for (int $index = 0; $index < 1; ++$index) {
+        echo $index;
+    }
+
+    array<string, Person> $people = ['first' => $person];
+    foreach ($people as string $key => Person $value) {
+        echo $key;
+    }
+
+    string $label = when ($cached !== null) {
+        return 'cached';
+    } else {
+        return 'loaded';
+    };
+
+    return $person;
+}

@@ -25,6 +25,7 @@ dependencies {
         testFramework(TestFrameworkType.Platform)
         phpstorm("2025.2.1")
         bundledPlugin("com.jetbrains.php")
+        bundledPlugin("org.jetbrains.plugins.textmate")
     }
 }
 
@@ -36,6 +37,12 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_21
+    }
+}
+
+sourceSets {
+    test {
+        resources.srcDir(layout.projectDirectory.dir("../fixtures"))
     }
 }
 
@@ -70,6 +77,7 @@ val buildLanguageServer by tasks.registering(Exec::class) {
     )
     inputs.files(fileTree(repositoryRoot.dir("packages/language-server/src")))
     inputs.file(repositoryRoot.file("packages/language-server/package.json"))
+    inputs.file(repositoryRoot.file("res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json"))
     outputs.file(repositoryRoot.file("packages/language-server/dist/server.cjs"))
 }
 
@@ -78,6 +86,9 @@ tasks.withType<PrepareSandboxTask>().configureEach {
 
     from(repositoryRoot.file("packages/language-server/dist/server.cjs")) {
         into(pluginName.map { "$it/server" })
+    }
+    from(repositoryRoot.dir("res/textmate/ppphp")) {
+        into(pluginName.map { "$it/textmate/ppphp" })
     }
 }
 

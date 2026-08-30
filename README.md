@@ -4,16 +4,16 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 ## Current capabilities
 
-| Capability                 | VS Code | PhpStorm | Notes                                        |
-| -------------------------- | ------- | -------- | -------------------------------------------- |
-| `.ppp` file recognition    | Yes     | Yes      | Shared language definition and emblem icon   |
-| Syntax highlighting        | Yes     | Yes      | TextMate in VS Code; native PHP in PhpStorm  |
-| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save          |
-| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when` |
-| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                   |
-| Document symbols           | Yes     | Yes      | Safe lexical outline                         |
-| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index    |
-| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter       |
+| Capability                 | VS Code | PhpStorm | Notes                                          |
+| -------------------------- | ------- | -------- | ---------------------------------------------- |
+| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon     |
+| Syntax highlighting        | Yes     | Yes      | Canonical TextMate plus shared semantic tokens |
+| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save            |
+| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`   |
+| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                     |
+| Document symbols           | Yes     | Yes      | Safe lexical outline                           |
+| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index      |
+| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter         |
 
 The server intentionally does not advertise semantic refactors until it can prove symbol identity across scopes and files. This keeps editor actions predictable and avoids destructive textual renames.
 
@@ -30,7 +30,7 @@ The server intentionally does not advertise semantic refactors until it can prov
 
 ## Local development
 
-Repository automation is deliberately written in PHP, following the Doria tooling convention. TypeScript is confined to the Node-based language server and VS Code client, while Kotlin is confined to the JetBrains plugin.
+Repository automation is deliberately written in PHP. TypeScript is confined to the Node-based language server and VS Code client, while Kotlin is confined to the JetBrains plugin.
 
 ```shell
 npm ci
@@ -50,7 +50,7 @@ The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin
 
 ## Versioning
 
-Language-server and editor releases track the ++PHP toolchain using Doria-style CalVer. The current version is `2026.3.1` across every package and editor manifest.
+Language-server and editor releases track the ++PHP toolchain using quarterly CalVer. The current version is `2026.3.1` across every package and editor manifest.
 
 See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
 
@@ -71,7 +71,7 @@ packages/language-server/  Editor-neutral TypeScript LSP server
 res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
-editors/phpstorm/          JetBrains LSP/native PHP dialect integration
+editors/phpstorm/          JetBrains LSP, TextMate, and ++PHP PSI integration
 docs/                      Architecture and roadmap decisions
 scripts/                   PHP build orchestration and repository guardrails
 ```

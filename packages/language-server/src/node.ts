@@ -11,6 +11,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
+import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
 
 interface PpphpConfiguration {
   compiler?: { path?: string };
@@ -49,6 +50,10 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       documentSymbolProvider: true,
       hoverProvider: true,
+      semanticTokensProvider: {
+        legend: SEMANTIC_TOKEN_LEGEND,
+        full: true,
+      },
       textDocumentSync: {
         openClose: true,
         change: TextDocumentSyncKind.Incremental,
@@ -77,6 +82,10 @@ connection.onDocumentSymbol(({ textDocument }) => {
   const document = documents.get(textDocument.uri);
   return document ? documentSymbols(document) : [];
 });
+connection.languages.semanticTokens.on(({ textDocument }) => {
+  const document = documents.get(textDocument.uri);
+  return document ? semanticTokens(document) : { data: [] };
+});
 
 documents.onDidOpen(({ document }) => void validate(document));
 documents.onDidSave(({ document }) => void validate(document));
@@ -89,7 +98,7 @@ async function validate(document: TextDocument): Promise<void> {
   const generation = (validationGenerations.get(document.uri) ?? 0) + 1;
   validationGenerations.set(document.uri, generation);
   const filePath = filePathFromUri(document.uri);
-  if (!filePath || path.extname(filePath).toLowerCase() !== ".ppp") return;
+  if (!filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return;
 
   const workspaceRoot = findWorkspaceRoot(filePath);
   const settings = await getSettings(document.uri);

@@ -16,7 +16,7 @@
           "PPPHP"
         ],
         "extensions": [
-          ".ppp"
+          ".ppphp"
         ],
         "configuration": "./language-configuration.json"
       }

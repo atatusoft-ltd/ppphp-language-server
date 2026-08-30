@@ -13,7 +13,7 @@ class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
     ProjectWideLspServerDescriptor(project, "++PHP") {
 
     override fun isSupportedFile(file: VirtualFile): Boolean =
-        file.extension.equals("ppp", ignoreCase = true)
+        file.extension.equals("ppphp", ignoreCase = true)
 
     override fun createCommandLine(): GeneralCommandLine {
         val node = findNodeExecutable()
