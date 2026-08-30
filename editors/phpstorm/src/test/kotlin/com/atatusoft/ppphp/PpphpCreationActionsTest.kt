@@ -75,6 +75,61 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
         assertFalse(PpphpPhpNames.isValidNamespace("My\\class"))
     }
 
+    fun testNamespaceSuggestionUsesThePreservedPpphpSourceMapping() {
+        myFixture.addFileToProject(
+            "composer.json",
+            """
+            {
+              "autoload": {"psr-4": {"My\\App\\": "build/src/"}},
+              "extra": {
+                "ppphp": {
+                  "source-autoload": {
+                    "psr-4": {"My\\App\\": ["src/"]}
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val directory = sourceDirectory("src/Store")
+
+        assertEquals("My\\App\\Store", PpphpNamespaceSuggestions.suggest(directory).first())
+    }
+
+    fun testNamespaceSuggestionUsesTheNearestComposerPackage() {
+        myFixture.addFileToProject(
+            "composer.json",
+            """{"autoload": {"psr-4": {"Root\\": "src/"}}}""",
+        )
+        myFixture.addFileToProject(
+            "packages/feature/composer.json",
+            """{"autoload": {"psr-4": {"Feature\\": "src/"}}}""",
+        )
+        val directory = sourceDirectory("packages/feature/src/Domain")
+
+        assertEquals("Feature\\Domain", PpphpNamespaceSuggestions.suggest(directory).first())
+    }
+
+    fun testAmbiguousSourceMappingsDoNotFallBackToARuntimeGuess() {
+        myFixture.addFileToProject(
+            "composer.json",
+            """
+            {
+              "autoload": {"psr-4": {"Runtime\\": "src/"}},
+              "extra": {
+                "ppphp": {
+                  "source-autoload": {"psr-4": {"My\\App\\": "src/"}},
+                  "source-autoload-dev": {"psr-4": {"My\\Tests\\": "src/"}}
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val directory = sourceDirectory("src/Store")
+
+        assertTrue(PpphpNamespaceSuggestions.suggest(directory).isEmpty())
+    }
+
     fun testClassCreationMirrorsPhpAndCreatesAPpphpPsiFile() {
         val directory = sourceDirectory()
         val created = createDeclaration(

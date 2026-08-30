@@ -207,19 +207,29 @@ internal object PpphpPhpNames {
         PhpLangUtil.isPhpIdentifier(value) && !PhpLangUtil.isPhpReservedKeyword(value)
 }
 
+internal object PpphpNamespaceSuggestions {
+    fun suggest(directory: PsiDirectory): List<String> {
+        val composer = PpphpComposerNamespaceResolver.resolve(directory.virtualFile)
+        if (composer.authoritative && composer.namespace == null) return emptyList()
+
+        return (
+            listOfNotNull(composer.namespace) +
+                PhpNamespaceCompositeProvider.INSTANCE.suggestNamespaces(directory)
+            ).map { namespace -> namespace.trim().trim('\\') }
+            .filter(PpphpPhpNames::isValidNamespace)
+            .distinct()
+    }
+}
+
 private class PpphpCreateClassDialog(
     private val project: Project,
     private val directory: PsiDirectory,
 ) : DialogWrapper(project, true) {
     private val typeNameField = JBTextField(42)
-    private val namespaceField = JComboBox(
-        PhpNamespaceCompositeProvider.INSTANCE
-            .suggestNamespaces(directory)
-            .map { it.trim().trim('\u005c') }
-            .distinct()
-            .toTypedArray(),
-    ).apply {
+    private val namespaceSuggestions = PpphpNamespaceSuggestions.suggest(directory)
+    private val namespaceField = JComboBox(namespaceSuggestions.toTypedArray()).apply {
         isEditable = true
+        namespaceSuggestions.firstOrNull()?.let { selectedItem = it }
     }
     private val fileNameField = JBTextField(42)
     private val directoryField = JBTextField(directory.virtualFile.presentableUrl, 42)
@@ -265,7 +275,8 @@ private class PpphpCreateClassDialog(
         setOKButtonText("OK")
         directoryField.isEditable = false
         typeNameField.emptyText.text = "Type name"
-        namespaceField.toolTipText = "Namespace suggested from PhpStorm's PHP and Composer project model"
+        namespaceField.toolTipText =
+            "Namespace inferred from ++PHP source PSR-4 mappings and PhpStorm's PHP project model"
         fileNameField.emptyText.text = "TypeName.ppphp"
         parentClassField.emptyText.text = "Optional parent class"
         relatedTypesList.emptyText.text = "Choose interfaces to implement"
