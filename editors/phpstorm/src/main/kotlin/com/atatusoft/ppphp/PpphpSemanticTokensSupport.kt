@@ -43,8 +43,8 @@ class PpphpSemanticTokensSupport : LspSemanticTokensSupport() {
             PhpHighlightingData.FUNCTION_CALL
         }
         "method" -> when {
-            "static" in modifiers -> PhpHighlightingData.STATIC_METHOD_CALL
             "declaration" in modifiers -> PhpHighlightingData.FUNCTION
+            "static" in modifiers -> PhpHighlightingData.STATIC_METHOD_CALL
             else -> PhpHighlightingData.INSTANCE_METHOD_CALL
         }
         "keyword" -> PhpHighlightingData.KEYWORD

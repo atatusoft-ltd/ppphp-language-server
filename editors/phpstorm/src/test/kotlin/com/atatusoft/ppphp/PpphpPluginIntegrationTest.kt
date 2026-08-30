@@ -77,6 +77,14 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
             support.getTextAttributesKey("method", listOf("declaration")),
         )
         assertSame(
+            PhpHighlightingData.FUNCTION,
+            support.getTextAttributesKey("method", listOf("static", "declaration")),
+        )
+        assertSame(
+            PhpHighlightingData.STATIC_METHOD_CALL,
+            support.getTextAttributesKey("method", listOf("static")),
+        )
+        assertSame(
             PhpHighlightingData.INSTANCE_METHOD_CALL,
             support.getTextAttributesKey("method", emptyList()),
         )
