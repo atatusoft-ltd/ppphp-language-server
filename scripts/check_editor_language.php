@@ -69,7 +69,7 @@ foreach (
         "typed-binding grammar does not recognize: {$syntax}",
     );
 }
-foreach (['val $name = "Andrew";', 'var $attempts = 0;'] as $syntax) {
+foreach (['val $name = "Andrew";', 'var $attempts = 0;', "<?php\n\$value = 1;"] as $syntax) {
     require_check(
         preg_match('~' . $typedBindingPattern . '~m', $syntax) === 0,
         "typed-binding grammar must reject: {$syntax}",
@@ -154,8 +154,28 @@ require_source_contains(
     'getDefaultExtension(): String = "ppphp"',
 );
 require_source_contains(
-    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxClassifier.kt',
-    'markTypedBindings(tokens, roles)',
+    $root . '/packages/language-server/src/node.ts',
+    'semanticTokensProvider',
+);
+require_source_contains(
+    $root . '/packages/language-server/src/semantic-tokens.ts',
+    '../../../res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    '<textmate.bundleProvider implementation="com.atatusoft.ppphp.PpphpTextMateBundleProvider" />',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/build.gradle.kts',
+    'from(repositoryRoot.dir("res/textmate/ppphp"))',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxHighlighter.kt',
+    'TextMateSyntaxHighlighterFactory',
+);
+require_check(
+    !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxClassifier.kt'),
+    'the PhpStorm adapter must not duplicate ++PHP syntax classification',
 );
 
 fwrite(

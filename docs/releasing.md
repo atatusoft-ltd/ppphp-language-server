@@ -2,7 +2,7 @@
 
 ## Version policy
 
-Language-server and editor releases track the compatible ++PHP toolchain using the same CalVer system as Doria. The current target is `2026.3.1`.
+Language-server and editor releases track the compatible ++PHP toolchain using quarterly CalVer. The current target is `2026.3.1`.
 
 The canonical, user-facing form is `YYYY.Q.patch[-channel]`:
 

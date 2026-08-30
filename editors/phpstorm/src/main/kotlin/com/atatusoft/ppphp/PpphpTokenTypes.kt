@@ -10,9 +10,6 @@ internal class PpphpPhpTokenType(
 ) : IElementType("++PHP ${phpTokenType}", PpphpLanguage.INSTANCE)
 
 internal object PpphpTokenTypes {
-    val CONTEXTUAL_KEYWORD = IElementType("++PHP contextual keyword", PpphpLanguage.INSTANCE)
-    val TYPE_NAME = IElementType("++PHP type name", PpphpLanguage.INSTANCE)
-
     private val delegatedTypes = ConcurrentHashMap<IElementType, PpphpPhpTokenType>()
 
     fun wrap(type: IElementType): IElementType =

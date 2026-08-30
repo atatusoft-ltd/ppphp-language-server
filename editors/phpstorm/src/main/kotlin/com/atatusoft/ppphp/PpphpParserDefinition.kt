@@ -20,7 +20,7 @@ import com.jetbrains.php.lang.lexer.PhpTokenTypes
 
 class PpphpParserDefinition : ParserDefinition {
     override fun createLexer(project: Project?): Lexer =
-        PpphpLexer(createPhpLexer(project), createPhpLexer(project))
+        PpphpLexer(createPhpLexer(project))
 
     override fun createParser(project: Project?): PsiParser = PsiParser { root, builder ->
         val file = builder.mark()
