@@ -8,12 +8,14 @@ import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
 import com.intellij.platform.lsp.api.LspServerSupportProvider
+import com.intellij.platform.lsp.api.customization.LspSemanticTokensSupport
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.jetbrains.php.lang.PhpFileType
 import com.jetbrains.php.lang.PhpLanguage
+import com.jetbrains.php.lang.highlighter.PhpHighlightingData
 import com.jetbrains.php.lang.inspections.PhpUndefinedConstantInspection
 import java.nio.file.Path
 
@@ -50,6 +52,45 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
         assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.ppp")))
         assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.php")))
         assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.txt")))
+    }
+
+    fun testLspDescriptorAdvertisesSemanticTokensForPpphpPsi() {
+        val descriptor = PpphpLspServerDescriptor(project, Path.of("unused-in-this-test"))
+        val support = descriptor.lspCustomization.semanticTokensCustomizer
+
+        assertTrue(support is LspSemanticTokensSupport)
+        assertNotNull(descriptor.clientCapabilities.textDocument.semanticTokens)
+
+        val file = myFixture.configureByText(
+            PpphpFileType.INSTANCE,
+            "<?php\nclass Box<T> { public T \$value; }\n",
+        )
+        assertTrue((support as LspSemanticTokensSupport).shouldAskServerForSemanticTokens(file))
+    }
+
+    fun testSemanticSymbolsUseNativePhpColourSchemeKeys() {
+        val support = PpphpSemanticTokensSupport()
+
+        assertSame(
+            PhpHighlightingData.FUNCTION,
+            support.getTextAttributesKey("method", listOf("declaration")),
+        )
+        assertSame(
+            PhpHighlightingData.INSTANCE_METHOD_CALL,
+            support.getTextAttributesKey("method", emptyList()),
+        )
+        assertSame(
+            PhpHighlightingData.INSTANCE_FIELD,
+            support.getTextAttributesKey("property", emptyList()),
+        )
+        assertSame(
+            PhpHighlightingData.STATIC_FIELD,
+            support.getTextAttributesKey("property", listOf("static")),
+        )
+        assertSame(
+            PhpHighlightingData.CLASS,
+            support.getTextAttributesKey("typeParameter", listOf("declaration")),
+        )
     }
 
     fun testEveryPhpLexicalTokenUsesNativePhpHighlighting() {

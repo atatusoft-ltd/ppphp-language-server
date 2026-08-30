@@ -6,11 +6,16 @@ import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
+import com.intellij.platform.lsp.api.customization.LspCustomization
 import java.nio.file.Files
 import java.nio.file.Path
 
 class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
     ProjectWideLspServerDescriptor(project, "++PHP") {
+
+    override val lspCustomization: LspCustomization = object : LspCustomization() {
+        override val semanticTokensCustomizer = PpphpSemanticTokensSupport()
+    }
 
     override fun isSupportedFile(file: VirtualFile): Boolean =
         file.extension.equals("ppphp", ignoreCase = true)
