@@ -2,15 +2,15 @@
 
 ## Design goals
 
-The tooling has one source of language behavior, predictable failure handling, and thin editor adapters. VS Code and PhpStorm should differ only in process startup, packaging, and host integration.
+The tooling has one source of language behavior, predictable failure handling, and thin editor adapters. VS Code and PhpStorm differ only where their host-native language facilities require it.
 
 ```text
                     ++PHP compiler (`ppphp check --format=json`)
                                       |
                                       v
 VS Code client  ---> editor-neutral LSP server <---  PhpStorm LSP provider
-      |                         |
-      +---------- shared TextMate bundle -----------+
+      |                                              |
+TextMate grammar                           native PHP language dialect
 ```
 
 ## Language server
@@ -21,17 +21,19 @@ Compiler processes use argument arrays rather than a shell, run with a ten-secon
 
 The lexical scanner masks comments, strings, and heredocs before extracting document symbols. It is deliberately suitable for navigation outlines, not symbol identity or refactoring.
 
-## Shared syntax resources
+## Syntax resources
 
-The canonical TextMate bundle lives at `res/textmate/ppphp`. It layers ++PHP constructs over the host's PHP grammar. A synchronization script copies the grammar and language configuration into the VS Code package. The PhpStorm build packages the canonical bundle directly. CI compares generated copies byte-for-byte.
+The canonical TextMate bundle lives at `res/textmate/ppphp`. It layers ++PHP constructs over VS Code's PHP grammar. A synchronization script copies the grammar and language configuration into the VS Code package, and CI compares the generated copies byte-for-byte.
 
-TextMate scopes provide immediate syntax highlighting. Semantic tokens can augment them later when the compiler exposes stable token and symbol classifications.
+PhpStorm registers ++PHP as a dialect of its bundled PHP language. Its syntax highlighter delegates standard tokens to the native PHP highlighter and adds ++PHP contextual keywords. Integration tests require ordinary PHP tokens such as `use`, `echo`, and qualified names to retain the same native attributes in `.php` and `.ppp` files. PHP parser errors are hidden for `.ppp` files because the ++PHP compiler diagnostics delivered over LSP are authoritative.
 
 ## Editor adapters
 
 The VS Code extension bundles the server and uses the official `vscode-languageclient` transport. It relies on the extension host's Node runtime.
 
-The PhpStorm plugin targets 2026.2, registers JetBrains' native LSP integration provider, and registers the shared bundle through the TextMate plugin. It starts the bundled server with a separately installed Node.js 22 runtime.
+PhpStorm reads only the path fields needed for host integration from a bounded `ppphp.json` file. It automatically excludes compiler-owned output and cache directories from indexing, validates that exclusions remain inside the project and do not overlap source or stub roots, and refreshes the project index when the configuration changes.
+
+The PhpStorm plugin targets the 2025.2 compatibility baseline, depends on its bundled PHP plugin, registers the `.ppp` dialect and native LSP integration provider, and starts the bundled server with a separately installed Node.js 22 runtime.
 
 ## Capability policy
 

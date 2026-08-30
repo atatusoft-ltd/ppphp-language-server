@@ -24,7 +24,7 @@ export function activate(context: ExtensionContext): void {
     documentSelector: [{ language: "ppphp", scheme: "file" }],
     synchronize: {
       configurationSection: "ppphp",
-      fileEvents: workspace.createFileSystemWatcher("**/*.phplus"),
+      fileEvents: workspace.createFileSystemWatcher("**/*.ppp"),
     },
   };
 

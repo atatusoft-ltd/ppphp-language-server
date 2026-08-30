@@ -6,8 +6,8 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 | Capability                 | VS Code | PhpStorm | Notes                                        |
 | -------------------------- | ------- | -------- | -------------------------------------------- |
-| `.phplus` file recognition | Yes     | Yes      | Shared language definition                   |
-| Syntax highlighting        | Yes     | Yes      | Shared TextMate grammar layered over PHP     |
+| `.ppp` file recognition    | Yes     | Yes      | Shared language definition and emblem icon   |
+| Syntax highlighting        | Yes     | Yes      | TextMate in VS Code; native PHP in PhpStorm  |
 | Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save          |
 | ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when` |
 | Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                   |
@@ -19,29 +19,40 @@ The server intentionally does not advertise semantic refactors until it can prov
 
 ## Requirements
 
+- PHP 8.4 or newer for repository tooling and build orchestration
 - Node.js 22 or newer
 - npm 10 or newer
 - The ++PHP compiler, either:
   - at `vendor/bin/ppphp` in the opened project,
   - available as `ppphp` on `PATH`, or
   - configured explicitly in the editor or through `PPPHP_COMPILER_PATH`
-- For the PhpStorm plugin build: Java 25; the checked-in Gradle wrapper supplies Gradle itself
+- For the PhpStorm plugin build: Java 21 or newer; the checked-in Gradle wrapper supplies Gradle itself
 
 ## Local development
+
+Repository automation is deliberately written in PHP, following the Doria tooling convention. TypeScript is confined to the Node-based language server and VS Code client, while Kotlin is confined to the JetBrains plugin.
 
 ```shell
 npm ci
 npm run check
+php scripts/build.php help
 ```
 
-Build editor packages:
+Build either editor package, or both:
 
 ```shell
-npm run package:vscode
-./editors/phpstorm/gradlew -p editors/phpstorm buildPlugin
+php scripts/build.php vscode
+php scripts/build.php phpstorm
+php scripts/build.php editors
 ```
 
 The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin archive is written below `editors/phpstorm/build/distributions/`.
+
+## Versioning
+
+Language-server and editor releases track the ++PHP toolchain using Doria-style CalVer. The current version is `2026.3.1` across every package and editor manifest.
+
+See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
 
 ## Configuration
 
@@ -58,13 +69,14 @@ For clients without settings support, set `PPPHP_COMPILER_PATH`. The PhpStorm ho
 ```text
 packages/language-server/  Editor-neutral TypeScript LSP server
 res/textmate/ppphp/        Canonical shared language and grammar resources
+res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
-editors/phpstorm/          JetBrains LSP/TextMate integration
+editors/phpstorm/          JetBrains LSP/native PHP dialect integration
 docs/                      Architecture and roadmap decisions
-scripts/                   Reproducible repository tooling
+scripts/                   PHP build orchestration and repository guardrails
 ```
 
-Edit grammar and language configuration files only under `res/textmate/ppphp/`, then run `npm run sync:resources`. CI rejects stale generated VS Code copies.
+Edit grammar and language configuration files only under `res/textmate/ppphp/`, then run `php scripts/sync_language_resources.php`. The `npm run sync:resources` alias remains available for npm workflows. CI rejects stale generated VS Code copies.
 
 ## Contributing and security
 

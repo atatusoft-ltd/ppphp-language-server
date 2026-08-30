@@ -8,6 +8,7 @@ coverage/
 dist/
 *.vsix
 editors/vscode/LICENSE
+editors/vscode/images/
 
 .gradle/
 build/
