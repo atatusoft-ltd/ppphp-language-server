@@ -6,8 +6,8 @@
 
 ## 0.1.1
 
-- Use the canonical ++PHP emblem for the extension and `.ppp` files.
-- Replace the retired file association with `.ppp`.
+- Use the canonical ++PHP emblem for the extension and `.ppphp` files.
+- Replace the retired file association with `.ppphp`.
 
 ## 0.1.0
 

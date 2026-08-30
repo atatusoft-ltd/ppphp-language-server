@@ -1,7 +1,5 @@
 package com.atatusoft.ppphp
 
-import com.intellij.lexer.Lexer
-import com.intellij.lexer.LexerBase
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
@@ -10,10 +8,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.tree.IElementType
 import com.jetbrains.php.lang.PhpLanguage
-import com.jetbrains.php.lang.lexer.PhpTokenTypes
 
-private val contextualKeywordType =
-    IElementType("++PHP contextual keyword", PpphpLanguage.INSTANCE)
 private val contextualKeywordAttributes =
     arrayOf(
         TextAttributesKey.createTextAttributesKey(
@@ -21,7 +16,13 @@ private val contextualKeywordAttributes =
             DefaultLanguageHighlighterColors.KEYWORD,
         ),
     )
-private val contextualKeywords = setOf("throws", "when")
+private val typeNameAttributes =
+    arrayOf(
+        TextAttributesKey.createTextAttributesKey(
+            "PPPHP_TYPE_NAME",
+            DefaultLanguageHighlighterColors.CLASS_NAME,
+        ),
+    )
 
 class PpphpSyntaxHighlighterFactory : SyntaxHighlighterFactory() {
     override fun getSyntaxHighlighter(
@@ -29,10 +30,12 @@ class PpphpSyntaxHighlighterFactory : SyntaxHighlighterFactory() {
         virtualFile: VirtualFile?,
     ): SyntaxHighlighter {
         val phpHighlighter =
-            SyntaxHighlighterFactory.getSyntaxHighlighter(
-                PhpLanguage.INSTANCE,
-                project,
-                virtualFile,
+            requireNotNull(
+                SyntaxHighlighterFactory.getSyntaxHighlighter(
+                    PhpLanguage.INSTANCE,
+                    project,
+                    virtualFile,
+                ),
             )
         return PpphpSyntaxHighlighter(phpHighlighter)
     }
@@ -41,50 +44,19 @@ class PpphpSyntaxHighlighterFactory : SyntaxHighlighterFactory() {
 private class PpphpSyntaxHighlighter(
     private val phpHighlighter: SyntaxHighlighter,
 ) : SyntaxHighlighter {
-    override fun getHighlightingLexer(): Lexer =
-        PpphpContextualKeywordLexer(phpHighlighter.highlightingLexer)
+    override fun getHighlightingLexer() =
+        PpphpLexer(
+            phpHighlighter.highlightingLexer,
+            phpHighlighter.highlightingLexer,
+        )
 
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> =
-        if (tokenType === contextualKeywordType) {
-            contextualKeywordAttributes
-        } else {
-            phpHighlighter.getTokenHighlights(tokenType)
+        when (tokenType) {
+            PpphpTokenTypes.CONTEXTUAL_KEYWORD -> contextualKeywordAttributes
+            PpphpTokenTypes.TYPE_NAME -> typeNameAttributes
+            else -> {
+                val phpTokenType = PpphpTokenTypes.unwrap(tokenType) ?: return emptyArray()
+                phpHighlighter.getTokenHighlights(phpTokenType)
+            }
         }
-}
-
-private class PpphpContextualKeywordLexer(
-    private val phpLexer: Lexer,
-) : LexerBase() {
-    override fun start(
-        buffer: CharSequence,
-        startOffset: Int,
-        endOffset: Int,
-        initialState: Int,
-    ) {
-        phpLexer.start(buffer, startOffset, endOffset, initialState)
-    }
-
-    override fun getState(): Int = phpLexer.state
-
-    override fun getTokenType(): IElementType? =
-        if (
-            phpLexer.tokenType === PhpTokenTypes.IDENTIFIER &&
-                phpLexer.tokenText in contextualKeywords
-        ) {
-            contextualKeywordType
-        } else {
-            phpLexer.tokenType
-        }
-
-    override fun getTokenStart(): Int = phpLexer.tokenStart
-
-    override fun getTokenEnd(): Int = phpLexer.tokenEnd
-
-    override fun advance() {
-        phpLexer.advance()
-    }
-
-    override fun getBufferSequence(): CharSequence = phpLexer.bufferSequence
-
-    override fun getBufferEnd(): Int = phpLexer.bufferEnd
 }

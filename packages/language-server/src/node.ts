@@ -89,7 +89,7 @@ async function validate(document: TextDocument): Promise<void> {
   const generation = (validationGenerations.get(document.uri) ?? 0) + 1;
   validationGenerations.set(document.uri, generation);
   const filePath = filePathFromUri(document.uri);
-  if (!filePath || path.extname(filePath).toLowerCase() !== ".ppp") return;
+  if (!filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return;
 
   const workspaceRoot = findWorkspaceRoot(filePath);
   const settings = await getSettings(document.uri);

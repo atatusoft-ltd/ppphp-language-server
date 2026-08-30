@@ -39,6 +39,12 @@ kotlin {
     }
 }
 
+sourceSets {
+    test {
+        resources.srcDir(layout.projectDirectory.dir("../fixtures"))
+    }
+}
+
 intellijPlatform {
     pluginConfiguration {
         id = "com.atatusoft.ppphp"

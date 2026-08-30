@@ -6,8 +6,8 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 | Capability                 | VS Code | PhpStorm | Notes                                        |
 | -------------------------- | ------- | -------- | -------------------------------------------- |
-| `.ppp` file recognition    | Yes     | Yes      | Shared language definition and emblem icon   |
-| Syntax highlighting        | Yes     | Yes      | TextMate in VS Code; native PHP in PhpStorm  |
+| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon   |
+| Syntax highlighting        | Yes     | Yes      | TextMate and dedicated ++PHP editor lexers   |
 | Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save          |
 | ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when` |
 | Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                   |
@@ -71,7 +71,7 @@ packages/language-server/  Editor-neutral TypeScript LSP server
 res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
-editors/phpstorm/          JetBrains LSP/native PHP dialect integration
+editors/phpstorm/          JetBrains LSP and ++PHP presentation-language integration
 docs/                      Architecture and roadmap decisions
 scripts/                   PHP build orchestration and repository guardrails
 ```

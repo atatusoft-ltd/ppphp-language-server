@@ -19,7 +19,7 @@ class PpphpLspServerSupportProvider : LspServerSupportProvider, PluginAware {
         file: VirtualFile,
         serverStarter: LspServerSupportProvider.LspServerStarter,
     ) {
-        if (file.extension.equals("ppp", ignoreCase = true)) {
+        if (file.extension.equals("ppphp", ignoreCase = true)) {
             serverStarter.ensureServerStarted(PpphpLspServerDescriptor(project, pluginRoot))
         }
     }

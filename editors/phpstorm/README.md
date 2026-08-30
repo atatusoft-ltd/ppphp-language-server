@@ -1,8 +1,8 @@
 # ++PHP for PhpStorm
 
-The PhpStorm plugin registers `.ppp` as a dialect of PhpStorm's native PHP language, adds ++PHP contextual-keyword highlighting and the ++PHP emblem, then starts the bundled ++PHP language server through JetBrains' native LSP integration.
+The PhpStorm plugin registers `.ppphp` as a distinct ++PHP language with its own presentation lexer, parser, PSI, syntax highlighting, and emblem. Ordinary PHP tokens retain PhpStorm's familiar PHP colors, but PHP parsing and inspections do not interpret ++PHP source. The bundled ++PHP language server supplies authoritative compiler diagnostics through JetBrains' native LSP integration.
 
-For projects with `ppphp.json`, the configured compiler-owned `output` and `cache` directories are automatically excluded from PhpStorm indexing. This keeps emitted `.php` files from appearing as duplicate declarations of their `.ppp` sources. Unsafe paths that escape or overlap protected project directories are never excluded.
+For projects with `ppphp.json`, the configured compiler-owned `output` and `cache` directories are automatically excluded from PhpStorm indexing. This keeps emitted `.php` files from appearing as duplicate declarations of their `.ppphp` sources. Unsafe paths that escape or overlap protected project directories are never excluded.
 
 Plugin releases track the ++PHP toolchain's Doria-style CalVer. The current target is `2026.3.1`.
 
@@ -18,7 +18,7 @@ PhpStorm started from the desktop may not inherit your shell's Node.js path. Set
 -Dppphp.language.server.node.path=/absolute/path/to/node
 ```
 
-After installing or updating the plugin from disk, restart PhpStorm so the `.ppp` language association is refreshed.
+After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
 
 Build the distributable plugin from the repository root with:
 

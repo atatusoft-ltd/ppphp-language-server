@@ -6,6 +6,7 @@
     { "include": "#when-expression" },
     { "include": "#throws-clause" },
     { "include": "#readonly-local" },
+    { "include": "#typed-binding" },
     { "include": "#generic-declaration" },
     { "include": "#generic-type" },
     { "include": "source.php" }
@@ -39,6 +40,33 @@
     "readonly-local": {
       "name": "storage.modifier.readonly.local.ppphp",
       "match": "\\breadonly\\b(?=\\s+(?:\\??\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*|array\\s*<)[^;=]*\\$[A-Za-z_])"
+    },
+    "typed-binding": {
+      "begin": "(?<![A-Za-z0-9_\\\\])(?=(?:readonly\\s+(?!(?:val|var)\\b)|(?!(?:readonly|val|var)\\b))\\??(?:\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*)(?:\\s*<[^;{}$]+>)?(?:\\s*[|&]\\s*\\??(?:\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*)(?:\\s*<[^;{}$]+>)?)*\\s+\\$[A-Za-z_][A-Za-z0-9_]*\\s*(?:=|=>|\\)))",
+      "end": "(?=\\$[A-Za-z_][A-Za-z0-9_]*)",
+      "patterns": [
+        {
+          "name": "storage.modifier.readonly.local.ppphp",
+          "match": "\\breadonly\\b"
+        },
+        { "include": "#generic-type" },
+        {
+          "name": "support.type.builtin.php",
+          "match": "\\b(?:array|bool|callable|false|float|int|iterable|mixed|never|null|object|string|true|void)\\b"
+        },
+        {
+          "name": "entity.name.type.ppphp",
+          "match": "\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*"
+        },
+        {
+          "name": "punctuation.definition.type.nullable.ppphp",
+          "match": "\\?"
+        },
+        {
+          "name": "keyword.operator.type.ppphp",
+          "match": "[|&]"
+        }
+      ]
     },
     "generic-declaration": {
       "begin": "\\b(class|interface|trait|function)\\s+&?\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(<)",

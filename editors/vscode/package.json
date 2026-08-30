@@ -18,7 +18,6 @@
   "keywords": [
     "php",
     "ppphp",
-    "ppp",
     "language-server",
     "lsp"
   ],
@@ -44,7 +43,7 @@
           "PPPHP"
         ],
         "extensions": [
-          ".ppp"
+          ".ppphp"
         ],
         "configuration": "./language-configuration.json",
         "icon": {
@@ -76,7 +75,7 @@
           "type": "boolean",
           "default": true,
           "scope": "resource",
-          "description": "Run ppphp check when a .ppp document is opened or saved."
+          "description": "Run ppphp check when a .ppphp document is opened or saved."
         },
         "ppphp.diagnostics.compiler.timeoutMilliseconds": {
           "type": "number",
