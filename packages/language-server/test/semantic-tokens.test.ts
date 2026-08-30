@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "../src/semantic-tokens.js";
+import {
+  SEMANTIC_TOKEN_LEGEND,
+  SEMANTIC_TOKEN_MODIFIERS,
+  semanticTokens,
+} from "../src/semantic-tokens.js";
 import type { SemanticTokenClassification } from "../src/semantic-tokens.js";
 
 interface DecodedToken {
@@ -9,6 +13,11 @@ interface DecodedToken {
 }
 
 describe("semantic tokens", () => {
+  it("advertises standard native-library semantics to every LSP client", () => {
+    expect(SEMANTIC_TOKEN_MODIFIERS).toContain("defaultLibrary");
+    expect(SEMANTIC_TOKEN_LEGEND.tokenModifiers).toEqual([...SEMANTIC_TOKEN_MODIFIERS]);
+  });
+
   it("classifies ++PHP syntax once for every LSP client", () => {
     const document = TextDocument.create(
       "file:///example.ppphp",

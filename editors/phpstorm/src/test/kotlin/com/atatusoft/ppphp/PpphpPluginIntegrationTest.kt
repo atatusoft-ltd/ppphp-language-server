@@ -16,6 +16,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.jetbrains.php.lang.PhpFileType
 import com.jetbrains.php.lang.PhpLanguage
 import com.jetbrains.php.lang.highlighter.PhpHighlightingData
+import com.jetbrains.php.lang.lexer.PhpTokenTypes
 import com.jetbrains.php.lang.inspections.PhpUndefinedConstantInspection
 import java.nio.file.Path
 
@@ -91,6 +92,18 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
             PhpHighlightingData.CLASS,
             support.getTextAttributesKey("typeParameter", listOf("declaration")),
         )
+        assertSame(
+            PhpHighlightingData.PRIMITIVE_TYPE_HINT,
+            support.getTextAttributesKey("type", listOf("defaultLibrary")),
+        )
+        assertSame(
+            PhpHighlightingData.CLASS,
+            support.getTextAttributesKey("type", emptyList()),
+        )
+        assertSame(
+            PhpHighlightingData.PREDEFINED_SYMBOL,
+            support.getTextAttributesKey("enumMember", listOf("defaultLibrary")),
+        )
     }
 
     fun testEveryPhpLexicalTokenUsesNativePhpHighlighting() {
@@ -98,6 +111,19 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
             lexicalStyles(phpHighlighter(PHP_CORPUS), PHP_CORPUS),
             lexicalStyles(ppphpHighlighter(PHP_CORPUS), PHP_CORPUS),
         )
+    }
+
+    fun testEveryPhpKeywordTokenDelegatesToTheNativePhpHighlighter() {
+        val php = phpHighlighter("")
+        val ppphp = ppphpHighlighter("")
+
+        for (tokenType in PhpTokenTypes.tsKEYWORDS.types) {
+            assertEquals(
+                "++PHP must delegate ${tokenType.debugName} to native PHP highlighting",
+                php.getTokenHighlights(tokenType).map { it.externalName },
+                ppphp.getTokenHighlights(PpphpTokenTypes.wrap(tokenType)).map { it.externalName },
+            )
+        }
     }
 
     fun testEditorUsesNativePhpColorsForAllRepresentativePhpKeywords() {

@@ -18,7 +18,12 @@ class PpphpSemanticTokensSupport : LspSemanticTokensSupport() {
         modifiers: List<String>,
     ): TextAttributesKey? = when (tokenType) {
         "namespace" -> PhpHighlightingData.IDENTIFIER
-        "class", "enum", "type", "typeParameter" -> PhpHighlightingData.CLASS
+        "class", "enum", "typeParameter" -> PhpHighlightingData.CLASS
+        "type" -> if ("defaultLibrary" in modifiers) {
+            PhpHighlightingData.PRIMITIVE_TYPE_HINT
+        } else {
+            PhpHighlightingData.CLASS
+        }
         "interface" -> PhpHighlightingData.INTERFACE
         "parameter" -> PhpHighlightingData.PARAMETER
         "variable" -> PhpHighlightingData.VAR
@@ -27,7 +32,11 @@ class PpphpSemanticTokensSupport : LspSemanticTokensSupport() {
         } else {
             PhpHighlightingData.INSTANCE_FIELD
         }
-        "enumMember" -> PhpHighlightingData.CONSTANT
+        "enumMember" -> if ("defaultLibrary" in modifiers) {
+            PhpHighlightingData.PREDEFINED_SYMBOL
+        } else {
+            PhpHighlightingData.CONSTANT
+        }
         "function" -> if ("declaration" in modifiers) {
             PhpHighlightingData.FUNCTION
         } else {

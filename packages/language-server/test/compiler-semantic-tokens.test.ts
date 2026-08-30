@@ -51,6 +51,34 @@ describe("compiler semantic token mapping", () => {
     ]);
   });
 
+  it("accepts the standard native-library modifier from the compiler", () => {
+    expect(
+      parseCompilerSemanticTokens(
+        JSON.stringify({
+          version: 1,
+          tokens: [
+            {
+              type: "type",
+              modifiers: ["defaultLibrary"],
+              range: { start: { offset: 6 }, end: { offset: 12 } },
+            },
+          ],
+          error: null,
+        }),
+        "<?php string",
+      ),
+    ).toEqual([
+      {
+        type: "type",
+        modifiers: ["defaultLibrary"],
+        range: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 12 },
+        },
+      },
+    ]);
+  });
+
   it.each([
     [
       {

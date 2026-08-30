@@ -20,7 +20,7 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 Go to definition uses compiler-owned symbol identity across scopes and files. The server still does not advertise semantic refactors until the compiler protocol also supplies complete reference sets and safe edit contracts. This keeps editor actions predictable and avoids destructive textual renames.
 
-Syntax highlighting follows the same ownership boundary in both editors: each host supplies complete PHP lexical coloring, and the compiler classifies AST-backed roles such as classes, functions, methods, properties, parameters, variables, generic parameters, and ++PHP keywords. The language server converts the compiler's UTF-8 ranges into standard LSP semantic tokens. A small grammar-derived ++PHP fallback remains available when the compiler cannot parse the current buffer.
+Syntax highlighting follows the same ownership boundary in both editors: each host supplies its PHP lexical baseline, while the compiler fills every parser-dependent PHP role and adds ++PHP semantics. Compiler roles cover PHP tokenizer keywords, native types and constants, classes, functions, methods, properties, parameters, variables, generic parameters, and ++PHP keywords. The language server converts the compiler's UTF-8 ranges into standard LSP semantic tokens. A small grammar-derived ++PHP fallback remains available when the compiler cannot parse the current buffer.
 
 ## Requirements
 
