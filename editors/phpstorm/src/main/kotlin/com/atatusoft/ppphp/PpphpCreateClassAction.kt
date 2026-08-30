@@ -1,5 +1,6 @@
 package com.atatusoft.ppphp
 
+import com.intellij.application.options.CodeStyle
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.fileTemplates.FileTemplateManager
@@ -14,6 +15,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
+import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
@@ -93,9 +95,44 @@ internal object PpphpDeclarationCreator {
             null,
             true,
             emptyMap(),
-            specification.templateProperties(),
+            specification.templateProperties() +
+                PpphpDeclarationCodeStyle.templateProperties(project),
         )
     }
+}
+
+internal object PpphpDeclarationCodeStyle {
+    fun templateProperties(project: Project): Map<String, String> {
+        val settings = CodeStyle.getSettings(project)
+        val common = settings.getCommonSettings(PpphpLanguage.INSTANCE)
+        val indentOptions = settings.getLanguageIndentOptions(PpphpLanguage.INSTANCE)
+        val indent = if (indentOptions.USE_TAB_CHARACTER) {
+            "\t"
+        } else {
+            " ".repeat(indentOptions.INDENT_SIZE.coerceAtLeast(0))
+        }
+        val braces = when (common.CLASS_BRACE_STYLE) {
+            CommonCodeStyleSettings.END_OF_LINE -> DeclarationBraces(
+                opening = if (common.SPACE_BEFORE_CLASS_LBRACE) " {" else "{",
+                closing = "}",
+            )
+
+            CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED ->
+                DeclarationBraces(opening = "\n{", closing = "}")
+
+            CommonCodeStyleSettings.NEXT_LINE_SHIFTED,
+            CommonCodeStyleSettings.NEXT_LINE_SHIFTED2,
+            -> DeclarationBraces(opening = "\n$indent{", closing = "$indent}")
+
+            else -> DeclarationBraces(opening = "\n{", closing = "}")
+        }
+        return mapOf(
+            "DECLARATION_LBRACE" to braces.opening,
+            "DECLARATION_RBRACE" to braces.closing,
+        )
+    }
+
+    private data class DeclarationBraces(val opening: String, val closing: String)
 }
 
 internal enum class PpphpDeclarationTemplate(

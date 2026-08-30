@@ -10,6 +10,8 @@ The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Bot
 
 The class action follows PhpStorm's PHP creation workflow: choose a class, interface, trait, or enum; accept or edit the Composer/PSR namespace suggestion; optionally choose its PHP parent types; and choose `string` or `int` for a backed enum. Generated declarations deliberately mirror PhpStorm's bundled PHP templates, including the configured PHP file header. The plugin does not insert inactive ++PHP syntax.
 
+The plugin also adds **Editor | Code Style | ++PHP**. Its formatter, PHPDoc, code-conversion, and code-generation tabs mirror PhpStorm's PHP controls but store their values independently for ++PHP. Declaration creation reads those values; class-family braces appear on a new line by default and follow the selected PHP-compatible class-brace placement and spacing options.
+
 The filename defaults to the declaration name but can be changed independently. Namespace suggestions come from PhpStorm's PHP and Composer project model, so no additional namespace configuration is required.
 
 Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The current target is `2026.3.1`.

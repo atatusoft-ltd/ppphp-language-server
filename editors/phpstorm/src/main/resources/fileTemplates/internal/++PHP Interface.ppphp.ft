@@ -5,6 +5,6 @@
 namespace ${NAMESPACE};
 
 #end
-interface ${NAME}${INHERITANCE} {
+interface ${NAME}${INHERITANCE}${DECLARATION_LBRACE}
 
-}
+${DECLARATION_RBRACE}

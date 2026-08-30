@@ -5,6 +5,6 @@
 namespace ${NAMESPACE};
 
 #end
-trait ${NAME} {
+trait ${NAME}${DECLARATION_LBRACE}
 
-}
+${DECLARATION_RBRACE}

@@ -39,6 +39,8 @@ The PhpStorm plugin targets the 2025.2 compatibility baseline, uses bundled PHP 
 
 PhpStorm source-creation actions are host-native adapters rather than language-server behavior. They reuse PhpStorm's PHP/Composer namespace provider and PHP file-header template, then create independent `.ppphp` PSI files from PHP-shaped class, interface, trait, and enum templates. Language syntax is surfaced only when the compiler marks that feature active; currently the templates emit ordinary PHP declarations.
 
+The ++PHP code-style provider delegates option definitions, labels, previews, and defaults to PhpStorm's bundled PHP provider, then remaps PHP-specific formatter fields onto a separate ++PHP settings object. PHPDoc, code-conversion, and code-generation panels use a private settings bridge so their controls remain native without modifying the PHP scheme. Compatibility tests require the ++PHP field contract to cover PhpStorm's PHP contract. Generated class-family declarations consume the same common settings, and the canonical ++PHP default is a next-line class brace.
+
 ## Capability policy
 
 Completion snippets, contextual documentation, and lexical semantic tokens are non-destructive and may be served locally. Compiler diagnostics remain authoritative. Rename, references, refactoring, and formatting require explicit protocol contracts and compiler support before the server advertises them.

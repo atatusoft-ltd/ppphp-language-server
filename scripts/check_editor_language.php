@@ -155,6 +155,14 @@ require_source_contains(
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'PpphpLanguageCodeStyleSettingsProvider',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCodeStyleSettings.kt',
+    'PhpLanguageCodeStyleSettingsProvider',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
     '<internalFileTemplate name="++PHP Class" />',
 );
 require_source_contains(
@@ -171,7 +179,11 @@ require_source_contains(
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP Class.ppphp.ft',
-    'class ${NAME}${INHERITANCE} {',
+    'class ${NAME}${INHERITANCE}${DECLARATION_LBRACE}',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED',
 );
 require_check(
     !str_contains(

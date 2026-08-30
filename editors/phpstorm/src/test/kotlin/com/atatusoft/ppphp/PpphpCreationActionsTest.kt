@@ -1,12 +1,17 @@
 package com.atatusoft.ppphp
 
+import com.intellij.application.options.CodeStyle
 import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.jetbrains.php.lang.PhpFileType
+import com.jetbrains.php.lang.PhpLanguage
 
 class PpphpCreationActionsTest : BasePlatformTestCase() {
     fun testCreationActionsAreRegistered() {
@@ -88,17 +93,79 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
         assertTrue(created.text.contains("namespace My\\App\\Core;"))
         assertTrue(
             created.text.contains(
-                "class Person extends BasePerson implements JsonSerializable {",
+                "class Person extends BasePerson implements JsonSerializable\n{",
             ),
         )
     }
 
+    fun testClassCreationRespectsEndOfLineBraceStyleAndSpacing() {
+        val common = CodeStyle.getSettings(project).getCommonSettings(PpphpLanguage.INSTANCE)
+        val originalStyle = common.CLASS_BRACE_STYLE
+        val originalSpacing = common.SPACE_BEFORE_CLASS_LBRACE
+        try {
+            common.CLASS_BRACE_STYLE = CommonCodeStyleSettings.END_OF_LINE
+            common.SPACE_BEFORE_CLASS_LBRACE = true
+            val spaced = createDeclaration(sourceDirectory("spaced"), specification())
+            assertTrue(spaced.text.contains("class Person {"))
+
+            common.SPACE_BEFORE_CLASS_LBRACE = false
+            val compact = createDeclaration(sourceDirectory("compact"), specification())
+            assertTrue(compact.text.contains("class Person{"))
+        } finally {
+            common.CLASS_BRACE_STYLE = originalStyle
+            common.SPACE_BEFORE_CLASS_LBRACE = originalSpacing
+        }
+    }
+
+    fun testEveryPhpClassBracePlacementIsAppliedLikeTheNativePhpFormatter() {
+        val settings = CodeStyle.getSettings(project)
+        val ppphp = settings.getCommonSettings(PpphpLanguage.INSTANCE)
+        val php = settings.getCommonSettings(PhpLanguage.INSTANCE)
+        val originalPpphpStyle = ppphp.CLASS_BRACE_STYLE
+        val originalPhpStyle = php.CLASS_BRACE_STYLE
+        val originalPpphpSpacing = ppphp.SPACE_BEFORE_CLASS_LBRACE
+        val originalPhpSpacing = php.SPACE_BEFORE_CLASS_LBRACE
+
+        try {
+            for (style in CLASS_BRACE_STYLES) {
+                ppphp.CLASS_BRACE_STYLE = style
+                php.CLASS_BRACE_STYLE = style
+                ppphp.SPACE_BEFORE_CLASS_LBRACE = true
+                php.SPACE_BEFORE_CLASS_LBRACE = true
+
+                val created = createDeclaration(
+                    sourceDirectory("brace-style-$style"),
+                    specification(),
+                )
+                val expectedPhp = myFixture.configureByText(
+                    "expected-$style.php",
+                    "<?php\nclass Person {\n\n}",
+                )
+                WriteCommandAction.runWriteCommandAction(project) {
+                    CodeStyleManager.getInstance(project).reformat(expectedPhp)
+                }
+
+                assertEquals(
+                    "++PHP creation must follow PHP's class brace style $style",
+                    declarationText(expectedPhp.text),
+                    declarationText(created.text),
+                )
+                assertSame(PhpFileType.INSTANCE, expectedPhp.fileType)
+            }
+        } finally {
+            ppphp.CLASS_BRACE_STYLE = originalPpphpStyle
+            php.CLASS_BRACE_STYLE = originalPhpStyle
+            ppphp.SPACE_BEFORE_CLASS_LBRACE = originalPpphpSpacing
+            php.SPACE_BEFORE_CLASS_LBRACE = originalPhpSpacing
+        }
+    }
+
     fun testEveryPhpDeclarationTemplateRendersItsDeclarationKind() {
         val declarations = mapOf(
-            PpphpDeclarationTemplate.CLASS to "class Person {",
-            PpphpDeclarationTemplate.INTERFACE to "interface Person {",
-            PpphpDeclarationTemplate.TRAIT to "trait Person {",
-            PpphpDeclarationTemplate.ENUM to "enum Person {",
+            PpphpDeclarationTemplate.CLASS to "class Person\n{",
+            PpphpDeclarationTemplate.INTERFACE to "interface Person\n{",
+            PpphpDeclarationTemplate.TRAIT to "trait Person\n{",
+            PpphpDeclarationTemplate.ENUM to "enum Person\n{",
         )
 
         declarations.forEach { (template, expectedDeclaration) ->
@@ -142,9 +209,19 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
         return requireNotNull(created)
     }
 
+    private fun declarationText(text: String): String =
+        text.substring(text.indexOf("class Person")).trim()
+
     private companion object {
         const val CREATE_FILE_ACTION_ID = "com.atatusoft.ppphp.actions.PpphpCreateFileAction"
         const val CREATE_CLASS_ACTION_ID = "com.atatusoft.ppphp.actions.PpphpCreateClassAction"
+        val CLASS_BRACE_STYLES = listOf(
+            CommonCodeStyleSettings.END_OF_LINE,
+            CommonCodeStyleSettings.NEXT_LINE,
+            CommonCodeStyleSettings.NEXT_LINE_SHIFTED,
+            CommonCodeStyleSettings.NEXT_LINE_SHIFTED2,
+            CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED,
+        )
         val TEMPLATE_NAMES = listOf(
             "++PHP File",
             "++PHP Class",

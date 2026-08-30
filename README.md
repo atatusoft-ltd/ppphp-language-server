@@ -13,6 +13,7 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 | Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                      |
 | Document symbols           | Yes     | Yes      | Safe lexical outline                            |
 | File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions |
+| Code-style settings        | No      | Yes      | PHP formatter controls with ++PHP-owned values  |
 | Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index       |
 | Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter          |
 
@@ -64,6 +65,10 @@ VS Code exposes these workspace/resource settings:
 - `ppphp.diagnostics.compiler.timeoutMilliseconds`
 
 For clients without settings support, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
+
+## PhpStorm code style
+
+PhpStorm exposes ++PHP under **Editor | Code Style | ++PHP**. Its formatter controls and defaults are sourced from PhpStorm's PHP support, while each scheme stores independent ++PHP values. New class, interface, trait, and enum files honor the configured class-brace placement; the ++PHP default places declaration braces on the next line.
 
 ## Repository layout
 
