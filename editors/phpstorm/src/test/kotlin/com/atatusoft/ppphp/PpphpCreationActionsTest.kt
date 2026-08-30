@@ -117,6 +117,30 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
         }
     }
 
+    fun testNextLineIfWrappedKeepsAnUnwrappedDeclarationBraceInline() {
+        val common = CodeStyle.getSettings(project).getCommonSettings(PpphpLanguage.INSTANCE)
+        val originalStyle = common.CLASS_BRACE_STYLE
+        val originalSpacing = common.SPACE_BEFORE_CLASS_LBRACE
+        try {
+            common.CLASS_BRACE_STYLE = CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED
+            common.SPACE_BEFORE_CLASS_LBRACE = true
+
+            assertEquals(
+                " {",
+                PpphpDeclarationCodeStyle.templateProperties(project)["DECLARATION_LBRACE"],
+            )
+            assertTrue(
+                createDeclaration(
+                    sourceDirectory("next-line-if-wrapped"),
+                    specification(),
+                ).text.contains("class Person {"),
+            )
+        } finally {
+            common.CLASS_BRACE_STYLE = originalStyle
+            common.SPACE_BEFORE_CLASS_LBRACE = originalSpacing
+        }
+    }
+
     fun testEveryPhpClassBracePlacementIsAppliedLikeTheNativePhpFormatter() {
         val settings = CodeStyle.getSettings(project)
         val ppphp = settings.getCommonSettings(PpphpLanguage.INSTANCE)
@@ -220,7 +244,6 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
             CommonCodeStyleSettings.NEXT_LINE,
             CommonCodeStyleSettings.NEXT_LINE_SHIFTED,
             CommonCodeStyleSettings.NEXT_LINE_SHIFTED2,
-            CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED,
         )
         val TEMPLATE_NAMES = listOf(
             "++PHP File",

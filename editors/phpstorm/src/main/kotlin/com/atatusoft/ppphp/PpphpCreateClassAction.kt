@@ -112,13 +112,12 @@ internal object PpphpDeclarationCodeStyle {
             " ".repeat(indentOptions.INDENT_SIZE.coerceAtLeast(0))
         }
         val braces = when (common.CLASS_BRACE_STYLE) {
-            CommonCodeStyleSettings.END_OF_LINE -> DeclarationBraces(
+            CommonCodeStyleSettings.END_OF_LINE,
+            CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED,
+            -> DeclarationBraces(
                 opening = if (common.SPACE_BEFORE_CLASS_LBRACE) " {" else "{",
                 closing = "}",
             )
-
-            CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED ->
-                DeclarationBraces(opening = "\n{", closing = "}")
 
             CommonCodeStyleSettings.NEXT_LINE_SHIFTED,
             CommonCodeStyleSettings.NEXT_LINE_SHIFTED2,
