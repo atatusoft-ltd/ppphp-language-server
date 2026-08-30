@@ -147,14 +147,6 @@ require_source_contains(
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
-    '<editorHighlighterProvider filetype="++PHP" implementationClass="com.atatusoft.ppphp.PpphpEditorHighlighterProvider" />',
-);
-require_source_contains(
-    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpEditorHighlighterProvider.kt',
-    'TextMateEditorHighlighterProvider()',
-);
-require_source_contains(
-    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
     'id="com.atatusoft.ppphp.actions.PpphpCreateFileAction"',
 );
 require_source_contains(
@@ -205,16 +197,31 @@ require_source_contains(
     '../../../res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json',
 );
 require_source_contains(
-    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
-    '<textmate.bundleProvider implementation="com.atatusoft.ppphp.PpphpTextMateBundleProvider" />',
-);
-require_source_contains(
-    $root . '/editors/phpstorm/build.gradle.kts',
-    'from(repositoryRoot.dir("res/textmate/ppphp"))',
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxHighlighter.kt',
+    'PhpLanguage.INSTANCE',
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxHighlighter.kt',
-    'TextMateSyntaxHighlighterFactory',
+    'PpphpTokenTypes.unwrap',
+);
+require_check(
+    !str_contains(
+        read_text($root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml'),
+        'textmate.bundleProvider',
+    ),
+    'the PhpStorm adapter must use native PHP lexical highlighting, not a TextMate editor bridge',
+);
+require_check(
+    !str_contains(
+        read_text($root . '/editors/phpstorm/build.gradle.kts'),
+        'org.jetbrains.plugins.textmate',
+    ),
+    'the PhpStorm adapter must not carry the obsolete TextMate runtime dependency',
+);
+require_check(
+    !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpEditorHighlighterProvider.kt')
+        && !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpTextMateBundleProvider.kt'),
+    'obsolete PhpStorm TextMate bridge sources must stay removed',
 );
 require_check(
     !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxClassifier.kt'),

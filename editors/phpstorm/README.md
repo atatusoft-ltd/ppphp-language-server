@@ -1,6 +1,6 @@
 # ++PHP for PhpStorm
 
-The PhpStorm plugin registers `.ppphp` as a distinct ++PHP language with shallow PSI, the canonical TextMate grammar, shared language-server semantic highlighting, and the ++PHP emblem. PHP parsing and inspections do not interpret ++PHP source. The bundled ++PHP language server supplies authoritative compiler diagnostics through JetBrains native LSP integration.
+The PhpStorm plugin registers `.ppphp` as a distinct ++PHP language with shallow PSI, native PHP lexical highlighting, shared language-server semantic highlighting, and the ++PHP emblem. Every valid PHP token receives the same color key as it does in a `.php` file, while the language server layers ++PHP-specific types and keywords on top. PHP parsing and inspections do not interpret ++PHP source. The bundled ++PHP language server supplies authoritative compiler diagnostics through JetBrains native LSP integration.
 
 For projects with `ppphp.json`, the configured compiler-owned `output` and `cache` directories are automatically excluded from PhpStorm indexing. This keeps emitted `.php` files from appearing as duplicate declarations of their `.ppphp` sources. Unsafe paths that escape or overlap protected project directories are never excluded.
 

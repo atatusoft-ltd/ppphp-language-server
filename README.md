@@ -7,7 +7,7 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 | Capability                 | VS Code | PhpStorm | Notes                                           |
 | -------------------------- | ------- | -------- | ----------------------------------------------- |
 | `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon      |
-| Syntax highlighting        | Yes     | Yes      | Canonical TextMate plus shared semantic tokens  |
+| Syntax highlighting        | Yes     | Yes      | Native PHP baseline plus shared semantic tokens |
 | Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save             |
 | ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`    |
 | Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                      |

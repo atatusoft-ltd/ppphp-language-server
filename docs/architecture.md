@@ -23,11 +23,11 @@ The lexical scanner masks comments, strings, and heredocs before extracting docu
 
 ## Syntax resources
 
-The canonical TextMate bundle lives at `res/textmate/ppphp`. It layers ++PHP constructs over the PHP TextMate grammar. The PhpStorm plugin packages this directory directly; a synchronization script copies it into the VS Code package, and CI compares the generated copies byte-for-byte.
+The canonical TextMate bundle lives at `res/textmate/ppphp`. It layers ++PHP constructs over the PHP TextMate grammar. A synchronization script copies it into the VS Code package, the language server consumes its canonical ++PHP matchers for semantic tokens, and CI compares the generated copies byte-for-byte.
 
-PhpStorm registers `.ppphp` as an independent ++PHP language with a shallow delimiter parser and PSI. Its syntax highlighter delegates to JetBrains TextMate integration and the same canonical bundle used by VS Code. The editor uses TextMate's scope-aware token storage because TextMate scopes are dynamic and cannot be placed in PhpStorm's global registered-token table. The parser lexer wraps PHP tokens only to build resilient PSI; it does not classify ++PHP constructs. The PHP parser and PHP inspections never run against `.ppphp` PSI, so future syntax does not require one-off suppression rules.
+PhpStorm registers `.ppphp` as an independent ++PHP language with a shallow delimiter parser and PSI. Its lexical highlighter delegates every PHP token to PhpStorm's native PHP highlighter, automatically preserving the host's complete PHP grammar and color scheme. The language server layers canonical ++PHP semantic tokens over that baseline. The parser lexer wraps PHP tokens only to build resilient PSI; it does not classify ++PHP constructs. The PHP parser and PHP inspections never run against `.ppphp` PSI, so future syntax does not require one-off suppression rules.
 
-The shared editor grammar is intentionally lexical. The language server derives typed-binding candidates from its canonical matcher and supplies editor-neutral semantic tokens for ++PHP keywords and type names. Compiler diagnostics remain the authority for validity and semantics; the adapters do not invent competing rules.
+The shared editor grammar is intentionally lexical. The language server derives typed-binding candidates from its canonical matcher and supplies editor-neutral semantic tokens for ++PHP keywords and type names. Compiler diagnostics remain the authority for validity and semantics; the adapters do not invent competing rules or maintain per-keyword PHP color patches.
 
 ## Editor adapters
 
@@ -35,7 +35,7 @@ The VS Code extension bundles the server and uses the official `vscode-languagec
 
 PhpStorm reads only the path fields needed for host integration from a bounded `ppphp.json` file. It automatically excludes compiler-owned output and cache directories from indexing, validates that exclusions remain inside the project and do not overlap source or stub roots, and refreshes the project index when the configuration changes.
 
-The PhpStorm plugin targets the 2025.2 compatibility baseline, uses bundled PHP tokenization for shallow PSI, bundled TextMate support for lexical highlighting, and native LSP semantic highlighting for ++PHP constructs. It registers the `.ppphp` language and starts the bundled server with a separately installed Node.js 22 runtime.
+The PhpStorm plugin targets the 2025.2 compatibility baseline, uses bundled PHP tokenization for shallow PSI and complete PHP lexical highlighting, and native LSP semantic highlighting for ++PHP constructs. It registers the `.ppphp` language and starts the bundled server with a separately installed Node.js 22 runtime.
 
 PhpStorm source-creation actions are host-native adapters rather than language-server behavior. They reuse PhpStorm's PHP/Composer namespace provider and PHP file-header template, then create independent `.ppphp` PSI files from PHP-shaped class, interface, trait, and enum templates. Language syntax is surfaced only when the compiler marks that feature active; currently the templates emit ordinary PHP declarations.
 
