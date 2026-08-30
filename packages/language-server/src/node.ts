@@ -9,19 +9,11 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
+import { findDefinitionAt } from "./compiler-definition.js";
 import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
-
-interface PpphpConfiguration {
-  compiler?: { path?: string };
-  diagnostics?: { compiler?: { enabled?: boolean; timeoutMilliseconds?: number } };
-}
-
-const DEFAULT_SETTINGS: CompilerSettings = {
-  enabled: true,
-  timeoutMilliseconds: 10_000,
-};
+import { compilerSettingsFromConfiguration, DEFAULT_SETTINGS } from "./server-settings.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -48,6 +40,7 @@ connection.onInitialize((params: InitializeParams) => {
     },
     capabilities: {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
+      definitionProvider: true,
       documentSymbolProvider: true,
       hoverProvider: true,
       semanticTokensProvider: {
@@ -82,6 +75,23 @@ connection.onDocumentSymbol(({ textDocument }) => {
   const document = documents.get(textDocument.uri);
   return document ? documentSymbols(document) : [];
 });
+connection.onDefinition(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+
+  if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return null;
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const settings = await getSettings(document.uri);
+  const result = await findDefinitionAt(document, position, filePath, workspaceRoot, settings);
+
+  if (result.unavailableReason && result.unavailableReason !== unavailableReason) {
+    unavailableReason = result.unavailableReason;
+    connection.console.warn(result.unavailableReason);
+  }
+
+  return result.definition;
+});
 connection.languages.semanticTokens.on(({ textDocument }) => {
   const document = documents.get(textDocument.uri);
   return document ? semanticTokens(document) : { data: [] };
@@ -114,17 +124,22 @@ async function validate(document: TextDocument): Promise<void> {
 
 async function getSettings(scopeUri: string): Promise<CompilerSettings> {
   if (!supportsConfiguration) return DEFAULT_SETTINGS;
-  const configuration = (await connection.workspace.getConfiguration({
-    scopeUri,
-    section: "ppphp",
-  })) as PpphpConfiguration;
-  const timeout = configuration.diagnostics?.compiler?.timeoutMilliseconds;
-  return {
-    compilerPath: configuration.compiler?.path || undefined,
-    enabled: configuration.diagnostics?.compiler?.enabled ?? DEFAULT_SETTINGS.enabled,
-    timeoutMilliseconds:
-      typeof timeout === "number" && timeout > 0 ? timeout : DEFAULT_SETTINGS.timeoutMilliseconds,
-  };
+
+  try {
+    const configuration: unknown = await connection.workspace.getConfiguration({
+      scopeUri,
+      section: "ppphp",
+    });
+    return compilerSettingsFromConfiguration(configuration);
+  } catch (error) {
+    connection.console.warn(
+      [
+        "Could not read ++PHP editor settings; using defaults:",
+        error instanceof Error ? error.message : String(error),
+      ].join(" "),
+    );
+    return DEFAULT_SETTINGS;
+  }
 }
 
 function findWorkspaceRoot(filePath: string): string {

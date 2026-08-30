@@ -1,5 +1,3 @@
-import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -7,11 +5,14 @@ import {
   type Diagnostic,
   type DiagnosticRelatedInformation,
 } from "vscode-languageserver/node";
+import {
+  executeCompiler,
+  resolveCompiler,
+  type CompilerProcessSettings,
+} from "./compiler-process.js";
 
-export interface CompilerSettings {
-  compilerPath?: string;
+export interface CompilerSettings extends CompilerProcessSettings {
   enabled: boolean;
-  timeoutMilliseconds: number;
 }
 
 interface CompilerPosition {
@@ -56,7 +57,12 @@ export async function checkFile(
   const compiler = resolveCompiler(settings.compilerPath, workspaceRoot);
   const args = ["check", filePath, "--working-directory", workspaceRoot, "--format=json"];
 
-  const execution = await execute(compiler, args, workspaceRoot, settings.timeoutMilliseconds);
+  const execution = await executeCompiler(
+    compiler,
+    args,
+    workspaceRoot,
+    settings.timeoutMilliseconds,
+  );
   if (execution.notFound) {
     return {
       diagnostics: [],
@@ -175,48 +181,6 @@ function toSeverity(severity: string): DiagnosticSeverity {
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
-}
-
-function resolveCompiler(configuredPath: string | undefined, workspaceRoot: string): string {
-  if (configuredPath) return configuredPath;
-  if (process.env.PPPHP_COMPILER_PATH) return process.env.PPPHP_COMPILER_PATH;
-
-  const localCompiler = path.join(
-    workspaceRoot,
-    "vendor",
-    "bin",
-    process.platform === "win32" ? "ppphp.bat" : "ppphp",
-  );
-  return existsSync(localCompiler) ? localCompiler : "ppphp";
-}
-
-interface ExecutionResult {
-  stdout: string;
-  stderr: string;
-  notFound: boolean;
-}
-
-function execute(
-  command: string,
-  args: string[],
-  cwd: string,
-  timeout: number,
-): Promise<ExecutionResult> {
-  return new Promise((resolve) => {
-    execFile(
-      command,
-      args,
-      { cwd, encoding: "utf8", maxBuffer: 10 * 1024 * 1024, timeout },
-      (error, stdout, stderr) => {
-        const code = error && "code" in error ? error.code : undefined;
-        resolve({
-          stdout,
-          stderr,
-          notFound: code === "ENOENT",
-        });
-      },
-    );
-  });
 }
 
 export function filePathFromUri(uri: string): string | null {

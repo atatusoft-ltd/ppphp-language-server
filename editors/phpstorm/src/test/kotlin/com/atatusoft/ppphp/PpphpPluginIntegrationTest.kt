@@ -1,6 +1,8 @@
 package com.atatusoft.ppphp
 
 import com.intellij.lang.LanguageParserDefinitions
+import com.intellij.openapi.editor.highlighter.EditorHighlighter
+import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
@@ -10,10 +12,10 @@ import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.jetbrains.php.lang.PhpFileType
 import com.jetbrains.php.lang.PhpLanguage
 import com.jetbrains.php.lang.inspections.PhpUndefinedConstantInspection
 import java.nio.file.Path
-import org.jetbrains.plugins.textmate.TextMateService
 
 class PpphpPluginIntegrationTest : BasePlatformTestCase() {
     fun testPpphpFilesUseTheDistinctPpphpPresentationLanguage() {
@@ -50,29 +52,31 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
         assertFalse(descriptor.isSupportedFile(LightVirtualFile("example.txt")))
     }
 
-    fun testCanonicalTextMateBundleIsRegistered() {
-        val descriptor = requireNotNull(
-            TextMateService.getInstance().getLanguageDescriptorByFileName("example.ppphp"),
+    fun testEveryPhpLexicalTokenUsesNativePhpHighlighting() {
+        assertEquals(
+            lexicalStyles(phpHighlighter(PHP_CORPUS), PHP_CORPUS),
+            lexicalStyles(ppphpHighlighter(PHP_CORPUS), PHP_CORPUS),
         )
-
-        assertEquals("source.ppphp", descriptor.scopeName.toString())
-        assertNull(TextMateService.getInstance().getLanguageDescriptorByFileName("example.ppp"))
     }
 
-    fun testStandardPhpSyntaxFallsBackToTheCanonicalPhpGrammar() {
-        val source = "<?php\n\nuse My\\App\\Core\\Person;\n\necho \"Hello World!\\n\";\n"
-        val highlighter = ppphpHighlighter(source)
+    fun testEditorUsesNativePhpColorsForAllRepresentativePhpKeywords() {
+        val ppphpFile = myFixture.configureByText(PpphpFileType.INSTANCE, PHP_CORPUS)
+        val phpFile = LightVirtualFile("example.php", PhpFileType.INSTANCE, PHP_CORPUS)
+        val factory = EditorHighlighterFactory.getInstance()
+        val ppphpEditorHighlighter = factory.createEditorHighlighter(project, ppphpFile.virtualFile)
+        val phpEditorHighlighter = factory.createEditorHighlighter(project, phpFile)
+        ppphpEditorHighlighter.setText(PHP_CORPUS)
+        phpEditorHighlighter.setText(PHP_CORPUS)
 
-        for (offset in listOf(
-            source.indexOf("<?php"),
-            source.indexOf("use"),
-            source.indexOf("echo"),
-            source.indexOf("Person"),
-        )) {
-            val scope = scopeAt(highlighter, source, offset)
-            assertTrue(
-                "Expected ordinary PHP syntax to include a PHP grammar scope at $offset; got $scope",
-                scope.contains(".php"),
+        for (lexeme in REPRESENTATIVE_PHP_LEXEMES) {
+            val offset = PHP_CORPUS.indexOf(lexeme)
+            assertTrue("Missing PHP corpus lexeme: $lexeme", offset >= 0)
+            val expected = editorStyleAt(phpEditorHighlighter, offset)
+            assertTrue("Native PHP should style $lexeme", expected.isNotEmpty())
+            assertEquals(
+                "++PHP must use native PHP styling for $lexeme",
+                expected,
+                editorStyleAt(ppphpEditorHighlighter, offset),
             )
         }
     }
@@ -102,6 +106,15 @@ Person ${'$'}person = new Person();
         )
     }
 
+    private fun phpHighlighter(source: String): SyntaxHighlighter =
+        requireNotNull(
+            SyntaxHighlighterFactory.getSyntaxHighlighter(
+                PhpFileType.INSTANCE,
+                project,
+                LightVirtualFile("example.php", PhpFileType.INSTANCE, source),
+            ),
+        )
+
     private fun ppphpHighlighter(source: String): SyntaxHighlighter =
         requireNotNull(
             SyntaxHighlighterFactory.getSyntaxHighlighter(
@@ -116,21 +129,112 @@ Person ${'$'}person = new Person();
             "Missing editor fixture $name"
         }.readText()
 
-    private fun scopeAt(
+    private fun lexicalStyles(
         highlighter: SyntaxHighlighter,
         source: String,
-        expectedOffset: Int,
-    ): String {
-        assertTrue("Expected token offset must exist", expectedOffset >= 0)
+    ): List<LexicalStyle> {
+        val styles = mutableListOf<LexicalStyle>()
         val lexer = highlighter.highlightingLexer
         lexer.start(source)
         while (lexer.tokenType != null) {
-            if (expectedOffset in lexer.tokenStart until lexer.tokenEnd) {
-                return lexer.tokenType.toString()
-            }
+            val tokenType = requireNotNull(lexer.tokenType)
+            styles += LexicalStyle(
+                lexer.tokenStart,
+                lexer.tokenEnd,
+                highlighter.getTokenHighlights(tokenType).map { it.externalName },
+            )
             lexer.advance()
         }
-        fail("The syntax highlighter did not emit a token at offset $expectedOffset")
-        return ""
+        return styles
+    }
+
+    private fun editorStyleAt(
+        highlighter: EditorHighlighter,
+        offset: Int,
+    ): List<String> {
+        val iterator = highlighter.createIterator(offset)
+        assertFalse("Expected an editor token at offset $offset", iterator.atEnd())
+        assertTrue(offset in iterator.start until iterator.end)
+        return iterator.textAttributesKeys.map { it.externalName }
+    }
+
+    private data class LexicalStyle(
+        val start: Int,
+        val end: Int,
+        val attributes: List<String>,
+    )
+
+    private companion object {
+        val REPRESENTATIVE_PHP_LEXEMES = listOf(
+            "<?php",
+            "declare",
+            "namespace",
+            "use",
+            "final",
+            "readonly",
+            "class",
+            "implements",
+            "public",
+            "function",
+            "private",
+            "string",
+            "if",
+            "throw",
+            "new",
+            "foreach",
+            "as",
+            "echo",
+            "return",
+            "enum",
+            "case",
+            "match",
+            "static",
+            "fn",
+            "require_once",
+        )
+
+        val PHP_CORPUS = """
+            <?php
+            declare(strict_types=1);
+
+            namespace My\App\Core;
+
+            use Attribute;
+            use LogicException;
+            use Stringable;
+
+            #[Attribute(Attribute::TARGET_CLASS)]
+            final readonly class Person implements Stringable
+            {
+                public function __construct(
+                    private string ${'$'}name = 'Andrew',
+                    private ?int ${'$'}age = null,
+                ) {}
+
+                public function __toString(): string
+                {
+                    if (${'$'}this->age === null) {
+                        throw new LogicException("Unknown age");
+                    }
+
+                    foreach ([1, 2, 3] as ${'$'}number) {
+                        echo sprintf('%s:%d', ${'$'}this->name, ${'$'}number);
+                    }
+
+                    return ${'$'}this->name;
+                }
+            }
+
+            enum Status: string
+            {
+                case Active = 'active';
+            }
+
+            ${'$'}label = match (Status::Active) {
+                Status::Active => 'ready',
+            };
+            ${'$'}formatter = static fn (string ${'$'}value): string => strtoupper(${'$'}value);
+            require_once __DIR__ . '/bootstrap.php';
+        """.trimIndent()
     }
 }

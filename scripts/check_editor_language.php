@@ -146,6 +146,53 @@ require_source_contains(
     '<lang.parserDefinition language="++PHP"',
 );
 require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'id="com.atatusoft.ppphp.actions.PpphpCreateFileAction"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'id="com.atatusoft.ppphp.actions.PpphpCreateClassAction"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'PpphpLanguageCodeStyleSettingsProvider',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCodeStyleSettings.kt',
+    'PhpLanguageCodeStyleSettingsProvider',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    '<internalFileTemplate name="++PHP Class" />',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'PhpNamespaceCompositeProvider.INSTANCE',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'removeSuffix(".ppphp")',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP File.ppphp.ft',
+    '#parse("PHP File Header.php")',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP Class.ppphp.ft',
+    'class ${NAME}${INHERITANCE}${DECLARATION_LBRACE}',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'CommonCodeStyleSettings.NEXT_LINE_IF_WRAPPED',
+);
+require_check(
+    !str_contains(
+        read_text($root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP Class.ppphp.ft'),
+        'TYPE_PARAMETERS',
+    ),
+    'the class creation template must not emit inactive ++PHP generic syntax',
+);
+require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpLanguage.kt',
     'Language("++PHP")',
 );
@@ -162,16 +209,31 @@ require_source_contains(
     '../../../res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json',
 );
 require_source_contains(
-    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
-    '<textmate.bundleProvider implementation="com.atatusoft.ppphp.PpphpTextMateBundleProvider" />',
-);
-require_source_contains(
-    $root . '/editors/phpstorm/build.gradle.kts',
-    'from(repositoryRoot.dir("res/textmate/ppphp"))',
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxHighlighter.kt',
+    'PhpLanguage.INSTANCE',
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxHighlighter.kt',
-    'TextMateSyntaxHighlighterFactory',
+    'PpphpTokenTypes.unwrap',
+);
+require_check(
+    !str_contains(
+        read_text($root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml'),
+        'textmate.bundleProvider',
+    ),
+    'the PhpStorm adapter must use native PHP lexical highlighting, not a TextMate editor bridge',
+);
+require_check(
+    !str_contains(
+        read_text($root . '/editors/phpstorm/build.gradle.kts'),
+        'org.jetbrains.plugins.textmate',
+    ),
+    'the PhpStorm adapter must not carry the obsolete TextMate runtime dependency',
+);
+require_check(
+    !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpEditorHighlighterProvider.kt')
+        && !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpTextMateBundleProvider.kt'),
+    'obsolete PhpStorm TextMate bridge sources must stay removed',
 );
 require_check(
     !is_file($root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpSyntaxClassifier.kt'),
@@ -237,7 +299,7 @@ function relative_path(string $path): string
 function text_files(array $roots): array
 {
     $files = [];
-    $allowedExtensions = ['json', 'kt', 'kts', 'md', 'php', 'ts', 'xml'];
+    $allowedExtensions = ['ft', 'json', 'kt', 'kts', 'md', 'php', 'ts', 'xml'];
 
     foreach ($roots as $path) {
         if (is_file($path)) {

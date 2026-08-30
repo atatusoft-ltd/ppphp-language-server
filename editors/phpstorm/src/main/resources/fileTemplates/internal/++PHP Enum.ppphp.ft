@@ -1,0 +1,10 @@
+<?php
+#parse("PHP File Header.php")
+
+#if (${NAMESPACE})
+namespace ${NAMESPACE};
+
+#end
+enum ${NAME}${BACKED_TYPE}${INHERITANCE}${DECLARATION_LBRACE}
+
+${DECLARATION_RBRACE}

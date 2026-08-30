@@ -25,7 +25,6 @@ dependencies {
         testFramework(TestFrameworkType.Platform)
         phpstorm("2025.2.1")
         bundledPlugin("com.jetbrains.php")
-        bundledPlugin("org.jetbrains.plugins.textmate")
     }
 }
 
@@ -86,9 +85,6 @@ tasks.withType<PrepareSandboxTask>().configureEach {
 
     from(repositoryRoot.file("packages/language-server/dist/server.cjs")) {
         into(pluginName.map { "$it/server" })
-    }
-    from(repositoryRoot.dir("res/textmate/ppphp")) {
-        into(pluginName.map { "$it/textmate/ppphp" })
     }
 }
 

@@ -4,18 +4,21 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 ## Current capabilities
 
-| Capability                 | VS Code | PhpStorm | Notes                                          |
-| -------------------------- | ------- | -------- | ---------------------------------------------- |
-| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon     |
-| Syntax highlighting        | Yes     | Yes      | Canonical TextMate plus shared semantic tokens |
-| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save            |
-| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`   |
-| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                     |
-| Document symbols           | Yes     | Yes      | Safe lexical outline                           |
-| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index      |
-| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter         |
+| Capability                 | VS Code | PhpStorm | Notes                                           |
+| -------------------------- | ------- | -------- | ----------------------------------------------- |
+| `.ppphp` file recognition  | Yes     | Yes      | Exclusive extension and shared emblem icon      |
+| Syntax highlighting        | Yes     | Yes      | Native PHP baseline plus shared semantic tokens |
+| Compiler diagnostics       | Yes     | Yes      | Runs `ppphp check` on open and save             |
+| ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`    |
+| Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                      |
+| Document symbols           | Yes     | Yes      | Safe lexical outline                            |
+| Go to definition           | Yes     | Yes      | Compiler-owned project symbols and member types |
+| File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions |
+| Code-style settings        | No      | Yes      | PHP formatter controls with ++PHP-owned values  |
+| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index       |
+| Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter          |
 
-The server intentionally does not advertise semantic refactors until it can prove symbol identity across scopes and files. This keeps editor actions predictable and avoids destructive textual renames.
+Go to definition uses compiler-owned symbol identity across scopes and files. The server still does not advertise semantic refactors until the compiler protocol also supplies complete reference sets and safe edit contracts. This keeps editor actions predictable and avoids destructive textual renames.
 
 ## Requirements
 
@@ -24,7 +27,7 @@ The server intentionally does not advertise semantic refactors until it can prov
 - npm 10 or newer
 - The ++PHP compiler, either:
   - at `vendor/bin/ppphp` in the opened project,
-  - available as `ppphp` on `PATH`, or
+  - available as `ppphp` on `PATH` or in a platform-standard binary directory, or
   - configured explicitly in the editor or through `PPPHP_COMPILER_PATH`
 - For the PhpStorm plugin build: Java 21 or newer; the checked-in Gradle wrapper supplies Gradle itself
 
@@ -62,7 +65,13 @@ VS Code exposes these workspace/resource settings:
 - `ppphp.diagnostics.compiler.enabled`
 - `ppphp.diagnostics.compiler.timeoutMilliseconds`
 
-For clients without settings support, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
+Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
+
+Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
+
+## PhpStorm code style
+
+PhpStorm exposes ++PHP under **Editor | Code Style | ++PHP**. Its formatter controls and defaults are sourced from PhpStorm's PHP support, while each scheme stores independent ++PHP values. New class, interface, trait, and enum files honor the configured class-brace placement; the ++PHP default places declaration braces on the next line.
 
 ## Repository layout
 

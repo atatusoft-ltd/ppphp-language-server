@@ -4,9 +4,12 @@ export default defineConfig({
   test: {
     coverage: {
       include: [
+        "src/compiler-definition.ts",
         "src/compiler-diagnostics.ts",
+        "src/compiler-process.ts",
         "src/language-features.ts",
         "src/semantic-tokens.ts",
+        "src/server-settings.ts",
       ],
       provider: "v8",
       reporter: ["text"],
