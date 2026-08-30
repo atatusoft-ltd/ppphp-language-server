@@ -5,7 +5,7 @@
 The tooling has one source of language behavior, predictable failure handling, and thin editor adapters. VS Code and PhpStorm differ only where their host-native language facilities require it.
 
 ```text
-                    ++PHP compiler (`ppphp check --format=json`)
+       ++PHP compiler (`check` diagnostics + `editor:definition` symbols)
                                       |
                                       v
 VS Code client  ---> editor-neutral LSP server <---  PhpStorm LSP provider
@@ -15,11 +15,11 @@ VS Code client  ---> editor-neutral LSP server <---  PhpStorm LSP provider
 
 ## Language server
 
-`packages/language-server` communicates over standard input/output or VS Code IPC. It supports incremental document synchronization but invokes the compiler only for on-disk content when a document opens or saves. This avoids presenting diagnostics for source different from the text actually checked by the compiler.
+`packages/language-server` communicates over standard input/output or VS Code IPC. It supports incremental document synchronization. Diagnostics invoke the compiler only for on-disk content when a document opens or saves, avoiding diagnostics for source different from the text actually checked. Definition requests use the bounded compiler editor protocol and include the current unsaved document.
 
-Compiler processes use argument arrays rather than a shell, run with a ten-second default timeout and a ten-megabyte output limit, and accept only diagnostic envelope version 1. Unknown envelopes fail closed and are logged without inventing editor diagnostics.
+Compiler processes use argument arrays rather than a shell, run with a ten-second default timeout and a ten-megabyte output limit, and accept only version 1 diagnostic or definition envelopes. Unknown envelopes fail closed and are logged without inventing editor results. Compiler byte offsets are converted explicitly to LSP UTF-16 positions, including Unicode and CRLF documents.
 
-The lexical scanner masks comments, strings, and heredocs before extracting document symbols. It is deliberately suitable for navigation outlines, not symbol identity or refactoring.
+The lexical scanner masks comments, strings, and heredocs before extracting document symbols. It is deliberately suitable for navigation outlines, not symbol identity. Go to definition instead follows compiler-owned stable symbol IDs, resolved imports, local and parameter bindings, declared receiver types, return/property chains, traits, and inheritance.
 
 ## Syntax resources
 
@@ -43,4 +43,4 @@ The ++PHP code-style provider delegates option definitions, labels, previews, an
 
 ## Capability policy
 
-Completion snippets, contextual documentation, and lexical semantic tokens are non-destructive and may be served locally. Compiler diagnostics remain authoritative. Rename, references, refactoring, and formatting require explicit protocol contracts and compiler support before the server advertises them.
+Completion snippets, contextual documentation, and lexical semantic tokens are non-destructive and may be served locally. Compiler diagnostics and definition identities remain authoritative. Rename, references, refactoring, and formatting require explicit protocol contracts and compiler support before the server advertises them.

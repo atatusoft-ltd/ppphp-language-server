@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. The format 
 - Coordinated `YYYY.Q.patch[-channel]` toolchain versioning with automated cross-package consistency checks.
 - Canonical ++PHP emblem branding for extension listings and `.ppphp` file icons.
 - Editor-neutral Language Server Protocol foundation.
+- Compiler-backed go to definition in VS Code and PhpStorm for project types, functions, local and parameter bindings, inherited members, and typed access chains, including unsaved current-document contents.
 - Shared TextMate syntax and language configuration for `.ppphp` files.
 - VS Code extension with diagnostics, completions, hover help, and document symbols.
 - PhpStorm 2025.2-or-newer plugin using native JetBrains LSP and a dedicated ++PHP presentation language.

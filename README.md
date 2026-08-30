@@ -12,12 +12,13 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 | ++PHP completions/snippets | Yes     | Yes      | Typed locals, generics, `throws`, and `when`    |
 | Keyword hover help         | Yes     | Yes      | Documents ++PHP extensions                      |
 | Document symbols           | Yes     | Yes      | Safe lexical outline                            |
+| Go to definition           | Yes     | Yes      | Compiler-owned project symbols and member types |
 | File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions |
 | Code-style settings        | No      | Yes      | PHP formatter controls with ++PHP-owned values  |
 | Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index       |
 | Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter          |
 
-The server intentionally does not advertise semantic refactors until it can prove symbol identity across scopes and files. This keeps editor actions predictable and avoids destructive textual renames.
+Go to definition uses compiler-owned symbol identity across scopes and files. The server still does not advertise semantic refactors until the compiler protocol also supplies complete reference sets and safe edit contracts. This keeps editor actions predictable and avoids destructive textual renames.
 
 ## Requirements
 
@@ -65,6 +66,8 @@ VS Code exposes these workspace/resource settings:
 - `ppphp.diagnostics.compiler.timeoutMilliseconds`
 
 For clients without settings support, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
+
+Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
 
 ## PhpStorm code style
 

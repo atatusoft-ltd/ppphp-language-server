@@ -6,14 +6,15 @@
 - Compiler-backed diagnostics on open/save
 - ++PHP snippets and contextual hover help
 - Lexical document outline
+- Compiler-backed go to definition for project symbols, bindings, members, inheritance, and typed chains
 - PhpStorm actions for creating `.ppphp` files, classes, interfaces, traits, and enums
 - Reproducible editor packages and CI
 
 ## Next: compiler/editor protocol
 
-- Add a compiler command that accepts unsaved source through a bounded, versioned protocol
+- Extend the bounded, versioned compiler editor protocol beyond its definition request
 - Expose syntax tokens and precise AST node categories
-- Expose stable symbol IDs, definitions, references, scopes, and type information
+- Expose complete reference sets, scopes, and richer type information using the existing stable symbol IDs
 - Add cancellation and incremental project-index updates
 - Define capability/version negotiation between the server and compiler
 
@@ -21,7 +22,7 @@
 
 Once the compiler protocol exists:
 
-- Go to definition and find references
+- Find references
 - Semantic tokens layered over each editor's lexical highlighting
 - Signature help and type-aware completion
 - Workspace symbols

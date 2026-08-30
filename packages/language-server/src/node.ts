@@ -9,6 +9,7 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
+import { findDefinitionAt } from "./compiler-definition.js";
 import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
@@ -48,6 +49,7 @@ connection.onInitialize((params: InitializeParams) => {
     },
     capabilities: {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
+      definitionProvider: true,
       documentSymbolProvider: true,
       hoverProvider: true,
       semanticTokensProvider: {
@@ -81,6 +83,23 @@ connection.onHover(({ textDocument, position }) => {
 connection.onDocumentSymbol(({ textDocument }) => {
   const document = documents.get(textDocument.uri);
   return document ? documentSymbols(document) : [];
+});
+connection.onDefinition(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+
+  if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return null;
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const settings = await getSettings(document.uri);
+  const result = await findDefinitionAt(document, position, filePath, workspaceRoot, settings);
+
+  if (result.unavailableReason && result.unavailableReason !== unavailableReason) {
+    unavailableReason = result.unavailableReason;
+    connection.console.warn(result.unavailableReason);
+  }
+
+  return result.definition;
 });
 connection.languages.semanticTokens.on(({ textDocument }) => {
   const document = documents.get(textDocument.uri);

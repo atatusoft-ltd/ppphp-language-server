@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     coverage: {
       include: [
+        "src/compiler-definition.ts",
         "src/compiler-diagnostics.ts",
         "src/language-features.ts",
         "src/semantic-tokens.ts",
