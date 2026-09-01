@@ -32,10 +32,17 @@ interface CompilerDefinitionEnvelope {
   error?: { code?: unknown; message?: unknown } | null;
 }
 
-interface ParsedCompilerDefinition {
+export interface CompilerSymbolDefinition {
+  symbolId: string;
+  kind: string;
   filePath: string;
   range: { start: number; end: number };
   selectionRange: { start: number; end: number };
+}
+
+export interface CompilerSymbolResult {
+  symbol: CompilerSymbolDefinition | null;
+  unavailableReason?: string;
 }
 
 export interface CompilerDefinitionResult {
@@ -50,10 +57,56 @@ export async function findDefinitionAt(
   workspaceRoot: string,
   settings: CompilerProcessSettings,
 ): Promise<CompilerDefinitionResult> {
+  const result = await resolveCompilerSymbolAt(
+    document,
+    position,
+    filePath,
+    workspaceRoot,
+    settings,
+  );
+
+  if (!result.symbol) {
+    return {
+      definition: null,
+      unavailableReason: result.unavailableReason,
+    };
+  }
+
+  try {
+    const targetUri = pathToFileURL(result.symbol.filePath).toString();
+    const targetText =
+      path.normalize(result.symbol.filePath) === path.normalize(filePath)
+        ? document.getText()
+        : await readFile(result.symbol.filePath, "utf8");
+
+    return {
+      definition: [
+        {
+          targetUri,
+          targetRange: rangeFromUtf8Offsets(targetText, result.symbol.range),
+          targetSelectionRange: rangeFromUtf8Offsets(targetText, result.symbol.selectionRange),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      definition: null,
+      unavailableReason: `The ++PHP compiler returned an invalid definition response: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+export async function resolveCompilerSymbolAt(
+  document: TextDocument,
+  position: Position,
+  filePath: string,
+  workspaceRoot: string,
+  settings: CompilerProcessSettings,
+): Promise<CompilerSymbolResult> {
   const compiler = resolveCompiler(settings.compilerPath, workspaceRoot);
   const request = buildDefinitionRequest(document, position, filePath);
 
-  return findDefinitionAtPosition(document, filePath, workspaceRoot, settings, compiler, request);
+  return resolveCompilerSymbolAtPosition(workspaceRoot, settings, compiler, request);
 }
 
 export function buildDefinitionRequest(
@@ -73,14 +126,12 @@ export function buildDefinitionRequest(
   });
 }
 
-async function findDefinitionAtPosition(
-  document: TextDocument,
-  filePath: string,
+async function resolveCompilerSymbolAtPosition(
   workspaceRoot: string,
   settings: CompilerProcessSettings,
   compiler: string,
   request: string,
-): Promise<CompilerDefinitionResult> {
+): Promise<CompilerSymbolResult> {
   const execution = await executeCompiler(
     compiler,
     ["editor:definition", "--working-directory", workspaceRoot, "--format=json"],
@@ -91,42 +142,24 @@ async function findDefinitionAtPosition(
 
   if (execution.notFound) {
     return {
-      definition: null,
+      symbol: null,
       unavailableReason: `Could not find the ++PHP compiler at ${compiler}. Configure ppphp.compiler.path or add ppphp to PATH.`,
     };
   }
 
   if (!execution.stdout.trim()) {
     return {
-      definition: null,
+      symbol: null,
       unavailableReason:
         execution.stderr.trim() || "The ++PHP compiler produced no definition response.",
     };
   }
 
   try {
-    const parsed = parseCompilerDefinition(execution.stdout, workspaceRoot);
-
-    if (parsed === null) return { definition: null };
-
-    const targetUri = pathToFileURL(parsed.filePath).toString();
-    const targetText =
-      path.normalize(parsed.filePath) === path.normalize(filePath)
-        ? document.getText()
-        : await readFile(parsed.filePath, "utf8");
-
-    return {
-      definition: [
-        {
-          targetUri,
-          targetRange: rangeFromUtf8Offsets(targetText, parsed.range),
-          targetSelectionRange: rangeFromUtf8Offsets(targetText, parsed.selectionRange),
-        },
-      ],
-    };
+    return { symbol: parseCompilerDefinition(execution.stdout, workspaceRoot) };
   } catch (error) {
     return {
-      definition: null,
+      symbol: null,
       unavailableReason: `The ++PHP compiler returned an invalid definition response: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
@@ -135,7 +168,7 @@ async function findDefinitionAtPosition(
 export function parseCompilerDefinition(
   output: string,
   workspaceRoot: string,
-): ParsedCompilerDefinition | null {
+): CompilerSymbolDefinition | null {
   const envelope = JSON.parse(output) as CompilerDefinitionEnvelope;
 
   if (envelope.version !== 1) {
@@ -149,13 +182,20 @@ export function parseCompilerDefinition(
   }
 
   if (envelope.definition === null) return null;
-  if (!envelope.definition || typeof envelope.definition.location?.file !== "string") {
+  if (
+    !envelope.definition ||
+    typeof envelope.definition.symbolId !== "string" ||
+    typeof envelope.definition.kind !== "string" ||
+    typeof envelope.definition.location?.file !== "string"
+  ) {
     throw new Error("definition location is missing");
   }
 
   const file = envelope.definition.location.file;
 
   return {
+    symbolId: envelope.definition.symbolId,
+    kind: envelope.definition.kind,
     filePath: path.normalize(path.isAbsolute(file) ? file : path.resolve(workspaceRoot, file)),
     range: parseRange(envelope.definition.location.range),
     selectionRange: parseRange(envelope.definition.location.selectionRange),

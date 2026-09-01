@@ -24,6 +24,7 @@
         <internalFileTemplate name="++PHP Enum" />
         <directoryIndexExcludePolicy implementation="com.atatusoft.ppphp.PpphpCompilerDirectoriesExcludePolicy" />
         <postStartupActivity implementation="com.atatusoft.ppphp.PpphpProjectActivity" />
+        <renameHandler implementation="com.atatusoft.ppphp.PpphpRenameHandler" order="first" />
     </extensions>
 
     <actions>

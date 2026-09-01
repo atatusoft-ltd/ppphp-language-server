@@ -158,6 +158,18 @@ require_source_contains(
     'PpphpLanguageCodeStyleSettingsProvider',
 );
 require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    '<renameHandler implementation="com.atatusoft.ppphp.PpphpRenameHandler"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpRenameHandler.kt',
+    'PpphpLanguageServerRuntime.createCommandLine(',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpRenameHandler.kt',
+    'WriteCommandAction.runWriteCommandAction(',
+);
+require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCodeStyleSettings.kt',
     'PhpLanguageCodeStyleSettingsProvider',
 );
@@ -190,6 +202,18 @@ require_source_contains(
     'removeSuffix(".ppphp")',
 );
 require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'PhpNewFileDialog.getCbArrowAction(templateSelector)',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'PpphpTemplateCycling.install(typeNameField, templateSelector, templateUpDownHint)',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'PlatformIcons.UP_DOWN_ARROWS',
+);
+require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/fileTemplates/internal/++PHP File.ppphp.ft',
     '#parse("PHP File Header.php")',
 );
@@ -219,6 +243,14 @@ require_source_contains(
 require_source_contains(
     $root . '/packages/language-server/src/node.ts',
     'semanticTokensProvider',
+);
+require_source_contains(
+    $root . '/packages/language-server/src/node.ts',
+    'renameProvider: { prepareProvider: true }',
+);
+require_source_contains(
+    $root . '/packages/language-server/src/compiler-rename.ts',
+    'result.symbol?.symbolId === target.symbolId',
 );
 require_source_contains(
     $root . '/packages/language-server/src/semantic-tokens.ts',
