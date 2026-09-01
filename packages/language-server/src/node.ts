@@ -12,6 +12,10 @@ import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
 import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
+import {
+  handleComposerNamespaceCommand,
+  INFER_COMPOSER_NAMESPACE_COMMAND,
+} from "./composer-namespace.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
 import { compilerSettingsFromConfiguration, DEFAULT_SETTINGS } from "./server-settings.js";
@@ -43,6 +47,7 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       definitionProvider: true,
       documentSymbolProvider: true,
+      executeCommandProvider: { commands: [INFER_COMPOSER_NAMESPACE_COMMAND] },
       hoverProvider: true,
       semanticTokensProvider: {
         legend: SEMANTIC_TOKEN_LEGEND,
@@ -68,6 +73,9 @@ connection.onDidChangeConfiguration(() => {
 });
 
 connection.onCompletion(() => [...COMPLETIONS]);
+connection.onExecuteCommand(({ command, arguments: arguments_ }) =>
+  command === INFER_COMPOSER_NAMESPACE_COMMAND ? handleComposerNamespaceCommand(arguments_) : null,
+);
 connection.onHover(({ textDocument, position }) => {
   const document = documents.get(textDocument.uri);
   return document ? hoverAt(document, position) : null;

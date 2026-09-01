@@ -75,6 +75,29 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
         assertFalse(PpphpPhpNames.isValidNamespace("My\\class"))
     }
 
+    fun testNamespaceSuggestionPrioritizesTheEditorNeutralComposerResult() {
+        val directory = sourceDirectory("src/Store")
+
+        assertEquals(
+            "My\\App\\Store",
+            PpphpNamespaceSuggestions.suggest(
+                directory,
+                PpphpComposerNamespaceResolver.Resolution("My\\App\\Store", true),
+            ).first(),
+        )
+    }
+
+    fun testAuthoritativeAmbiguityDoesNotFallBackToAnEditorGuess() {
+        val directory = sourceDirectory("src/Store")
+
+        assertTrue(
+            PpphpNamespaceSuggestions.suggest(
+                directory,
+                PpphpComposerNamespaceResolver.Resolution(null, true),
+            ).isEmpty(),
+        )
+    }
+
     fun testClassCreationMirrorsPhpAndCreatesAPpphpPsiFile() {
         val directory = sourceDirectory()
         val created = createDeclaration(

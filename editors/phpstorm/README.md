@@ -12,7 +12,7 @@ The class action follows PhpStorm's PHP creation workflow: choose a class, inter
 
 The plugin also adds **Editor | Code Style | ++PHP**. Its formatter, PHPDoc, code-conversion, and code-generation tabs mirror PhpStorm's PHP controls but store their values independently for ++PHP. Declaration creation reads those values; class-family braces appear on a new line by default and follow the selected PHP-compatible class-brace placement and spacing options.
 
-The filename defaults to the declaration name but can be changed independently. Namespace suggestions come from PhpStorm's PHP and Composer project model, so no additional namespace configuration is required.
+The filename defaults to the declaration name but can be changed independently. Namespace suggestions first use the nearest Composer manifest's canonical ++PHP source mappings (`extra.ppphp.source-autoload` and `extra.ppphp.source-autoload-dev`). When no source mapping applies, they fall back to PhpStorm's PHP project model. This keeps creation correct after `ppphp composer:configure` moves Composer's runtime mappings to generated PHP while requiring no editor-only namespace configuration.
 
 Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The current target is `2026.3.1`.
 

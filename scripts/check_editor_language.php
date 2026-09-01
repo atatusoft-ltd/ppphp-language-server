@@ -171,6 +171,22 @@ require_source_contains(
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
+    'PpphpComposerNamespaceResolver.resolve(project, directory.virtualFile)',
+);
+require_source_contains(
+    $root . '/packages/language-server/src/composer-namespace.ts',
+    '["extra", "ppphp", "source-autoload"]',
+);
+require_source_contains(
+    $root . '/packages/language-server/src/composer-namespace.ts',
+    '["extra", "ppphp", "source-autoload-dev"]',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpComposerNamespaceResolver.kt',
+    '"--infer-composer-namespace"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCreateClassAction.kt',
     'removeSuffix(".ppphp")',
 );
 require_source_contains(

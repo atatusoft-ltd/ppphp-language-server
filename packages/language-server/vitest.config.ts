@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     coverage: {
       include: [
+        "src/composer-namespace.ts",
         "src/compiler-definition.ts",
         "src/compiler-diagnostics.ts",
         "src/compiler-process.ts",

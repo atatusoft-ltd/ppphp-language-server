@@ -11,7 +11,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "esbuild src/node.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/server.cjs --banner:js=\"#!/usr/bin/env node\"",
+    "build": "esbuild src/launcher.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/server.cjs --banner:js=\"#!/usr/bin/env node\"",
     "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
