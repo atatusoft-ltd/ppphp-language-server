@@ -15,10 +15,10 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 | Go to definition           | Yes     | Yes      | Compiler-owned project symbols and member types   |
 | File/declaration creation  | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions   |
 | Code-style settings        | No      | Yes      | PHP formatter controls with ++PHP-owned values    |
-| Rename/refactoring         | Not yet | Not yet  | Requires a compiler-backed semantic index         |
+| Class-family rename        | Yes     | Yes      | Compiler-verified project edits and file rename   |
 | Formatting                 | Not yet | Not yet  | Requires an agreed canonical formatter            |
 
-Go to definition uses compiler-owned symbol identity across scopes and files. The server still does not advertise semantic refactors until the compiler protocol also supplies complete reference sets and safe edit contracts. This keeps editor actions predictable and avoids destructive textual renames.
+Go to definition uses compiler-owned symbol identity across scopes and files. Rename uses the same identity to verify every candidate class, interface, trait, or enum reference before returning project-wide edits. Comments, strings, unrelated same-spelling symbols, generated output, cache directories, and non-`.ppphp` files are not edited. A matching source filename is renamed with its declaration, and collisions or incomplete editor support are refused instead of producing a partial refactor. Function, method, property, variable, and parameter rename remain unavailable until their dynamic and scope-specific safety contracts are complete.
 
 Syntax highlighting follows the same ownership boundary in both editors: each host supplies its PHP lexical baseline, while the compiler fills every parser-dependent PHP role and adds ++PHP semantics. Compiler roles cover PHP tokenizer keywords, native types and constants, classes, functions, methods, properties, parameters, variables, generic parameters, and ++PHP keywords. The language server converts the compiler's UTF-8 ranges into standard LSP semantic tokens. A small grammar-derived ++PHP fallback remains available when the compiler cannot parse the current buffer.
 
@@ -70,6 +70,8 @@ VS Code exposes these workspace/resource settings:
 Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
 
 Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
+
+Class-family declarations and references use each editor's standard rename action: **Rename Symbol** in VS Code and **Refactor | Rename** in PhpStorm. Project-wide rename requires `ppphp.json` at the workspace root so the language server can honor its source, output, cache, and exclusion boundaries.
 
 ## PhpStorm code style
 

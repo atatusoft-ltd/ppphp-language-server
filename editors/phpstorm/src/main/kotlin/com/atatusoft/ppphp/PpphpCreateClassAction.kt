@@ -7,6 +7,8 @@ import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CustomShortcutSet
+import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.actionSystem.LangDataKeys
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.application.ApplicationManager
@@ -26,7 +28,10 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.PathUtilRt
+import com.intellij.util.PlatformIcons
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.jetbrains.php.PhpBundle
+import com.jetbrains.php.actions.PhpNewFileDialog
 import com.jetbrains.php.lang.PhpLangUtil
 import com.jetbrains.php.roots.PhpNamespaceCompositeProvider
 import java.awt.BorderLayout
@@ -35,10 +40,13 @@ import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
+import java.awt.event.KeyEvent
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JComboBox
+import javax.swing.JLabel
+import javax.swing.KeyStroke
 import javax.swing.JPanel
 import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
@@ -245,6 +253,27 @@ internal object PpphpNamespaceSuggestions {
     }
 }
 
+internal object PpphpTemplateCycling {
+    const val TOOLTIP_KEY = "actions.new.php.base.arrows.template.tooltip"
+
+    private val shortcuts = CustomShortcutSet(
+        KeyboardShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), null),
+        KeyboardShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), null),
+    )
+
+    fun install(
+        editor: JComponent,
+        templateSelector: JComboBox<*>,
+        hint: JLabel,
+    ) = PhpNewFileDialog.getCbArrowAction(templateSelector).also { action ->
+        val tooltip = PhpBundle.message(TOOLTIP_KEY)
+        hint.icon = PlatformIcons.UP_DOWN_ARROWS
+        hint.toolTipText = tooltip
+        hint.accessibleContext.accessibleName = tooltip
+        action.registerCustomShortcutSet(shortcuts, editor)
+    }
+}
+
 private class PpphpCreateClassDialog(
     private val project: Project,
     private val directory: PsiDirectory,
@@ -259,6 +288,7 @@ private class PpphpCreateClassDialog(
     private val fileNameField = JBTextField(42)
     private val directoryField = JBTextField(directory.virtualFile.presentableUrl, 42)
     private val templateSelector = JComboBox(PpphpDeclarationTemplate.entries.toTypedArray())
+    private val templateUpDownHint = JBLabel()
     private val parentClassField = JBTextField(42)
     private val relatedTypesLabel = JBLabel("Implements:")
     private val relatedTypesModel = DefaultListModel<String>()
@@ -317,6 +347,7 @@ private class PpphpCreateClassDialog(
         removeRelatedTypeButton.isEnabled = false
         removeRelatedTypeButton.addActionListener { removeSelectedRelatedType() }
         templateSelector.addActionListener { updateTemplateControls() }
+        PpphpTemplateCycling.install(typeNameField, templateSelector, templateUpDownHint)
         installFileNameSynchronization()
         updateTemplateControls()
         init()
@@ -324,7 +355,7 @@ private class PpphpCreateClassDialog(
 
     override fun createCenterPanel(): JComponent = JPanel(GridBagLayout()).apply {
         addSection(this, 0, "PHP declaration")
-        addRow(this, 1, "Name:", typeNameField)
+        addRow(this, 1, "Name:", typeNameWithTemplateHint())
         addRow(this, 2, "Namespace:", namespaceField)
         addRow(this, 3, "File name:", fileNameField)
         addRow(this, 4, "Directory:", directoryField)
@@ -460,6 +491,12 @@ private class PpphpCreateClassDialog(
             BorderLayout.NORTH,
         )
         add(JBScrollPane(relatedTypesList), BorderLayout.CENTER)
+    }
+
+    private fun typeNameWithTemplateHint(): JComponent = JPanel(BorderLayout(8, 0)).apply {
+        isOpaque = false
+        add(typeNameField, BorderLayout.CENTER)
+        add(templateUpDownHint, BorderLayout.EAST)
     }
 
     private fun addSection(panel: JPanel, row: Int, title: String) {

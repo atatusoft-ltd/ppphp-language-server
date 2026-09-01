@@ -3,15 +3,24 @@ package com.atatusoft.ppphp
 import com.intellij.application.options.CodeStyle
 import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
+import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBTextField
+import com.intellij.util.PlatformIcons
+import com.jetbrains.php.PhpBundle
 import com.jetbrains.php.lang.PhpFileType
 import com.jetbrains.php.lang.PhpLanguage
+import java.awt.event.KeyEvent
+import javax.swing.JComboBox
 
 class PpphpCreationActionsTest : BasePlatformTestCase() {
     fun testCreationActionsAreRegistered() {
@@ -224,6 +233,31 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
         }
     }
 
+    fun testNameArrowKeysCycleDeclarationTemplatesLikePhp() {
+        val nameField = JBTextField()
+        val selector = JComboBox(PpphpDeclarationTemplate.entries.toTypedArray())
+        val hint = JBLabel()
+        val action = PpphpTemplateCycling.install(nameField, selector, hint)
+        val expectedTooltip = PhpBundle.message(PpphpTemplateCycling.TOOLTIP_KEY)
+
+        assertSame(PlatformIcons.UP_DOWN_ARROWS, hint.icon)
+        assertEquals(expectedTooltip, hint.toolTipText)
+        assertEquals(expectedTooltip, hint.accessibleContext.accessibleName)
+        assertEquals(
+            setOf(KeyEvent.VK_UP, KeyEvent.VK_DOWN),
+            action.shortcutSet.shortcuts
+                .filterIsInstance<KeyboardShortcut>()
+                .map { it.firstKeyStroke.keyCode }
+                .toSet(),
+        )
+
+        performArrowAction(action, nameField, KeyEvent.VK_DOWN)
+        assertEquals(PpphpDeclarationTemplate.INTERFACE, selector.selectedItem)
+
+        performArrowAction(action, nameField, KeyEvent.VK_UP)
+        assertEquals(PpphpDeclarationTemplate.CLASS, selector.selectedItem)
+    }
+
     private fun specification(
         template: PpphpDeclarationTemplate = PpphpDeclarationTemplate.CLASS,
         namespace: String = "",
@@ -258,6 +292,24 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
 
     private fun declarationText(text: String): String =
         text.substring(text.indexOf("class Person")).trim()
+
+    private fun performArrowAction(
+        action: com.intellij.openapi.actionSystem.AnAction,
+        source: JBTextField,
+        keyCode: Int,
+    ) {
+        val input = KeyEvent(
+            source,
+            KeyEvent.KEY_PRESSED,
+            System.currentTimeMillis(),
+            0,
+            keyCode,
+            KeyEvent.CHAR_UNDEFINED,
+        )
+        action.actionPerformed(
+            TestActionEvent.createTestEvent(action, DataContext.EMPTY_CONTEXT, input),
+        )
+    }
 
     private companion object {
         const val CREATE_FILE_ACTION_ID = "com.atatusoft.ppphp.actions.PpphpCreateFileAction"

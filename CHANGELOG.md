@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file. The format 
 - Editor-neutral Language Server Protocol foundation.
 - Compiler-backed go to definition in VS Code and PhpStorm for project types, functions, local and parameter bindings, inherited members, and typed access chains, including unsaved current-document contents.
 - Compiler-backed semantic tokens for PHP and ++PHP AST roles, including declarations and uses of classes, functions, methods, properties, parameters, variables, generic parameters, and extension keywords.
+- Compiler-verified class, interface, trait, and enum rename refactoring in VS Code and PhpStorm, including project-wide references, collision refusal, unsaved buffers, and matching `.ppphp` file renames.
 - Shared TextMate syntax and language configuration for `.ppphp` files.
 - VS Code extension with diagnostics, completions, hover help, and document symbols.
 - PhpStorm 2025.2-or-newer plugin using native JetBrains LSP and a dedicated ++PHP presentation language.
@@ -19,6 +20,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Fixed
 
+- The PhpStorm class-creation Name editor now uses the same Up/Down template cycling and shortcut hint as the native PHP dialog.
 - PhpStorm clients that advertise workspace configuration but return no `ppphp` settings no longer terminate the language server; defaults are applied and compiler-backed features remain available.
 - Compiler subprocesses retain the host executable path and add existing platform-standard binary directories, allowing desktop-launched editors to find globally installed `ppphp` and PHP executables.
 - `.ppphp` is the exclusive source extension across editor manifests, file watchers, language-server validation, fixtures, and documentation.

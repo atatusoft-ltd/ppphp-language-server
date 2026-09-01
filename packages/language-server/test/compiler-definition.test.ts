@@ -61,6 +61,8 @@ describe("compiler definition mapping", () => {
     );
 
     expect(definition).toEqual({
+      symbolId: "type:my\\app\\person",
+      kind: "class",
       filePath: path.normalize("/workspace/src/Person.ppphp"),
       range: { start: 6, end: 21 },
       selectionRange: { start: 12, end: 18 },

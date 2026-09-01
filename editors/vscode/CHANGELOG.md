@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Align all unreleased packages and editor plugins on version `2026.3.1`.
+- Add compiler-verified project-wide rename for ++PHP class-family declarations and references.
 
 ## 0.1.1
 

@@ -2,7 +2,9 @@ import path from "node:path";
 import {
   createConnection,
   DidChangeConfigurationNotification,
+  ErrorCodes,
   ProposedFeatures,
+  ResponseError,
   TextDocumentSyncKind,
   TextDocuments,
   type InitializeParams,
@@ -11,6 +13,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
 import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
+import { prepareTypeRenameAt, renameTypeAt, type RenameClientSupport } from "./compiler-rename.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
 import {
   handleComposerNamespaceCommand,
@@ -24,11 +27,22 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 let supportsConfiguration = false;
 let workspaceFolders: string[] = [];
+let renameClientSupport: RenameClientSupport = {
+  documentChanges: false,
+  renameFileOperations: false,
+};
 const validationGenerations = new Map<string, number>();
 let unavailableReason: string | undefined;
 
 connection.onInitialize((params: InitializeParams) => {
   supportsConfiguration = Boolean(params.capabilities.workspace?.configuration);
+  const workspaceEdit = params.capabilities.workspace?.workspaceEdit;
+  renameClientSupport = {
+    documentChanges: workspaceEdit?.documentChanges === true,
+    renameFileOperations:
+      workspaceEdit?.documentChanges === true &&
+      workspaceEdit.resourceOperations?.includes("rename") === true,
+  };
   workspaceFolders = (params.workspaceFolders ?? [])
     .map((folder) => filePathFromUri(folder.uri))
     .filter((folder): folder is string => folder !== null);
@@ -49,6 +63,7 @@ connection.onInitialize((params: InitializeParams) => {
       documentSymbolProvider: true,
       executeCommandProvider: { commands: [INFER_COMPOSER_NAMESPACE_COMMAND] },
       hoverProvider: true,
+      renameProvider: { prepareProvider: true },
       semanticTokensProvider: {
         legend: SEMANTIC_TOKEN_LEGEND,
         full: true,
@@ -100,6 +115,41 @@ connection.onDefinition(async ({ textDocument, position }) => {
   }
 
   return result.definition;
+});
+connection.onPrepareRename(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+  if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return null;
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const settings = await getSettings(document.uri);
+  const result = await prepareTypeRenameAt(document, position, filePath, workspaceRoot, settings);
+
+  reportUnavailable(result.unavailableReason);
+  return result.prepare;
+});
+connection.onRenameRequest(async ({ textDocument, position, newName }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+  if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return null;
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const settings = await getSettings(document.uri);
+  const result = await renameTypeAt(
+    document,
+    position,
+    newName,
+    filePath,
+    workspaceRoot,
+    settings,
+    documents.all(),
+    renameClientSupport,
+  );
+
+  reportUnavailable(result.unavailableReason);
+  const reason = result.rejectionReason ?? result.unavailableReason;
+  if (reason) throw new ResponseError(ErrorCodes.InvalidParams, reason);
+  return result.edit;
 });
 connection.languages.semanticTokens.on(async ({ textDocument }) => {
   const document = documents.get(textDocument.uri);
@@ -177,6 +227,13 @@ function findWorkspaceRoot(filePath: string): string {
       )
       .sort((left, right) => right.length - left.length)[0] ?? path.dirname(filePath)
   );
+}
+
+function reportUnavailable(reason: string | undefined): void {
+  if (reason && reason !== unavailableReason) {
+    unavailableReason = reason;
+    connection.console.warn(reason);
+  }
 }
 
 documents.listen(connection);
