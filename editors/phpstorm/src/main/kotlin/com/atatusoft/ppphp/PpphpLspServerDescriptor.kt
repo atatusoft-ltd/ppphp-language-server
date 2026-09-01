@@ -3,6 +3,7 @@ package com.atatusoft.ppphp
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
@@ -21,15 +22,36 @@ class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
         file.extension.equals("ppphp", ignoreCase = true)
 
     override fun createCommandLine(): GeneralCommandLine {
-        val node = findNodeExecutable()
-        val server = findBundledServer()
+        return PpphpLanguageServerRuntime.createCommandLine(
+            pluginRoot,
+            project.basePath,
+            "--stdio",
+        )
+    }
+}
 
-        return GeneralCommandLine(node.toString(), server.toString(), "--stdio").also {
-            project.basePath?.let(it::withWorkDirectory)
+internal object PpphpLanguageServerRuntime {
+    fun findPluginRoot(pluginClass: Class<*>): Path? =
+        PathManager.getJarForClass(pluginClass)?.parent?.parent
+
+    fun createCommandLine(
+        pluginRoot: Path,
+        workingDirectory: String?,
+        vararg arguments: String,
+    ): GeneralCommandLine {
+        val node = findNodeExecutable()
+        val server = findBundledServer(pluginRoot)
+
+        return GeneralCommandLine(node.toString(), server.toString(), *arguments).also { commandLine ->
+            workingDirectory
+                ?.let(Path::of)
+                ?.takeIf(Files::isDirectory)
+                ?.toFile()
+                ?.let(commandLine::withWorkDirectory)
         }
     }
 
-    private fun findBundledServer(): Path {
+    private fun findBundledServer(pluginRoot: Path): Path {
         val server = pluginRoot.resolve("server/server.cjs")
         if (!Files.isRegularFile(server)) {
             throw ExecutionException("The bundled ++PHP language server is missing: $server")

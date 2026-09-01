@@ -2,12 +2,14 @@ package com.atatusoft.ppphp
 
 import com.intellij.application.options.CodeStyle
 import com.intellij.icons.AllIcons
+import com.intellij.ide.IdeView
 import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.LangDataKeys
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
@@ -24,6 +26,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.PathUtilRt
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.jetbrains.php.lang.PhpLangUtil
 import com.jetbrains.php.roots.PhpNamespaceCompositeProvider
 import java.awt.BorderLayout
@@ -56,7 +59,26 @@ class PpphpCreateClassAction : DumbAwareAction(
         val project = event.project ?: return
         val view = event.getData(LangDataKeys.IDE_VIEW) ?: return
         val directory = view.orChooseDirectory ?: return
-        val dialog = PpphpCreateClassDialog(project, directory)
+        AppExecutorUtil.getAppExecutorService().execute {
+            val composer = runCatching {
+                PpphpComposerNamespaceResolver.resolve(project, directory.virtualFile)
+            }.getOrDefault(PpphpComposerNamespaceResolver.Resolution.NONE)
+
+            ApplicationManager.getApplication().invokeLater {
+                if (!project.isDisposed && directory.isValid) {
+                    showDialog(project, view, directory, composer)
+                }
+            }
+        }
+    }
+
+    private fun showDialog(
+        project: Project,
+        view: IdeView,
+        directory: PsiDirectory,
+        composer: PpphpComposerNamespaceResolver.Resolution,
+    ) {
+        val dialog = PpphpCreateClassDialog(project, directory, composer)
         if (!dialog.showAndGet()) return
 
         try {
@@ -208,8 +230,10 @@ internal object PpphpPhpNames {
 }
 
 internal object PpphpNamespaceSuggestions {
-    fun suggest(directory: PsiDirectory): List<String> {
-        val composer = PpphpComposerNamespaceResolver.resolve(directory.virtualFile)
+    fun suggest(
+        directory: PsiDirectory,
+        composer: PpphpComposerNamespaceResolver.Resolution,
+    ): List<String> {
         if (composer.authoritative && composer.namespace == null) return emptyList()
 
         return (
@@ -224,9 +248,10 @@ internal object PpphpNamespaceSuggestions {
 private class PpphpCreateClassDialog(
     private val project: Project,
     private val directory: PsiDirectory,
+    composer: PpphpComposerNamespaceResolver.Resolution,
 ) : DialogWrapper(project, true) {
     private val typeNameField = JBTextField(42)
-    private val namespaceSuggestions = PpphpNamespaceSuggestions.suggest(directory)
+    private val namespaceSuggestions = PpphpNamespaceSuggestions.suggest(directory, composer)
     private val namespaceField = JComboBox(namespaceSuggestions.toTypedArray()).apply {
         isEditable = true
         namespaceSuggestions.firstOrNull()?.let { selectedItem = it }

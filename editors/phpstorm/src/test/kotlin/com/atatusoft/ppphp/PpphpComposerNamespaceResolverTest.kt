@@ -1,147 +1,37 @@
 package com.atatusoft.ppphp
 
+import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PpphpComposerNamespaceResolverTest {
     @Test
-    fun infersProductionAndDevelopmentSourceNamespacesFromEveryPsr4PathForm() {
-        val mappings = preservedMappings(
-            """
-            {
-              "extra": {
-                "ppphp": {
-                  "source-autoload": {
-                    "psr-4": {
-                      "My\\App\\": ["src/", "legacy/"]
-                    }
-                  },
-                  "source-autoload-dev": {
-                    "psr-4": {
-                      "My\\App\\Tests\\": "tests/"
-                    }
-                  }
-                }
-              }
-            }
-            """.trimIndent(),
-        )
-
-        assertEquals("My\\App\\Store", infer(listOf("project", "src", "Store"), mappings))
-        assertEquals("My\\App\\Legacy", infer(listOf("project", "legacy", "Legacy"), mappings))
-        assertEquals("My\\App\\Tests\\Unit", infer(listOf("project", "tests", "Unit"), mappings))
-    }
-
-    @Test
-    fun givesTheMostSpecificSourceRootAuthority() {
-        val mappings = preservedMappings(
-            """
-            {
-              "extra": {
-                "ppphp": {
-                  "source-autoload": {
-                    "psr-4": {
-                      "My\\App\\": "src/",
-                      "My\\App\\Generated\\": "src/Generated/"
-                    }
-                  }
-                }
-              }
-            }
-            """.trimIndent(),
-        )
-
+    fun decodesTheEditorNeutralResolverResponse() {
         assertEquals(
-            "My\\App\\Generated\\Api",
-            infer(listOf("project", "src", "Generated", "Api"), mappings),
+            PpphpComposerNamespaceResolver.Resolution("My\\App\\Store", true),
+            PpphpComposerNamespaceResolver.decode(
+                JsonParser.parseString(
+                    """{"namespace":"My\\App\\Store","authoritative":true}""",
+                ).asJsonObject,
+            ),
         )
-    }
-
-    @Test
-    fun declinesAmbiguousEqualRootsInsteadOfGuessing() {
-        val mappings = preservedMappings(
-            """
-            {
-              "extra": {
-                "ppphp": {
-                  "source-autoload": {"psr-4": {"My\\App\\": "src/"}},
-                  "source-autoload-dev": {"psr-4": {"My\\Tests\\": "src/"}}
-                }
-              }
-            }
-            """.trimIndent(),
-        )
-
-        assertNull(infer(listOf("project", "src", "Store"), mappings))
-    }
-
-    @Test
-    fun understandsNormalizedAndParentRelativeComposerPaths() {
-        val mappings = preservedMappings(
-            """
-            {
-              "extra": {
-                "ppphp": {
-                  "source-autoload": {
-                    "psr-4": {"Shared\\": "../shared/./src/"}
-                  }
-                }
-              }
-            }
-            """.trimIndent(),
-        )
-
         assertEquals(
-            "Shared\\Model",
-            PpphpComposerNamespaceResolver.infer(
-                listOf("workspace", "package"),
-                listOf("workspace", "shared", "src", "Model"),
-                mappings,
+            PpphpComposerNamespaceResolver.Resolution(null, true),
+            PpphpComposerNamespaceResolver.decode(
+                JsonParser.parseString(
+                    """{"namespace":null,"authoritative":true}""",
+                ).asJsonObject,
             ),
         )
     }
 
     @Test
-    fun readsOrdinaryComposerMappingsBeforeRuntimeProjection() {
-        val mappings = PpphpComposerNamespaceResolver.runtimeMappings(
-            """
-            {
-              "autoload": {"psr-4": {"My\\App\\": "src/"}},
-              "autoload-dev": {"psr-4": {"My\\App\\Tests\\": ["tests/"]}}
-            }
-            """.trimIndent(),
-        )
-
-        assertEquals("My\\App\\Store", infer(listOf("project", "src", "Store"), mappings))
-        assertEquals("My\\App\\Tests\\Unit", infer(listOf("project", "tests", "Unit"), mappings))
+    fun rejectsMalformedResolverResponses() {
+        for (source in listOf("{}", "{\"namespace\":null}", "{\"namespace\":false,\"authoritative\":true}")) {
+            assertEquals(
+                PpphpComposerNamespaceResolver.Resolution.NONE,
+                PpphpComposerNamespaceResolver.decode(JsonParser.parseString(source).asJsonObject),
+            )
+        }
     }
-
-    @Test
-    fun ignoresInvalidComposerMetadataAndInvalidNamespaceSuffixes() {
-        assertEquals(
-            emptyList<PpphpComposerNamespaceResolver.AutoloadMapping>(),
-            preservedMappings("not json"),
-        )
-        val mappings = preservedMappings(
-            """
-            {
-              "extra": {
-                "ppphp": {
-                  "source-autoload": {"psr-4": {"My\\App\\": "src/"}}
-                }
-              }
-            }
-            """.trimIndent(),
-        )
-        assertNull(infer(listOf("project", "src", "invalid-name"), mappings))
-    }
-
-    private fun preservedMappings(source: String) =
-        PpphpComposerNamespaceResolver.preservedMappings(source)
-
-    private fun infer(
-        target: List<String>,
-        mappings: List<PpphpComposerNamespaceResolver.AutoloadMapping>,
-    ): String? = PpphpComposerNamespaceResolver.infer(listOf("project"), target, mappings)
 }
