@@ -13,9 +13,11 @@ class PpphpRenameHandlerTest : BasePlatformTestCase() {
             PpphpFileType.INSTANCE,
             "<?php\nclass Trans<caret>action {}\n",
         )
-        val handler = RenameHandler.EP_NAME.extensionList
+        val registeredHandler = RenameHandler.EP_NAME.extensionList
             .filterIsInstance<PpphpRenameHandler>()
             .single()
+        assertNotNull(registeredHandler)
+        val handler = PpphpRenameHandler { _, _, _, _ -> true }
         val context = SimpleDataContext.builder()
             .add(CommonDataKeys.PROJECT, project)
             .add(CommonDataKeys.EDITOR, myFixture.editor)
@@ -24,6 +26,21 @@ class PpphpRenameHandlerTest : BasePlatformTestCase() {
             .build()
 
         assertTrue(handler.isAvailableOnDataContext(context))
+    }
+
+    fun testRenameAvailabilityRequiresSemanticTypePreparation() {
+        val file = myFixture.configureByText(
+            PpphpFileType.INSTANCE,
+            "<?php\n${'$'}trans<caret>action = 'Transaction';\n",
+        )
+        val context = SimpleDataContext.builder()
+            .add(CommonDataKeys.PROJECT, project)
+            .add(CommonDataKeys.EDITOR, myFixture.editor)
+            .add(CommonDataKeys.VIRTUAL_FILE, file.virtualFile)
+            .add(CommonDataKeys.PSI_FILE, file)
+            .build()
+
+        assertFalse(PpphpRenameHandler { _, _, _, _ -> false }.isAvailableOnDataContext(context))
     }
 
     fun testIdentifierSelectionUsesEditorUtf16Offsets() {

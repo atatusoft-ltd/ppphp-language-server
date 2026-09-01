@@ -96,6 +96,40 @@ describe("native editor rename command", () => {
       },
     ]);
   });
+
+  it("returns compiler-backed preparation for the native PhpStorm bridge", async () => {
+    const workspaceRoot = "/workspace";
+    const filePath = "/workspace/src/Cart.ppphp";
+    const source = "<?php\nnamespace Shop;\nclass Cart {}\n";
+    const request = JSON.stringify({
+      version: 1,
+      document: { path: filePath, contents: source, version: 6 },
+      position: { offset: source.indexOf("Cart") },
+    });
+
+    expect(decodeRenameCommandRequest(request, workspaceRoot)).toMatchObject({
+      document: { path: filePath, version: 6 },
+      positionOffset: source.indexOf("Cart"),
+    });
+    await expect(
+      executeRenameCommand(request, workspaceRoot, {
+        resolveSymbol: async () => ({
+          symbol: definition("type:shop\\cart", filePath, source, "Cart"),
+        }),
+      }),
+    ).resolves.toEqual({
+      version: 1,
+      edit: null,
+      prepare: {
+        range: {
+          start: { line: 2, character: 6 },
+          end: { line: 2, character: 10 },
+        },
+        placeholder: "Cart",
+      },
+      error: null,
+    });
+  });
 });
 
 function definition(

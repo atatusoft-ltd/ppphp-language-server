@@ -22,16 +22,26 @@ import com.intellij.psi.PsiFile
 import com.intellij.refactoring.rename.RenameHandler
 import java.net.URI
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.name
 
-class PpphpRenameHandler : RenameHandler {
+class PpphpRenameHandler internal constructor(
+    private val prepareRename: (Project, Editor, VirtualFile, Int) -> Boolean,
+) : RenameHandler {
+    constructor() : this(PpphpRenameSupport::canRename)
+
     override fun isAvailableOnDataContext(dataContext: DataContext): Boolean {
+        val project = CommonDataKeys.PROJECT.getData(dataContext) ?: return false
         val editor = CommonDataKeys.EDITOR.getData(dataContext) ?: return false
         val file = findVirtualFile(dataContext) ?: return false
+        val identifier = PpphpRenameSupport.findIdentifier(
+            editor.document.text,
+            editor.caretModel.offset,
+        ) ?: return false
 
         return file.extension.equals("ppphp", ignoreCase = true) &&
-            PpphpRenameSupport.findIdentifier(editor.document.text, editor.caretModel.offset) != null
+            runCatching { prepareRename(project, editor, file, identifier.start) }.getOrDefault(false)
     }
 
     override fun invoke(
@@ -137,6 +147,30 @@ class PpphpRenameHandler : RenameHandler {
 internal object PpphpRenameSupport {
     private const val PROCESS_TIMEOUT_MILLISECONDS = 60_000
 
+    @Volatile
+    private var cachedPreparation: PpphpCachedPreparation? = null
+
+    fun canRename(
+        project: Project,
+        editor: Editor,
+        file: VirtualFile,
+        positionOffset: Int,
+    ): Boolean {
+        val key = PpphpPreparationKey(file.path, editor.document.modificationStamp, positionOffset)
+        cachedPreparation?.takeIf { it.key == key }?.let { return it.available }
+
+        val projectRoot = project.basePath ?: return false
+        val pluginRoot = PpphpLanguageServerRuntime.findPluginRoot(PpphpRenameHandler::class.java)
+            ?: return false
+        val available = requestPrepareRename(
+            pluginRoot,
+            projectRoot,
+            buildRequest(projectRoot, file, editor.document, positionOffset),
+        )
+        cachedPreparation = PpphpCachedPreparation(key, available)
+        return available
+    }
+
     fun findIdentifier(source: String, requestedOffset: Int): PpphpIdentifier? {
         if (source.isEmpty()) return null
         var start = requestedOffset.coerceIn(0, source.length)
@@ -189,23 +223,21 @@ internal object PpphpRenameSupport {
         newName: String,
     ): PpphpNativeRename {
         request.addProperty("newName", newName)
-        val commandLine = PpphpLanguageServerRuntime.createCommandLine(
-            pluginRoot,
-            projectRoot,
-            "--rename",
-        )
-        val handler = CapturingProcessHandler(commandLine)
-        handler.processInput.use { input ->
-            input.write(request.toString().toByteArray(StandardCharsets.UTF_8))
-            input.flush()
-        }
-        val output = handler.runProcess(PROCESS_TIMEOUT_MILLISECONDS)
-        if (output.isTimeout) throw IllegalStateException("The ++PHP rename request timed out.")
-        if (output.exitCode != 0) {
-            throw IllegalStateException(output.stderr.trim().ifEmpty { "The ++PHP rename process failed." })
-        }
+        return parseResponse(runNativeCommand(pluginRoot, projectRoot, request, "--rename"), projectRoot)
+    }
 
-        return parseResponse(output.stdout, projectRoot)
+    fun requestPrepareRename(
+        pluginRoot: Path,
+        projectRoot: String,
+        request: JsonObject,
+    ): Boolean {
+        val response = JsonParser.parseString(
+            runNativeCommand(pluginRoot, projectRoot, request, "--rename"),
+        ).asJsonObject
+        if (response.get("version")?.asInt != 1 || response.get("error")?.isJsonObject == true) {
+            return false
+        }
+        return response.get("prepare")?.isJsonObject == true
     }
 
     fun parseResponse(output: String, projectRoot: String): PpphpNativeRename {
@@ -280,7 +312,7 @@ internal object PpphpRenameSupport {
             throw IllegalStateException("The ++PHP file rename destination is invalid.")
         }
         val existing = VirtualFileManager.getInstance().findFileByNioPath(destination)
-        if (existing != null && !existing.path.equals(file.path, ignoreCase = true)) {
+        if (existing != null && !Files.isSameFile(existing.toNioPath(), file.toNioPath())) {
             throw IllegalStateException("The ++PHP file rename would overwrite ${destination.name}.")
         }
 
@@ -318,6 +350,30 @@ internal object PpphpRenameSupport {
             encoded.addProperty("version", document.modificationStamp.coerceAtLeast(0))
         }
 
+    private fun runNativeCommand(
+        pluginRoot: Path,
+        projectRoot: String,
+        request: JsonObject,
+        command: String,
+    ): String {
+        val commandLine = PpphpLanguageServerRuntime.createCommandLine(
+            pluginRoot,
+            projectRoot,
+            command,
+        )
+        val handler = CapturingProcessHandler(commandLine)
+        handler.processInput.use { input ->
+            input.write(request.toString().toByteArray(StandardCharsets.UTF_8))
+            input.flush()
+        }
+        val output = handler.runProcess(PROCESS_TIMEOUT_MILLISECONDS)
+        if (output.isTimeout) throw IllegalStateException("The ++PHP rename request timed out.")
+        if (output.exitCode != 0) {
+            throw IllegalStateException(output.stderr.trim().ifEmpty { "The ++PHP rename process failed." })
+        }
+        return output.stdout
+    }
+
     private fun isIdentifier(value: String): Boolean =
         value.isNotEmpty() && isIdentifierStart(value[0]) && value.drop(1).all(::isIdentifierPart)
 
@@ -329,6 +385,17 @@ internal object PpphpRenameSupport {
 }
 
 internal data class PpphpIdentifier(val name: String, val start: Int, val end: Int)
+
+private data class PpphpPreparationKey(
+    val filePath: String,
+    val modificationStamp: Long,
+    val positionOffset: Int,
+)
+
+private data class PpphpCachedPreparation(
+    val key: PpphpPreparationKey,
+    val available: Boolean,
+)
 
 internal data class PpphpNativeRename(
     val textEdits: List<PpphpNativeTextEdits>,

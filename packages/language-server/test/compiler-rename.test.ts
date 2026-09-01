@@ -8,6 +8,7 @@ import type { CompilerSymbolDefinition, CompilerSymbolResult } from "../src/comp
 import {
   discoverProjectDocuments,
   identifierAt,
+  pathIsWithin,
   prepareTypeRenameAt,
   renameTypeAt,
   type ProjectSourceDocument,
@@ -109,6 +110,56 @@ describe("compiler-backed type rename", () => {
     const changes = JSON.stringify(result.edit);
     expect(changes).not.toContain(unrelated.document.uri);
     expect(changes).not.toContain("$label");
+  });
+
+  it("checks filesystem identity before a case-only file rename", async () => {
+    const filePath = "/workspace/src/Cart.ppphp";
+    const source = "<?php\nnamespace Shop;\nclass Cart {}\n";
+    const declaration = sourceDocument(filePath, source, 1);
+    const position = declaration.document.positionAt(source.indexOf("Cart"));
+    const services = {
+      resolveSymbol: async (
+        document: TextDocument,
+        candidate: { line: number; character: number },
+      ) => {
+        const name = identifierAt(document, candidate)?.name;
+        return name?.toLowerCase() === "cart"
+          ? { symbol: symbol("type:shop\\cart", "class", filePath, document.getText(), name) }
+          : { symbol: null };
+      },
+      loadProjectDocuments: async () => [declaration],
+      pathExists: async () => true,
+    };
+
+    const collision = await renameTypeAt(
+      declaration.document,
+      position,
+      "cart",
+      filePath,
+      "/workspace",
+      SETTINGS,
+      [declaration.document],
+      { documentChanges: true, renameFileOperations: true },
+      { ...services, pathsReferToSameFile: async () => false },
+    );
+    expect(collision.rejectionReason).toBe("The refactor would overwrite cart.ppphp.");
+
+    const sameFile = await renameTypeAt(
+      declaration.document,
+      position,
+      "cart",
+      filePath,
+      "/workspace",
+      SETTINGS,
+      [declaration.document],
+      { documentChanges: true, renameFileOperations: true },
+      { ...services, pathsReferToSameFile: async () => true },
+    );
+    expect(sameFile.edit?.documentChanges?.at(-1)).toMatchObject({
+      kind: "rename",
+      oldUri: declaration.document.uri,
+      newUri: pathToFileURL("/workspace/src/cart.ppphp").toString(),
+    });
   });
 
   it("refuses namespace collisions and compiler-rejected replacement names", async () => {
@@ -232,6 +283,11 @@ describe("compiler-backed type rename", () => {
       },
     });
     expect(identifierAt(document, { line: 1, character: 17 })).toBeNull();
+  });
+
+  it("rejects paths on a different Windows volume", () => {
+    expect(pathIsWithin("C:\\workspace", "D:\\source\\Cart.ppphp", path.win32)).toBe(false);
+    expect(pathIsWithin("C:\\workspace", "C:\\workspace\\src\\Cart.ppphp", path.win32)).toBe(true);
   });
 });
 

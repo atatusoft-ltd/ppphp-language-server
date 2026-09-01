@@ -1,4 +1,4 @@
-import { access, lstat, readFile, readdir } from "node:fs/promises";
+import { access, lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -77,6 +77,7 @@ export interface RenameServices {
     openDocuments: readonly TextDocument[],
   ) => Promise<ProjectSourceDocument[]>;
   pathExists: (candidate: string) => Promise<boolean>;
+  pathsReferToSameFile: (left: string, right: string) => Promise<boolean>;
 }
 
 const DEFAULT_SERVICES: RenameServices = {
@@ -86,6 +87,14 @@ const DEFAULT_SERVICES: RenameServices = {
     try {
       await access(candidate);
       return true;
+    } catch {
+      return false;
+    }
+  },
+  pathsReferToSameFile: async (left, right) => {
+    try {
+      const [leftStat, rightStat] = await Promise.all([stat(left), stat(right)]);
+      return leftStat.dev === rightStat.dev && leftStat.ino === rightStat.ino;
     } catch {
       return false;
     }
@@ -251,6 +260,7 @@ export async function renameTypeAt(
     newName,
     clientSupport,
     activeServices.pathExists,
+    activeServices.pathsReferToSameFile,
   );
   if (typeof fileRename === "string") return rejected(fileRename);
 
@@ -540,6 +550,7 @@ async function buildFileRename(
   newName: string,
   clientSupport: RenameClientSupport,
   pathExists: (candidate: string) => Promise<boolean>,
+  pathsReferToSameFile: (left: string, right: string) => Promise<boolean>,
 ): Promise<RenameFile | null | string> {
   const sourcePath = declaration.source.filePath;
   const extension = path.extname(sourcePath);
@@ -552,8 +563,10 @@ async function buildFileRename(
     return "This editor cannot apply the file rename required for a class-family refactor.";
   }
 
-  const caseOnlyRename = sourcePath.toLowerCase() === destinationPath.toLowerCase();
-  if (!caseOnlyRename && (await pathExists(destinationPath))) {
+  if (
+    (await pathExists(destinationPath)) &&
+    !(await pathsReferToSameFile(sourcePath, destinationPath))
+  ) {
     return `The refactor would overwrite ${path.basename(destinationPath)}.`;
   }
 
@@ -700,9 +713,18 @@ function resolveProjectPath(projectRoot: string, configured: string): string {
   return resolved;
 }
 
-function pathIsWithin(root: string, candidate: string): boolean {
-  const relative = path.relative(path.resolve(root), path.resolve(candidate));
-  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== "..");
+export function pathIsWithin(
+  root: string,
+  candidate: string,
+  platform: Pick<typeof path, "relative" | "resolve" | "isAbsolute" | "sep"> = path,
+): boolean {
+  const relative = platform.relative(platform.resolve(root), platform.resolve(candidate));
+  return (
+    relative === "" ||
+    (!platform.isAbsolute(relative) &&
+      !relative.startsWith(`..${platform.sep}`) &&
+      relative !== "..")
+  );
 }
 
 function normalizePath(candidate: string): string {

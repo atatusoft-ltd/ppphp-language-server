@@ -1,7 +1,14 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { renameTypeAt, type RenameServices, type TypeRenameResult } from "./compiler-rename.js";
+import {
+  pathIsWithin,
+  prepareTypeRenameAt,
+  renameTypeAt,
+  type PrepareTypeRenameResult,
+  type RenameServices,
+  type TypeRenameResult,
+} from "./compiler-rename.js";
 import { DEFAULT_SETTINGS } from "./server-settings.js";
 
 const REQUEST_VERSION = 1;
@@ -19,12 +26,13 @@ interface RenameCommandRequest {
   document: RenameCommandDocument;
   openDocuments: RenameCommandDocument[];
   positionOffset: number;
-  newName: string;
+  newName?: string;
 }
 
 export interface RenameCommandResponse {
   version: number;
   edit: TypeRenameResult["edit"];
+  prepare?: PrepareTypeRenameResult["prepare"];
   error: { code: string; message: string } | null;
 }
 
@@ -47,6 +55,20 @@ export async function executeRenameCommand(
   try {
     const request = decodeRenameCommandRequest(input, workspaceRoot);
     const document = toTextDocument(request.document);
+    if (request.newName === undefined) {
+      const result = await prepareTypeRenameAt(
+        document,
+        document.positionAt(request.positionOffset),
+        request.document.path,
+        path.resolve(workspaceRoot),
+        DEFAULT_SETTINGS,
+        services,
+      );
+      return result.unavailableReason
+        ? errorResponse("unavailable", result.unavailableReason)
+        : { version: REQUEST_VERSION, edit: null, prepare: result.prepare, error: null };
+    }
+
     const openDocuments = request.openDocuments.map(toTextDocument);
     if (!openDocuments.some((candidate) => candidate.uri === document.uri)) {
       openDocuments.push(document);
@@ -76,27 +98,16 @@ export function decodeRenameCommandRequest(
   input: string,
   workspaceRoot: string,
 ): RenameCommandRequest {
-  if (Buffer.byteLength(input, "utf8") > MAXIMUM_TRANSPORT_BYTES) {
-    throw new Error("The ++PHP rename request exceeds sixteen megabytes.");
-  }
-
-  const payload = asRecord(JSON.parse(input));
-  if (payload?.version !== REQUEST_VERSION) {
-    throw new Error("The ++PHP rename request version is unsupported.");
-  }
+  const payload = decodePayload(input);
   const document = decodeDocument(payload.document, workspaceRoot);
-  const position = asRecord(payload.position);
-  const positionOffset = position?.offset;
+  const positionOffset = decodePositionOffset(payload.position, document);
   const newName = payload.newName;
   const rawOpenDocuments = payload.openDocuments ?? [];
 
-  if (!Number.isInteger(positionOffset) || (positionOffset as number) < 0) {
-    throw new Error("The ++PHP rename request position is invalid.");
-  }
-  if ((positionOffset as number) > document.contents.length) {
-    throw new Error("The ++PHP rename request position is outside the current document.");
-  }
-  if (typeof newName !== "string" || newName.length === 0 || newName.length > 255) {
+  if (
+    newName !== undefined &&
+    (typeof newName !== "string" || newName.length === 0 || newName.length > 255)
+  ) {
     throw new Error("The ++PHP rename request requires a replacement name.");
   }
   if (!Array.isArray(rawOpenDocuments) || rawOpenDocuments.length > MAXIMUM_OPEN_DOCUMENTS) {
@@ -108,8 +119,8 @@ export function decodeRenameCommandRequest(
   return {
     document,
     openDocuments: rawOpenDocuments.map((candidate) => decodeDocument(candidate, workspaceRoot)),
-    positionOffset: positionOffset as number,
-    newName,
+    positionOffset,
+    ...(newName === undefined ? {} : { newName }),
   };
 }
 
@@ -146,16 +157,34 @@ function decodeDocument(value: unknown, workspaceRoot: string): RenameCommandDoc
 
   const projectRoot = path.resolve(workspaceRoot);
   const filePath = path.resolve(projectRoot, requestedPath);
-  const relative = path.relative(projectRoot, filePath);
-  if (
-    path.extname(filePath).toLowerCase() !== ".ppphp" ||
-    relative === ".." ||
-    relative.startsWith(`..${path.sep}`)
-  ) {
+  if (path.extname(filePath).toLowerCase() !== ".ppphp" || !pathIsWithin(projectRoot, filePath)) {
     throw new Error("The ++PHP rename document must be a .ppphp file inside the workspace.");
   }
 
   return { path: filePath, contents, version: version as number };
+}
+
+function decodePayload(input: string): Record<string, unknown> {
+  if (Buffer.byteLength(input, "utf8") > MAXIMUM_TRANSPORT_BYTES) {
+    throw new Error("The ++PHP rename request exceeds sixteen megabytes.");
+  }
+
+  const payload = asRecord(JSON.parse(input));
+  if (payload?.version !== REQUEST_VERSION) {
+    throw new Error("The ++PHP rename request version is unsupported.");
+  }
+  return payload;
+}
+
+function decodePositionOffset(value: unknown, document: RenameCommandDocument): number {
+  const positionOffset = asRecord(value)?.offset;
+  if (!Number.isInteger(positionOffset) || (positionOffset as number) < 0) {
+    throw new Error("The ++PHP rename request position is invalid.");
+  }
+  if ((positionOffset as number) > document.contents.length) {
+    throw new Error("The ++PHP rename request position is outside the current document.");
+  }
+  return positionOffset as number;
 }
 
 function toTextDocument(document: RenameCommandDocument): TextDocument {
