@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Fixed
 
+- Language-server and editor builds now detect missing or wrong-platform npm workspace dependencies and restore the complete locked tree automatically, including on native Windows and WSL.
 - The PhpStorm class-creation Name editor now uses the same Up/Down template cycling and shortcut hint as the native PHP dialog.
 - PhpStorm clients that advertise workspace configuration but return no `ppphp` settings no longer terminate the language server; defaults are applied and compiler-backed features remain available.
 - Compiler subprocesses retain the host executable path and add existing platform-standard binary directories, allowing desktop-launched editors to find globally installed `ppphp` and PHP executables.

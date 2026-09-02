@@ -18,6 +18,11 @@ php scripts/build.php phpstorm
 php scripts/build.php editors
 ```
 
+These PHP build targets verify all npm workspaces and automatically run the locked
+root `npm ci` when dependencies are missing or belong to an incompatible host
+platform. This makes the same commands usable from native Windows and WSL without
+workspace-specific installation steps.
+
 Use the checked-in Gradle wrapper directly when running the complete PhpStorm verification suite:
 
 ```shell

@@ -27,10 +27,57 @@ try {
 
 function build_server(string $root): void
 {
+    ensure_node_dependencies($root);
     $artifact = $root . '/packages/language-server/dist/server.cjs';
     remove_stale_artifacts($artifact);
-    run_tool('npm', ['run', 'build', '--workspace', '@ppphp/language-server'], $root);
+    run_tool('npm', ['run', 'bundle', '--workspace', '@ppphp/language-server'], $root);
     require_artifact($artifact, 'language-server bundle');
+}
+
+function ensure_node_dependencies(string $root): void
+{
+    if (node_dependencies_are_ready($root)) {
+        return;
+    }
+
+    if (!is_file($root . '/package-lock.json')) {
+        throw new RuntimeException('package-lock.json is required to install Node.js dependencies');
+    }
+
+    fwrite(
+        STDOUT,
+        "\nNode.js workspace dependencies are missing or incompatible with this platform.\n"
+            . "Installing the locked dependency tree with npm ci...\n",
+    );
+    run_tool('npm', ['ci'], $root);
+
+    if (!node_dependencies_are_ready($root)) {
+        throw new RuntimeException(
+            'npm ci completed, but the Node.js workspace dependencies are still unusable',
+        );
+    }
+}
+
+function node_dependencies_are_ready(string $root): bool
+{
+    $workspaceCheck = tool_command(
+        'npm',
+        ['ls', '--include-workspace-root', '--workspaces', '--depth=0', '--json'],
+    );
+    if (!command_succeeds($workspaceCheck, $root)) {
+        return false;
+    }
+
+    $esbuild = $root . '/node_modules/.bin/'
+        . (PHP_OS_FAMILY === 'Windows' ? 'esbuild.cmd' : 'esbuild');
+    if (!is_file($esbuild)) {
+        return false;
+    }
+
+    $esbuildCheck = PHP_OS_FAMILY === 'Windows'
+        ? windows_command($esbuild, ['--version'])
+        : [$esbuild, '--version'];
+    return command_succeeds($esbuildCheck, $root);
 }
 
 function build_vscode_extension(string $root): void
@@ -121,10 +168,18 @@ function copy_required_file(string $source, string $destination): void
 /** @param list<string> $arguments */
 function run_tool(string $tool, array $arguments, string $workingDirectory): void
 {
-    $command = PHP_OS_FAMILY === 'Windows'
+    run_command(tool_command($tool, $arguments), $workingDirectory);
+}
+
+/**
+ * @param list<string> $arguments
+ * @return list<string>
+ */
+function tool_command(string $tool, array $arguments): array
+{
+    return PHP_OS_FAMILY === 'Windows'
         ? windows_command($tool, $arguments)
         : [$tool, ...$arguments];
-    run_command($command, $workingDirectory);
 }
 
 /**
@@ -165,6 +220,27 @@ function run_command(array $command, string $workingDirectory): void
             "command failed with exit code {$status}: " . display_command($command),
         );
     }
+}
+
+/** @param list<string> $command */
+function command_succeeds(array $command, string $workingDirectory): bool
+{
+    $nullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+    $process = proc_open(
+        $command,
+        [
+            0 => ['file', $nullDevice, 'r'],
+            1 => ['file', $nullDevice, 'w'],
+            2 => ['file', $nullDevice, 'w'],
+        ],
+        $pipes,
+        $workingDirectory,
+    );
+    if (!is_resource($process)) {
+        return false;
+    }
+
+    return proc_close($process) === 0;
 }
 
 /** @param list<string> $command */
@@ -258,7 +334,9 @@ Targets:
   help               Show this help
 
 Every packaging target removes its previous artifact and prints the absolute path
-of each artifact produced by the current build.
+of each artifact produced by the current build. Node.js build targets validate the
+root workspace installation and run npm ci automatically when locked dependencies
+are missing or incompatible with the current platform.
 USAGE);
     fwrite(STDOUT, "\n");
 }

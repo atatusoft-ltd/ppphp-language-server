@@ -77,6 +77,39 @@ foreach ($phpScripts as $script) {
     }
 }
 
+$buildScript = @file_get_contents($repositoryRoot . '/scripts/build.php');
+if ($buildScript === false) {
+    fwrite(STDERR, "could not read the repository build script\n");
+    exit(1);
+}
+
+$buildRequirements = [
+    "['ci']" => 'restore missing Node.js dependencies with locked npm ci',
+    "['ls', '--include-workspace-root', '--workspaces', '--depth=0', '--json']" =>
+        'validate every npm workspace before building',
+    "PHP_OS_FAMILY === 'Windows' ? 'esbuild.cmd' : 'esbuild'" =>
+        'reject Node.js installations copied from an incompatible platform',
+    "['run', 'bundle', '--workspace', '@ppphp/language-server']" =>
+        'bundle the language server without recursing through its public build command',
+];
+foreach ($buildRequirements as $source => $description) {
+    if (!str_contains($buildScript, $source)) {
+        fwrite(STDERR, "build script must {$description}\n");
+        exit(1);
+    }
+}
+
+$languageServerPackage = @file_get_contents(
+    $repositoryRoot . '/packages/language-server/package.json',
+);
+if (
+    $languageServerPackage === false
+    || !str_contains($languageServerPackage, '"build": "php ../../scripts/build.php server"')
+) {
+    fwrite(STDERR, "language-server builds must use the PHP dependency bootstrap\n");
+    exit(1);
+}
+
 fwrite(
     STDOUT,
     'Repository tooling is PHP and all ' . count($phpScripts) . " scripts pass syntax checks.\n",
