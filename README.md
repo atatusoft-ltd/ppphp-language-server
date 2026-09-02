@@ -51,6 +51,12 @@ php scripts/build.php phpstorm
 php scripts/build.php editors
 ```
 
+The PHP build entrypoint validates the complete root npm workspace before invoking
+Node.js tooling. If packages are missing, stale, or unusable after moving the
+checkout between Windows and WSL, it automatically restores the exact
+`package-lock.json` dependency tree with `npm ci`. Running `npm ci` explicitly is
+still recommended before the complete development check above.
+
 The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin archive is written below `editors/phpstorm/build/distributions/`.
 
 ## Versioning

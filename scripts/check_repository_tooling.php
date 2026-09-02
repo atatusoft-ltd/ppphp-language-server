@@ -77,6 +77,49 @@ foreach ($phpScripts as $script) {
     }
 }
 
+$buildScript = @file_get_contents($repositoryRoot . '/scripts/build.php');
+if ($buildScript === false) {
+    fwrite(STDERR, "could not read the repository build script\n");
+    exit(1);
+}
+
+$buildRequirements = [
+    "['ci']" => 'restore missing Node.js dependencies with locked npm ci',
+    'NPM_INSTALL_TIMEOUT_SECONDS' => 'bound automatic npm installs',
+    "['ls', '--include-workspace-root', '--workspaces', '--depth=0', '--json']" =>
+        'validate every npm workspace before building',
+    "'/node_modules/@ppphp/language-server'" =>
+        'verify the language-server workspace link before building',
+    "'/node_modules/ppphp-vscode'" =>
+        'verify the VS Code workspace link before building',
+    'paths_resolve_to_same_location(' =>
+        'validate workspace links against their expected source directories',
+    "PHP_OS_FAMILY === 'Windows' ? 'esbuild.cmd' : 'esbuild'" =>
+        'reject Node.js installations copied from an incompatible platform',
+    'wait_for_process(' => 'apply deadlines to repository build subprocesses',
+    "['taskkill', '/PID', (string) \$processId, '/T', '/F']" =>
+        'terminate timed-out Windows subprocess trees',
+    "['run', 'bundle', '--workspace', '@ppphp/language-server']" =>
+        'bundle the language server without recursing through its public build command',
+];
+foreach ($buildRequirements as $source => $description) {
+    if (!str_contains($buildScript, $source)) {
+        fwrite(STDERR, "build script must {$description}\n");
+        exit(1);
+    }
+}
+
+$languageServerPackage = @file_get_contents(
+    $repositoryRoot . '/packages/language-server/package.json',
+);
+if (
+    $languageServerPackage === false
+    || !str_contains($languageServerPackage, '"build": "php ../../scripts/build.php server"')
+) {
+    fwrite(STDERR, "language-server builds must use the PHP dependency bootstrap\n");
+    exit(1);
+}
+
 fwrite(
     STDOUT,
     'Repository tooling is PHP and all ' . count($phpScripts) . " scripts pass syntax checks.\n",
