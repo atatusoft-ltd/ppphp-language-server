@@ -85,10 +85,20 @@ if ($buildScript === false) {
 
 $buildRequirements = [
     "['ci']" => 'restore missing Node.js dependencies with locked npm ci',
+    'NPM_INSTALL_TIMEOUT_SECONDS' => 'bound automatic npm installs',
     "['ls', '--include-workspace-root', '--workspaces', '--depth=0', '--json']" =>
         'validate every npm workspace before building',
+    "'/node_modules/@ppphp/language-server'" =>
+        'verify the language-server workspace link before building',
+    "'/node_modules/ppphp-vscode'" =>
+        'verify the VS Code workspace link before building',
+    'paths_resolve_to_same_location(' =>
+        'validate workspace links against their expected source directories',
     "PHP_OS_FAMILY === 'Windows' ? 'esbuild.cmd' : 'esbuild'" =>
         'reject Node.js installations copied from an incompatible platform',
+    'wait_for_process(' => 'apply deadlines to repository build subprocesses',
+    "['taskkill', '/PID', (string) \$processId, '/T', '/F']" =>
+        'terminate timed-out Windows subprocess trees',
     "['run', 'bundle', '--workspace', '@ppphp/language-server']" =>
         'bundle the language server without recursing through its public build command',
 ];

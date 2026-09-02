@@ -3,6 +3,10 @@
 
 declare(strict_types=1);
 
+const DEFAULT_COMMAND_TIMEOUT_SECONDS = 1800;
+const DEPENDENCY_CHECK_TIMEOUT_SECONDS = 30;
+const NPM_INSTALL_TIMEOUT_SECONDS = 600;
+
 $repositoryRoot = dirname(__DIR__);
 $target = $argv[1] ?? 'help';
 
@@ -49,7 +53,7 @@ function ensure_node_dependencies(string $root): void
         "\nNode.js workspace dependencies are missing or incompatible with this platform.\n"
             . "Installing the locked dependency tree with npm ci...\n",
     );
-    run_tool('npm', ['ci'], $root);
+    run_tool('npm', ['ci'], $root, NPM_INSTALL_TIMEOUT_SECONDS);
 
     if (!node_dependencies_are_ready($root)) {
         throw new RuntimeException(
@@ -60,6 +64,17 @@ function ensure_node_dependencies(string $root): void
 
 function node_dependencies_are_ready(string $root): bool
 {
+    $workspaceLinks = [
+        $root . '/node_modules/@ppphp/language-server' =>
+            $root . '/packages/language-server',
+        $root . '/node_modules/ppphp-vscode' => $root . '/editors/vscode',
+    ];
+    foreach ($workspaceLinks as $link => $workspace) {
+        if (!paths_resolve_to_same_location($link, $workspace)) {
+            return false;
+        }
+    }
+
     $workspaceCheck = tool_command(
         'npm',
         ['ls', '--include-workspace-root', '--workspaces', '--depth=0', '--json'],
@@ -78,6 +93,19 @@ function node_dependencies_are_ready(string $root): bool
         ? windows_command($esbuild, ['--version'])
         : [$esbuild, '--version'];
     return command_succeeds($esbuildCheck, $root);
+}
+
+function paths_resolve_to_same_location(string $left, string $right): bool
+{
+    $resolvedLeft = realpath($left);
+    $resolvedRight = realpath($right);
+    if ($resolvedLeft === false || $resolvedRight === false) {
+        return false;
+    }
+
+    return PHP_OS_FAMILY === 'Windows'
+        ? strcasecmp($resolvedLeft, $resolvedRight) === 0
+        : $resolvedLeft === $resolvedRight;
 }
 
 function build_vscode_extension(string $root): void
@@ -166,9 +194,14 @@ function copy_required_file(string $source, string $destination): void
 }
 
 /** @param list<string> $arguments */
-function run_tool(string $tool, array $arguments, string $workingDirectory): void
+function run_tool(
+    string $tool,
+    array $arguments,
+    string $workingDirectory,
+    int $timeoutSeconds = DEFAULT_COMMAND_TIMEOUT_SECONDS,
+): void
 {
-    run_command(tool_command($tool, $arguments), $workingDirectory);
+    run_command(tool_command($tool, $arguments), $workingDirectory, $timeoutSeconds);
 }
 
 /**
@@ -197,8 +230,16 @@ function windows_command(string $executable, array $arguments): array
 }
 
 /** @param list<string> $command */
-function run_command(array $command, string $workingDirectory): void
+function run_command(
+    array $command,
+    string $workingDirectory,
+    int $timeoutSeconds = DEFAULT_COMMAND_TIMEOUT_SECONDS,
+): void
 {
+    if ($timeoutSeconds < 1) {
+        throw new InvalidArgumentException('command timeout must be at least one second');
+    }
+
     fwrite(STDOUT, "\n> " . display_command($command) . "\n");
     $process = proc_open(
         $command,
@@ -214,7 +255,7 @@ function run_command(array $command, string $workingDirectory): void
         throw new RuntimeException('could not start command: ' . display_command($command));
     }
 
-    $status = proc_close($process);
+    $status = wait_for_process($process, $command, $timeoutSeconds);
     if ($status !== 0) {
         throw new RuntimeException(
             "command failed with exit code {$status}: " . display_command($command),
@@ -240,7 +281,73 @@ function command_succeeds(array $command, string $workingDirectory): bool
         return false;
     }
 
-    return proc_close($process) === 0;
+    try {
+        return wait_for_process(
+            $process,
+            $command,
+            DEPENDENCY_CHECK_TIMEOUT_SECONDS,
+        ) === 0;
+    } catch (RuntimeException) {
+        return false;
+    }
+}
+
+/**
+ * @param resource $process
+ * @param list<string> $command
+ */
+function wait_for_process($process, array $command, int $timeoutSeconds): int
+{
+    $deadline = microtime(true) + $timeoutSeconds;
+    while (true) {
+        $status = proc_get_status($process);
+        if (!$status['running']) {
+            $reportedExitCode = $status['exitcode'];
+            $closedExitCode = proc_close($process);
+            return $reportedExitCode >= 0 ? $reportedExitCode : $closedExitCode;
+        }
+
+        if (microtime(true) >= $deadline) {
+            terminate_process($process, $status['pid']);
+            proc_close($process);
+            throw new RuntimeException(
+                "command timed out after {$timeoutSeconds} seconds: "
+                    . display_command($command),
+            );
+        }
+
+        usleep(100_000);
+    }
+}
+
+/** @param resource $process */
+function terminate_process($process, int $processId): void
+{
+    if (PHP_OS_FAMILY === 'Windows' && $processId > 0) {
+        $nullDevice = 'NUL';
+        $killer = proc_open(
+            ['taskkill', '/PID', (string) $processId, '/T', '/F'],
+            [
+                0 => ['file', $nullDevice, 'r'],
+                1 => ['file', $nullDevice, 'w'],
+                2 => ['file', $nullDevice, 'w'],
+            ],
+            $pipes,
+        );
+        if (is_resource($killer)) {
+            proc_close($killer);
+        }
+        return;
+    }
+
+    proc_terminate($process);
+    $graceDeadline = microtime(true) + 2;
+    while (proc_get_status($process)['running'] && microtime(true) < $graceDeadline) {
+        usleep(100_000);
+    }
+    if (proc_get_status($process)['running']) {
+        proc_terminate($process, 9);
+    }
 }
 
 /** @param list<string> $command */
