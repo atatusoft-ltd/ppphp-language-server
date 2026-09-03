@@ -19,7 +19,7 @@ namespace App\\Domain;
 $text = 'interface AlsoDecoy {}';
 $anonymous = new class extends Open {};
 $attributedAnonymous = new #[Example] class extends Open {};
-final class Closed {}
+final readonly class Closed {}
 class Open {}
 interface Contract {}
 trait Shared {}

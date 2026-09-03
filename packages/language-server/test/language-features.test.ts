@@ -27,9 +27,10 @@ function identity<T>(T $value): T { return $value; }
   });
 
   it("preserves line endings while masking non-code regions", () => {
-    const source = "class Real {}\n/* class Fake {} */\n'function hidden()'\n";
+    const source = "#[Example]\nclass Real {}\n# class Fake {}\n'function hidden()'\n";
     const masked = maskNonCode(source);
     expect(masked.split("\n")).toHaveLength(source.split("\n").length);
+    expect(masked).toContain("#[Example]");
     expect(masked).toContain("class Real");
     expect(masked).not.toContain("Fake");
     expect(masked).not.toContain("hidden");

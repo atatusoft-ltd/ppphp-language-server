@@ -65,6 +65,7 @@ export function typeImportCodeActionsAt(
   });
   const start = match?.index;
   if (!match || start === undefined) return [];
+  if (!isTypeReferenceAt(masked, start, start + match[0].length)) return [];
 
   const fqn = match[0].slice(1);
   const entry = catalog.find((candidate) => equalName(candidate.fqn, fqn));
@@ -112,6 +113,7 @@ export function createTypeImportPlanner(
   const masked = maskNonCode(source);
   const scope = importScopeAt(masked, offset);
   if (!scope || isImportDeclarationLine(masked, offset)) return null;
+  const importAnchor = leadingDeclareAnchor(masked, scope);
   const statements = importStatements(masked, scope);
   if (statements.some((statement) => offset >= statement.start && offset < statement.end)) {
     return null;
@@ -129,6 +131,7 @@ export function createTypeImportPlanner(
       document,
       entry,
       scope,
+      importAnchor,
       statements,
       imported,
       localNames,
@@ -142,6 +145,7 @@ function planTypeImport(
   document: TextDocument,
   entry: TypeCatalogEntry,
   scope: ImportScope,
+  importAnchor: number,
   statements: readonly ImportStatement[],
   imported: readonly ImportedType[],
   localNames: ReadonlySet<string>,
@@ -172,11 +176,12 @@ function planTypeImport(
           return importedFqn ? compareImports(entry.fqn, importedFqn, importSorting) < 0 : false;
         });
   const sortedBefore =
-    sortedBeforeIndex >= 0 && hasOnlyWhitespaceBefore(source, scope, statements, sortedBeforeIndex)
+    sortedBeforeIndex >= 0 &&
+    hasOnlyWhitespaceBefore(source, importAnchor, statements, sortedBeforeIndex)
       ? statements[sortedBeforeIndex]
       : undefined;
   const lastStatement = statements.at(-1);
-  const insertionOffset = sortedBefore?.start ?? lastStatement?.end ?? scope.anchor;
+  const insertionOffset = sortedBefore?.start ?? lastStatement?.end ?? importAnchor;
   const indentation = lineIndentationAt(source, sortedBefore?.start ?? lastStatement?.start);
   const newText = sortedBefore
     ? `use ${entry.fqn};${lineEnding}${indentation}`
@@ -198,14 +203,21 @@ function planTypeImport(
 
 function hasOnlyWhitespaceBefore(
   source: string,
-  scope: ImportScope,
+  importAnchor: number,
   statements: readonly ImportStatement[],
   index: number,
 ): boolean {
   const statement = statements[index];
   if (!statement) return false;
-  const previousEnd = index > 0 ? statements[index - 1]?.end : scope.anchor;
+  const previousEnd = index > 0 ? statements[index - 1]?.end : importAnchor;
   return previousEnd !== undefined && /^\s*$/u.test(source.slice(previousEnd, statement.start));
+}
+
+function leadingDeclareAnchor(source: string, scope: ImportScope): number {
+  const declarations = /^(?:\s*declare\s*\([^;{}]*\)\s*;)+/iu.exec(
+    source.slice(scope.anchor, scope.end),
+  );
+  return scope.anchor + (declarations?.[0].length ?? 0);
 }
 
 function lineIndentationAt(source: string, offset: number | undefined): string {
@@ -361,6 +373,43 @@ function beginsStatement(source: string, scopeStart: number, offset: number): bo
 
 function isNameCharacter(character: string): boolean {
   return character === "\\" || /[A-Z0-9_\u0080-\u{10ffff}]/iu.test(character);
+}
+
+function isTypeReferenceAt(source: string, start: number, end: number): boolean {
+  const before = source.slice(0, start);
+  const after = source.slice(end);
+  if (/^\s*::/u.test(after)) return true;
+
+  const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
+  const declaredVariable = new RegExp(
+    `^(?:\\s*[|&]\\s*\\??${typeName})*\\s+\\$${IDENTIFIER}`,
+    "iu",
+  );
+  if (declaredVariable.test(after)) return true;
+  if (/\b(?:new|instanceof)\s*$/iu.test(before)) return true;
+
+  const statementStart = Math.max(
+    before.lastIndexOf(";"),
+    before.lastIndexOf("{"),
+    before.lastIndexOf("}"),
+  );
+  const statement = before.slice(statementStart + 1);
+  if (/\b(?:extends|implements)\b[^{};]*$/iu.test(statement)) return true;
+
+  const openParenthesis = before.lastIndexOf("(");
+  if (openParenthesis >= 0 && /\bcatch\s*$/iu.test(before.slice(0, openParenthesis))) {
+    const precedingTypes = before.slice(openParenthesis + 1);
+    const catchPrefix = new RegExp(`^\\s*(?:${typeName}\\s*\\|\\s*)*$`, "iu");
+    if (catchPrefix.test(precedingTypes)) return true;
+  }
+
+  const returnType = new RegExp(
+    `\\b(?:function|fn)\\b[^{};]*\\)\\s*:\\s*(?:\\??${typeName}\\s*[|&]\\s*)*$`,
+    "iu",
+  );
+  if (returnType.test(statement)) return true;
+
+  return before.lastIndexOf("#[") > before.lastIndexOf("]") && /(?:#\[|,)\s*$/u.test(before);
 }
 
 function equalName(left: string, right: string): boolean {

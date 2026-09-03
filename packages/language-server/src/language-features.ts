@@ -181,7 +181,7 @@ export function maskNonCode(source: string): string {
       index = end === -1 ? source.length : end;
       continue;
     }
-    if (source[index] === "#") {
+    if (source[index] === "#" && next !== "[") {
       const end = source.indexOf("\n", index + 1);
       mask(index, end === -1 ? source.length : end);
       index = end === -1 ? source.length : end;

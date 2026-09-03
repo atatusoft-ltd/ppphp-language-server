@@ -131,7 +131,8 @@ export function parseTypeDeclarations(
       continue;
     }
 
-    const previous = tokens[index - 1]?.text.toLowerCase();
+    const modifiers = declarationModifiers(tokens, index);
+    const previous = tokens[index - modifiers.length - 1]?.text.toLowerCase();
     if (
       !isTypeKind(keyword) ||
       previous === "::" ||
@@ -149,12 +150,25 @@ export function parseTypeDeclarations(
       namespace,
       fqn,
       kind: keyword,
-      final: keyword === "class" && previous === "final",
+      final: keyword === "class" && modifiers.includes("final"),
       origin,
     });
   }
 
   return declarations;
+}
+
+function declarationModifiers(
+  tokens: readonly { text: string; offset: number }[],
+  declarationIndex: number,
+): string[] {
+  const modifiers: string[] = [];
+  for (let index = declarationIndex - 1; index >= 0; index -= 1) {
+    const candidate = tokens[index]?.text.toLowerCase();
+    if (candidate !== "abstract" && candidate !== "final" && candidate !== "readonly") break;
+    modifiers.unshift(candidate);
+  }
+  return modifiers;
 }
 
 function isAttributedAnonymousClass(source: string, classOffset: number): boolean {

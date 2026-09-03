@@ -61,6 +61,27 @@ describe("type import actions", () => {
     expect(actionsAt(relative, relative.indexOf("Repository"), [REPOSITORY])).toEqual([]);
   });
 
+  it("offers imports only where a qualified name is a type reference", () => {
+    const property =
+      "<?php\nclass Service { private \\Vendor\\Contracts\\Repository $repository; }\n";
+    const functionCall = "<?php\n$result = \\Vendor\\Contracts\\Repository();\n";
+    const constant = "<?php\n$result = \\Vendor\\Contracts\\Repository;\n";
+
+    expect(actionsAt(property, property.indexOf("Repository"), [REPOSITORY])).toHaveLength(1);
+    expect(actionsAt(functionCall, functionCall.indexOf("Repository"), [REPOSITORY])).toEqual([]);
+    expect(actionsAt(constant, constant.indexOf("Repository"), [REPOSITORY])).toEqual([]);
+  });
+
+  it("inserts the first import after leading declare statements", () => {
+    const source =
+      "<?php\ndeclare(strict_types=1);\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
+    const updated = applyFirstAction(source, source.indexOf("Repository") + 2, [REPOSITORY]);
+
+    expect(updated).toBe(
+      "<?php\ndeclare(strict_types=1);\n\nuse Vendor\\Contracts\\Repository;\n\nclass Service implements Repository {}\n",
+    );
+  });
+
   it("does not mistake a closure capture for an import anchor", () => {
     const source =
       "<?php\nnamespace App;\n\n$callback = function () use ($value) {};\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";

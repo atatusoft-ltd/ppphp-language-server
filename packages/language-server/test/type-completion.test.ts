@@ -87,6 +87,20 @@ describe("type completion", () => {
       additionalTextEdits: [{ newText: "\nuse Vendor\\Contracts\\Repository;" }],
     });
   });
+
+  it("places a completion import after a leading declare statement", () => {
+    const source = "<?php\ndeclare(strict_types=1);\n\nfunction make(): Pro";
+    const item = complete(source, CATALOG)[0];
+    const insertion = item?.additionalTextEdits?.[0];
+
+    expect(item?.textEdit).toMatchObject({ newText: "Product" });
+    expect(insertion).toMatchObject({ newText: "\n\nuse Vendor\\Domain\\Product;" });
+    expect(insertion?.range.start).toEqual(
+      TextDocument.create("file:///workspace/Example.ppphp", "ppphp", 1, source).positionAt(
+        source.indexOf(";") + 1,
+      ),
+    );
+  });
 });
 
 function complete(
