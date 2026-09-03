@@ -274,7 +274,12 @@ private object PpphpSpacing {
         if (leftText in setOf("??", "??=") || rightText in setOf("??", "??=")) {
             return spaces(if (php.SPACES_AROUND_NULL_COALESCE_OPERATOR) 1 else 0)
         }
-        if (leftText == "." || rightText == ".") return spaces(if (php.CONCAT_SPACES) 1 else 0)
+        if (leftText == "." || rightText == ".") {
+            val needsNumericSeparator =
+                leftText == "." && rightText.firstOrNull()?.isDigit() == true ||
+                    rightText == "." && leftText.lastOrNull()?.isDigit() == true
+            return spaces(if (php.CONCAT_SPACES || needsNumericSeparator) 1 else 0)
+        }
         if (leftText == "!" || rightText == "!") {
             val enabled = if (leftText == "!") php.SPACE_AFTER_UNARY_NOT else php.SPACE_BEFORE_UNARY_NOT
             return spaces(if (enabled) 1 else 0)

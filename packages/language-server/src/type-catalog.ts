@@ -185,7 +185,26 @@ function declarationModifiers(
 }
 
 function isAttributedAnonymousClass(source: string, classOffset: number): boolean {
-  return /\bnew\s+(?:#\[[^\]]*\]\s*)*$/iu.test(source.slice(0, classOffset));
+  let offset = skipWhitespaceBackward(source, classOffset);
+
+  while (offset > 0 && source[offset - 1] === "]") {
+    let depth = 1;
+    let cursor = offset - 2;
+    for (; cursor >= 0 && depth > 0; cursor -= 1) {
+      if (source[cursor] === "]") depth += 1;
+      if (source[cursor] === "[") depth -= 1;
+    }
+    if (depth !== 0 || cursor < 0 || source[cursor] !== "#") return false;
+    offset = skipWhitespaceBackward(source, cursor);
+  }
+
+  const match = /\bnew$/iu.exec(source.slice(0, offset));
+  return match !== null;
+}
+
+function skipWhitespaceBackward(source: string, offset: number): number {
+  while (offset > 0 && /\s/u.test(source[offset - 1] ?? "")) offset -= 1;
+  return offset;
 }
 
 function tokenize(source: string): Array<{ text: string; offset: number }> {

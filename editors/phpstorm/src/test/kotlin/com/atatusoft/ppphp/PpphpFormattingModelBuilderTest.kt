@@ -145,6 +145,17 @@ class PpphpFormattingModelBuilderTest : BasePlatformTestCase() {
         )
     }
 
+    fun testDisabledConcatenationSpacingDoesNotMergeNumericLiterals() {
+        CodeStyle.getSettings(project)
+            .getCustomSettings(PpphpCodeStyleSettings::class.java)
+            .CONCAT_SPACES = false
+
+        assertFormatted(
+            "<?php\n${'$'}value . 5;\n5 . ${'$'}value;",
+            "<?php\n${'$'}value. 5;\n5 .${'$'}value;",
+        )
+    }
+
     fun testChildAttributesUseConfiguredTabsForInteractiveIndentation() {
         configureIndent(indentSize = 4, continuationIndentSize = 4, useTabs = true)
         val file = myFixture.configureByText(
