@@ -12,9 +12,11 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.InputValidator
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.ReadonlyStatusHandler
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
@@ -22,9 +24,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.refactoring.rename.RenameHandler
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.name
 
 class PpphpRenameHandler internal constructor(
     private val prepareRename: (Project, Editor, VirtualFile, Int) -> Boolean,
@@ -62,7 +62,7 @@ class PpphpRenameHandler internal constructor(
             identifier.name,
             PpphpTypeNameValidator,
         ) ?: return
-        val projectRoot = project.basePath ?: return
+        val projectRoot = PpphpRenameSupport.projectRoot(project) ?: return
         val pluginRoot = PpphpLanguageServerRuntime.findPluginRoot(javaClass)
         if (pluginRoot == null) {
             Messages.showErrorDialog(project, "The ++PHP plugin installation could not be resolved.", "Rename ++PHP Type")
@@ -159,7 +159,7 @@ internal object PpphpRenameSupport {
         val key = PpphpPreparationKey(file.path, editor.document.modificationStamp, positionOffset)
         cachedPreparation?.takeIf { it.key == key }?.let { return it.available }
 
-        val projectRoot = project.basePath ?: return false
+        val projectRoot = projectRoot(project) ?: return false
         val pluginRoot = PpphpLanguageServerRuntime.findPluginRoot(PpphpRenameHandler::class.java)
             ?: return false
         val available = requestPrepareRename(
@@ -188,7 +188,7 @@ internal object PpphpRenameSupport {
     }
 
     fun buildRequest(
-        projectRoot: String,
+        projectRoot: VirtualFile,
         file: VirtualFile,
         document: Document,
         positionOffset: Int,
@@ -200,13 +200,11 @@ internal object PpphpRenameSupport {
 
         val openDocuments = JsonArray()
         val manager = FileDocumentManager.getInstance()
-        val root = Path.of(projectRoot).toAbsolutePath().normalize()
         for (openDocument in manager.unsavedDocuments) {
             val openFile = manager.getFile(openDocument) ?: continue
-            val openPath = openFile.toNioPath().toAbsolutePath().normalize()
             if (
                 openFile.extension.equals("ppphp", ignoreCase = true) &&
-                openPath.startsWith(root) &&
+                VfsUtilCore.isAncestor(projectRoot, openFile, false) &&
                 openFile != file
             ) {
                 openDocuments.add(encodeDocument(openFile, openDocument))
@@ -218,7 +216,7 @@ internal object PpphpRenameSupport {
 
     fun requestRename(
         pluginRoot: Path,
-        projectRoot: String,
+        projectRoot: VirtualFile,
         request: JsonObject,
         newName: String,
     ): PpphpNativeRename {
@@ -228,7 +226,7 @@ internal object PpphpRenameSupport {
 
     fun requestPrepareRename(
         pluginRoot: Path,
-        projectRoot: String,
+        projectRoot: VirtualFile,
         request: JsonObject,
     ): Boolean {
         val response = JsonParser.parseString(
@@ -240,7 +238,7 @@ internal object PpphpRenameSupport {
         return response.get("prepare")?.isJsonObject == true
     }
 
-    fun parseResponse(output: String, projectRoot: String): PpphpNativeRename {
+    fun parseResponse(output: String, projectRoot: VirtualFile): PpphpNativeRename {
         val response = JsonParser.parseString(output).asJsonObject
         if (response.get("version")?.asInt != 1) {
             throw IllegalStateException("The ++PHP rename response version is unsupported.")
@@ -250,7 +248,6 @@ internal object PpphpRenameSupport {
         }
         val changes = response.getAsJsonObject("edit")?.getAsJsonArray("documentChanges")
             ?: throw IllegalStateException("The ++PHP rename response contains no edits.")
-        val root = Path.of(projectRoot).toAbsolutePath().normalize()
         val textEdits = mutableListOf<PpphpNativeTextEdits>()
         var fileRename: PpphpNativeFileRename? = null
 
@@ -260,9 +257,9 @@ internal object PpphpRenameSupport {
                 if (fileRename != null) {
                     throw IllegalStateException("The ++PHP rename response contains multiple file renames.")
                 }
-                fileRename = parseFileRename(operation, root)
+                fileRename = parseFileRename(operation, projectRoot)
             } else {
-                textEdits += parseTextEdits(operation, root)
+                textEdits += parseTextEdits(operation, projectRoot)
             }
         }
         if (textEdits.isEmpty()) {
@@ -272,7 +269,7 @@ internal object PpphpRenameSupport {
         return PpphpNativeRename(textEdits, fileRename)
     }
 
-    private fun parseTextEdits(operation: JsonObject, root: Path): PpphpNativeTextEdits {
+    private fun parseTextEdits(operation: JsonObject, root: VirtualFile): PpphpNativeTextEdits {
         val uri = operation.getAsJsonObject("textDocument")?.get("uri")?.asString
             ?: throw IllegalStateException("A ++PHP rename edit has no document URI.")
         val file = resolveProjectFile(uri, root)
@@ -297,33 +294,42 @@ internal object PpphpRenameSupport {
         return PpphpNativeTextEdits(file, document, edits)
     }
 
-    private fun parseFileRename(operation: JsonObject, root: Path): PpphpNativeFileRename {
+    private fun parseFileRename(operation: JsonObject, root: VirtualFile): PpphpNativeFileRename {
         val oldUri = operation.get("oldUri")?.asString
             ?: throw IllegalStateException("The ++PHP file rename has no source URI.")
         val newUri = operation.get("newUri")?.asString
             ?: throw IllegalStateException("The ++PHP file rename has no destination URI.")
         val file = resolveProjectFile(oldUri, root)
-        val destination = Path.of(URI(newUri)).toAbsolutePath().normalize()
+        val source = URI(oldUri).normalize()
+        val destination = URI(newUri).normalize()
+        val destinationName = destination.path?.substringAfterLast('/')
+            ?.takeIf(String::isNotEmpty)
+            ?: throw IllegalStateException("The ++PHP file rename destination is invalid.")
         if (
-            !destination.startsWith(root) ||
-            destination.parent != file.toNioPath().toAbsolutePath().normalize().parent ||
-            !destination.name.endsWith(".ppphp", ignoreCase = true)
+            destination.query != null ||
+            destination.fragment != null ||
+            !source.scheme.equals(destination.scheme, ignoreCase = true) ||
+            source.authority != destination.authority ||
+            source.path?.substringBeforeLast('/') != destination.path.substringBeforeLast('/') ||
+            !destinationName.endsWith(".ppphp", ignoreCase = true)
         ) {
             throw IllegalStateException("The ++PHP file rename destination is invalid.")
         }
-        val existing = VirtualFileManager.getInstance().findFileByNioPath(destination)
-        if (existing != null && !Files.isSameFile(existing.toNioPath(), file.toNioPath())) {
-            throw IllegalStateException("The ++PHP file rename would overwrite ${destination.name}.")
+        val existing = VirtualFileManager.getInstance().findFileByUrl(newUri)
+        if (existing != null && existing != file) {
+            throw IllegalStateException("The ++PHP file rename would overwrite $destinationName.")
         }
 
-        return PpphpNativeFileRename(file, destination.name)
+        return PpphpNativeFileRename(file, destinationName)
     }
 
-    private fun resolveProjectFile(uri: String, root: Path): VirtualFile {
+    private fun resolveProjectFile(uri: String, root: VirtualFile): VirtualFile {
         val file = VirtualFileManager.getInstance().findFileByUrl(uri)
             ?: throw IllegalStateException("The ++PHP rename file could not be found: $uri")
-        val filePath = file.toNioPath().toAbsolutePath().normalize()
-        if (!filePath.startsWith(root) || !file.extension.equals("ppphp", ignoreCase = true)) {
+        if (
+            !VfsUtilCore.isAncestor(root, file, false) ||
+            !file.extension.equals("ppphp", ignoreCase = true)
+        ) {
             throw IllegalStateException("The ++PHP rename response targets a file outside the project.")
         }
         return file
@@ -352,13 +358,13 @@ internal object PpphpRenameSupport {
 
     private fun runNativeCommand(
         pluginRoot: Path,
-        projectRoot: String,
+        projectRoot: VirtualFile,
         request: JsonObject,
         command: String,
     ): String {
         val commandLine = PpphpLanguageServerRuntime.createCommandLine(
             pluginRoot,
-            projectRoot,
+            projectRoot.toNioPath().toAbsolutePath().normalize().toString(),
             command,
         )
         val handler = CapturingProcessHandler(commandLine)
@@ -373,6 +379,9 @@ internal object PpphpRenameSupport {
         }
         return output.stdout
     }
+
+    fun projectRoot(project: Project): VirtualFile? =
+        project.guessProjectDir()?.takeIf(VirtualFile::isValid)
 
     private fun isIdentifier(value: String): Boolean =
         value.isNotEmpty() && isIdentifierStart(value[0]) && value.drop(1).all(::isIdentifierPart)

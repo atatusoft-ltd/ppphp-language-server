@@ -32,6 +32,18 @@ PhpStorm started from the desktop may not inherit your shell's Node.js path. Set
 
 After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
 
+## Windows and WSL smoke test
+
+Before release, install the built plugin in a supported PhpStorm version on Windows and open the same ++PHP project through WSL. Confirm that:
+
+- no ++PHP plugin exception or `ProviderMismatchException` is reported;
+- indexing completes, the Project view remains usable, and Composer support loads normally;
+- only the configured compiler `output` and `cache` directories are excluded, while `src`, `app`, stubs, vendor, and `ppphp.json` remain indexed;
+- changing `ppphp.json` refreshes the effective exclusions without repeated failures;
+- opening and saving `.ppphp` files still starts diagnostics;
+- definition, completion, hover, symbols, and class-family rename continue to work; and
+- restarting PhpStorm leaves startup and indexing clean.
+
 Build the distributable plugin from the repository root with:
 
 ```shell

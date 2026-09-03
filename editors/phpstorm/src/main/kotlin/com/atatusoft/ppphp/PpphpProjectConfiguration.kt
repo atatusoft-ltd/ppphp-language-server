@@ -1,15 +1,21 @@
 package com.atatusoft.ppphp
 
 import com.google.gson.JsonObject
+import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
 import java.io.IOException
+import java.nio.file.ClosedFileSystemException
+import java.nio.file.FileSystemNotFoundException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.ProviderMismatchException
+import java.nio.file.ProviderNotFoundException
 
 internal data class PpphpCompilerOwnedDirectories(
     val output: Path,
@@ -18,51 +24,97 @@ internal data class PpphpCompilerOwnedDirectories(
     val paths: List<Path> = listOf(output, cache)
 }
 
+private data class PpphpProjectRoot(
+    val file: VirtualFile,
+    val path: Path,
+)
+
 internal object PpphpProjectConfiguration {
     const val FILE_NAME = "ppphp.json"
     private const val MAX_CONFIGURATION_BYTES = 1024L * 1024L
 
     fun configurationPath(project: Project): Path? =
-        project.basePath?.let { basePath ->
-            normalizeProjectRoot(Path.of(basePath))?.resolve(FILE_NAME)
-        }
+        projectFile(project)?.let(::configurationPath)
 
-    fun excludedUrls(project: Project): List<String> =
-        load(project)?.paths?.map { path ->
-            VfsUtilCore.pathToUrl(FileUtil.toSystemIndependentName(path.toString()))
-        }.orEmpty()
-
-    fun load(project: Project): PpphpCompilerOwnedDirectories? {
-        val basePath = project.basePath ?: return null
-        return load(Path.of(basePath))
+    internal fun configurationPath(projectRoot: VirtualFile): Path? = safePathOperation {
+        projectRoot(projectRoot)?.path?.resolve(FILE_NAME)
     }
 
-    internal fun load(projectRoot: Path): PpphpCompilerOwnedDirectories? {
-        val root = normalizeProjectRoot(projectRoot) ?: return null
-        val configuration = root.resolve(FILE_NAME)
-        if (!Files.isRegularFile(configuration, LinkOption.NOFOLLOW_LINKS)) return null
+    fun excludedUrls(project: Project): List<String> {
+        val projectRoot = projectFile(project) ?: return emptyList()
+        return excludedUrls(projectRoot)
+    }
 
-        val size = try {
-            Files.size(configuration)
-        } catch (_: IOException) {
-            return null
+    internal fun excludedUrls(projectRoot: VirtualFile): List<String> {
+        val root = projectRoot(projectRoot) ?: return emptyList()
+        val directories = load(root.path) ?: return emptyList()
+        return safePathOperation {
+            directories.paths.map { path -> exclusionUrl(root, path) ?: return@safePathOperation emptyList() }
+        } ?: emptyList()
+    }
+
+    fun load(project: Project): PpphpCompilerOwnedDirectories? {
+        val projectRoot = projectFile(project) ?: return null
+        return load(projectRoot)
+    }
+
+    internal fun load(projectRoot: VirtualFile): PpphpCompilerOwnedDirectories? =
+        projectRoot(projectRoot)?.let { root -> load(root.path) }
+
+    internal fun load(projectRoot: Path): PpphpCompilerOwnedDirectories? = safePathOperation {
+        val root = projectRoot.toRealPath()
+        val configuration = root.resolve(FILE_NAME)
+        if (!Files.isRegularFile(configuration, LinkOption.NOFOLLOW_LINKS)) {
+            return@safePathOperation null
         }
-        if (size !in 1..MAX_CONFIGURATION_BYTES) return null
+
+        val size = Files.size(configuration)
+        if (size !in 1..MAX_CONFIGURATION_BYTES) return@safePathOperation null
 
         val document = try {
             Files.newBufferedReader(configuration).use(JsonParser::parseReader)
-        } catch (_: Exception) {
-            return null
+        } catch (_: JsonParseException) {
+            return@safePathOperation null
         }
-        if (!document.isJsonObject) return null
+        if (!document.isJsonObject) return@safePathOperation null
 
-        return resolveDirectories(root, configuration, document.asJsonObject)
+        resolveDirectories(root, configuration, document.asJsonObject)
     }
 
-    private fun normalizeProjectRoot(projectRoot: Path): Path? =
+    private fun projectFile(project: Project): VirtualFile? = safePathOperation {
+        project.guessProjectDir()?.takeIf(VirtualFile::isValid)
+    }
+
+    private fun projectRoot(file: VirtualFile): PpphpProjectRoot? = safePathOperation {
+        file.takeIf(VirtualFile::isValid)
+            ?: return@safePathOperation null
+        PpphpProjectRoot(file, file.toNioPath().toRealPath())
+    }
+
+    private fun exclusionUrl(root: PpphpProjectRoot, path: Path): String? {
+        if (!path.startsWith(root.path)) return null
+        val relativePath = FileUtil.toSystemIndependentName(root.path.relativize(path).toString())
+        if (relativePath.isEmpty()) return null
+        return root.file.findFileByRelativePath(relativePath)?.url
+            ?: "${root.file.url.trimEnd('/')}/$relativePath"
+    }
+
+    private inline fun <T> safePathOperation(operation: () -> T): T? =
         try {
-            projectRoot.toRealPath()
+            operation()
         } catch (_: IOException) {
+            null
+        } catch (_: InvalidPathException) {
+            null
+        } catch (_: ProviderMismatchException) {
+            null
+        } catch (_: ClosedFileSystemException) {
+            null
+        } catch (_: FileSystemNotFoundException) {
+            null
+        } catch (_: ProviderNotFoundException) {
+            null
+        } catch (_: UnsupportedOperationException) {
             null
         } catch (_: SecurityException) {
             null
@@ -82,7 +134,7 @@ internal object PpphpProjectConfiguration {
         val stubPaths = stubs.map { resolve(root, it) ?: return null }
         val outputPath = resolve(root, output) ?: return null
         val cachePath = resolve(root, cache) ?: return null
-        val protectedPaths = (sourcePaths + stubPaths + configuration).map { path ->
+        val protectedPaths = (sourcePaths + stubPaths + listOf(configuration)).map { path ->
             canonicalizeProtectedPath(root, path) ?: return null
         }
 
@@ -117,8 +169,9 @@ internal object PpphpProjectConfiguration {
 
     private fun resolve(root: Path, configuredPath: String): Path? =
         try {
-            val path = Path.of(configuredPath.replace('\\', '/'))
-            (if (path.isAbsolute) path else root.resolve(path)).normalize()
+            val pathText = configuredPath.replace('\\', '/')
+            val path = root.fileSystem.getPath(pathText)
+            (if (path.isAbsolute) path else root.resolve(pathText)).normalize()
         } catch (_: InvalidPathException) {
             null
         }
