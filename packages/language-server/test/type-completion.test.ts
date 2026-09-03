@@ -116,7 +116,7 @@ describe("type completion", () => {
 
   it("keeps a qualified completion when an unimported short type is already referenced", () => {
     const items = complete(
-      "<?php\nnamespace App;\n\nclass Service { private Product $current; public function make(): Pro",
+      "<?php\nnamespace App;\n\nclass Service { private Collection<Product> $current; public function make(): Pro",
       CATALOG,
     );
 

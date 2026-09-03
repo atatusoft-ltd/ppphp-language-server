@@ -470,6 +470,10 @@ function isAttributeNamePosition(source: string): boolean {
 
 export function isTypeCompletionAt(source: string, start: number, end: number): boolean {
   if (isTypeReferenceAt(source, start, end)) return true;
+  const completeGenericEnd = genericTypeEnd(source, end);
+  if (completeGenericEnd !== null && isTypeReferenceAt(source, start, completeGenericEnd)) {
+    return true;
+  }
 
   const before = source.slice(0, start);
   const statementStart = Math.max(
@@ -518,11 +522,29 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
     if (outer?.index !== undefined) {
       const outerStart = outer.index;
       const outerEnd = outerStart + outer[0].trimEnd().length;
-      if (isTypeCompletionAt(source, outerStart, outerEnd)) return true;
+      if (source[outerStart - 1] !== "$" && isTypeCompletionAt(source, outerStart, outerEnd)) {
+        return true;
+      }
     }
   }
 
   return false;
+}
+
+function genericTypeEnd(source: string, typeEnd: number): number | null {
+  let offset = typeEnd;
+  while (/\s/u.test(source[offset] ?? "")) offset += 1;
+  if (source[offset] !== "<") return null;
+
+  let depth = 0;
+  for (; offset < source.length; offset += 1) {
+    if (source[offset] === "<") depth += 1;
+    if (source[offset] === ">") {
+      depth -= 1;
+      if (depth === 0) return offset + 1;
+    }
+  }
+  return null;
 }
 
 function unqualifiedTypeReferences(
@@ -537,7 +559,7 @@ function unqualifiedTypeReferences(
     const end = start + match[0].length;
     if (start <= ignoredOffset && ignoredOffset <= end) continue;
     if (source[start - 1] === "\\" || source[end] === "\\") continue;
-    if (isTypeReferenceAt(source, start, end)) references.add(match[0].toLowerCase());
+    if (isTypeCompletionAt(source, start, end)) references.add(match[0].toLowerCase());
   }
   return references;
 }

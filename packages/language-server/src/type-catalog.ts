@@ -154,8 +154,15 @@ export function parseTypeDeclarations(
     ) {
       continue;
     }
-    const name = tokens[index + 1]?.text;
-    if (!name || !isIdentifier(name)) continue;
+    const nameToken = tokens[index + 1];
+    if (
+      !nameToken ||
+      !isIdentifier(nameToken.text) ||
+      !/^\s+$/u.test(searchable.slice(token.offset + token.text.length, nameToken.offset))
+    ) {
+      continue;
+    }
+    const name = nameToken.text;
 
     const fqn = namespace === "" ? name : `${namespace}\\${name}`;
     declarations.push({

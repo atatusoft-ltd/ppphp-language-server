@@ -56,6 +56,14 @@ describe("type import actions", () => {
     expect(actionsAt(source, source.lastIndexOf("Repository"), [REPOSITORY])).toEqual([]);
   });
 
+  it("does not rebind an existing generic type argument", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private Collection<Product> $items; public function make(): \\Vendor\\Product {} }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
+  });
+
   it("preserves CRLF and supports bracketed namespaces", () => {
     const source =
       "<?php\r\nnamespace App {\r\n\r\nclass Service implements \\Vendor\\Contracts\\Repository {}\r\n}\r\n";

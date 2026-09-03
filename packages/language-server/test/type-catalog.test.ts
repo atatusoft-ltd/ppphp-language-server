@@ -23,6 +23,7 @@ $anonymous = new class extends Open {};
 $attributedAnonymous = new #[Example] class extends Open {};
 $nestedAttributedAnonymous = new #[Example([1, [2]])] #[Other(name: [Open::class])] class extends Open {};
 $attributedReadonlyAnonymous = new #[Example([1, [2]])] readonly class extends Open {};
+$configured = configure(class: Missing::class);
 final readonly class Closed {}
 class Open {}
 interface Contract {}
