@@ -98,6 +98,36 @@ $box->getValue();
       decode(document, compilerTokens).filter((entry) => entry.text === "getValue"),
     ).toHaveLength(2);
   });
+
+  it("preserves precise host scopes for lexically complete variable usages", () => {
+    const document = TextDocument.create(
+      "file:///Variables.ppphp",
+      "ppphp",
+      1,
+      `<?php
+class Variables
+{
+    public function read(): mixed
+    {
+        $local = $this;
+        return $_SERVER['REQUEST_METHOD'];
+    }
+}
+
+readonly string $declared = 'ready';
+`,
+    );
+    const compilerTokens: SemanticTokenClassification[] = [
+      token(document, "$local", 1, "variable"),
+      token(document, "$this", 1, "variable"),
+      token(document, "$_SERVER", 1, "variable"),
+      token(document, "$declared", 1, "variable", ["declaration"]),
+    ];
+
+    expect(decode(document, compilerTokens).filter((entry) => entry.type === "variable")).toEqual([
+      { text: "$declared", type: "variable" },
+    ]);
+  });
 });
 
 function decode(
