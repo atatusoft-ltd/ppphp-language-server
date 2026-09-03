@@ -35,7 +35,7 @@ The shared editor grammar is intentionally lexical. The compiler parses the unsa
 
 The VS Code extension bundles the server and uses the official `vscode-languageclient` transport. It relies on the extension host's Node runtime.
 
-PhpStorm reads only the path fields needed for host integration from a bounded `ppphp.json` file. It automatically excludes compiler-owned output and cache directories from indexing, validates that exclusions remain inside the project and do not overlap source or stub roots, and refreshes the project index when the configuration changes.
+PhpStorm reads only the path fields needed for host integration from a bounded `ppphp.json` file. It excludes compiler-owned output and cache directories from project-content indexing, validates that exclusions remain inside the project and do not overlap source or stub roots, and refreshes the project index when the configuration changes. For mixed PHP/++PHP projects, a filtered synthetic library restores native PHP visibility of generated declarations without restoring the entire output tree: the adapter accepts only safe `.php` outputs whose bounded compiler manifest entries identify them as compiled `.ppphp` sources. Copied PHP outputs and compiler metadata remain excluded. Missing or invalid manifests fail closed, and the project/output roots are watched so a subsequent build updates the library.
 
 The PhpStorm plugin targets the 2025.2 compatibility baseline, uses bundled PHP tokenization for shallow PSI and native PHP lexical highlighting, and maps LSP semantic roles to PhpStorm's PHP color keys for parser-dependent PHP and ++PHP constructs. It registers the `.ppphp` language and starts the bundled server with a separately installed Node.js 22 runtime.
 

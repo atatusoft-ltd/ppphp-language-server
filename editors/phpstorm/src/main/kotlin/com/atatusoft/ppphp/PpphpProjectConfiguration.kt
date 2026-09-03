@@ -58,6 +58,23 @@ internal object PpphpProjectConfiguration {
         return load(projectRoot)
     }
 
+    fun outputDirectory(project: Project): VirtualFile? {
+        val projectRoot = projectFile(project) ?: return null
+        return outputDirectory(projectRoot)
+    }
+
+    internal fun outputDirectory(projectRoot: VirtualFile): VirtualFile? {
+        val root = projectRoot(projectRoot) ?: return null
+        val output = load(root.path)?.output ?: return null
+        val relativePath = safePathOperation {
+            FileUtil.toSystemIndependentName(root.path.relativize(output).toString())
+        } ?: return null
+        return relativePath
+            .takeIf(String::isNotEmpty)
+            ?.let(root.file::findFileByRelativePath)
+            ?.takeIf { file -> file.isValid && file.isDirectory }
+    }
+
     internal fun load(projectRoot: VirtualFile): PpphpCompilerOwnedDirectories? =
         projectRoot(projectRoot)?.let { root -> load(root.path) }
 

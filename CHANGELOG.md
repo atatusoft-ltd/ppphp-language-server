@@ -37,5 +37,6 @@ All notable changes to this project will be documented in this file. The format 
 - PhpStorm uses its native PHP lexical highlighter for complete PHP-token and color-scheme parity, then layers compiler-owned language-server semantic tokens for PHP symbol roles and ++PHP extensions, without routing `.ppphp` files through PHP parser inspections.
 - PHP tokenizer keywords, contextual keywords, native types, predefined constants, declarations, and references now share one compiler-backed semantic classification path instead of editor-specific word patches.
 - PhpStorm automatically excludes the compiler-owned `output` and `cache` directories configured by `ppphp.json`, preventing generated PHP from producing duplicate-declaration warnings.
+- Mixed PhpStorm projects now resolve ++PHP-authored declarations from ordinary PHP code through compiler-manifest-filtered generated PHP, without indexing copied PHP outputs or requiring hand-written shadow stubs.
 - PhpStorm resolves its bundled language server through the plugin descriptor, including when plugin classes have no protection-domain code source.
 - PhpStorm installation and updates request the restart needed to refresh the `.ppphp` language association.

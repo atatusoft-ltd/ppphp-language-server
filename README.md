@@ -25,6 +25,8 @@ Syntax highlighting follows the same ownership boundary in both editors: each ho
 
 Completion is deterministic rather than generative. The language server catalogs class-family declarations from configured ++PHP source roots, Composer autoload roots, installed Composer packages, and the active PHP runtime. It narrows `extends` to inheritable classes and `implements` or interface inheritance to interfaces. Completion reuses an existing import or alias, inserts a safe sorted `use` statement when the short name is available, and retains a fully qualified reference when importing would collide. A fully qualified type also offers a shared `Use import` action. PhpStorm uses the same catalog in its class-creation parent controls and supplements it with PhpStorm's PHP project index.
 
+In mixed PhpStorm projects, native PHP code can resolve declarations authored in `.ppphp` after a successful `ppphp build`. The plugin reads the compiler's output manifest and exposes only PHP files compiled from ++PHP as a filtered synthetic library. Ordinary PHP files copied into the output remain excluded, so native indexing gains the generated declarations without duplicate PHP symbols. Hand-written shadow stubs are neither required nor recommended for this purpose.
+
 ## Requirements
 
 - PHP 8.4 or newer for repository tooling and build orchestration
