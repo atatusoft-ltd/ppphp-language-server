@@ -30,11 +30,35 @@ describe("type completion", () => {
     expect(complete("<?php class Child implements Ex", CATALOG)).toEqual([]);
   });
 
+  it("keeps a same-namespace type qualified when its short name is an imported alias", () => {
+    const items = complete(
+      "<?php namespace App; use Vendor\\LocalContract; class Child implements Local",
+      CATALOG,
+    );
+
+    expect(items[0]).toMatchObject({
+      label: "LocalContract",
+      textEdit: { newText: "\\App\\LocalContract" },
+      additionalTextEdits: undefined,
+    });
+  });
+
   it("offers final classes in ordinary type positions", () => {
     const items = complete("<?php function make(): Final", CATALOG);
 
     expect(items.map(({ label }) => label)).toEqual(["FinalBase"]);
     expect(items[0]?.detail).toContain("Composer dependency");
+  });
+
+  it("does not offer type imports in ordinary expression positions", () => {
+    expect(complete("<?php function run() { return Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php function run() { Pro", CATALOG)).toEqual([]);
+  });
+
+  it("offers types in incomplete declarations and generic arguments", () => {
+    expect(complete("<?php class Service { public Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php function run(Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php function run(): Repository<Pro", CATALOG)[0]?.label).toBe("Product");
   });
 
   it("reuses existing imports and aliases instead of inserting qualified names", () => {

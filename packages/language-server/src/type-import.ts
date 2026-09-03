@@ -160,11 +160,13 @@ function planTypeImport(
   const existing = imported.find((type) => equalName(type.fqn, entry.fqn));
   if (existing) return { reference: existing.alias };
 
-  if (equalName(scope.namespace, entry.namespace)) return { reference: entry.name };
-
   const collision = imported.some(
     (type) => equalName(type.alias, entry.name) && !equalName(type.fqn, entry.fqn),
   );
+  if (equalName(scope.namespace, entry.namespace)) {
+    return collision ? null : { reference: entry.name };
+  }
+
   const localCollision = [...localNames].some(
     (type) =>
       type.startsWith(`${entry.name.toLowerCase()}\0`) &&
@@ -425,6 +427,63 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   if (returnType.test(statement)) return true;
 
   return before.lastIndexOf("#[") > before.lastIndexOf("]") && /(?:#\[|,)\s*$/u.test(before);
+}
+
+export function isTypeCompletionAt(source: string, start: number, end: number): boolean {
+  if (isTypeReferenceAt(source, start, end)) return true;
+
+  const before = source.slice(0, start);
+  const statementStart = Math.max(
+    before.lastIndexOf(";"),
+    before.lastIndexOf("{"),
+    before.lastIndexOf("}"),
+  );
+  const statement = before.slice(statementStart + 1);
+  const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
+  const precedingTypes = `(?:\\??${typeName}\\s*[|&]\\s*)*`;
+
+  if (
+    new RegExp(
+      `^\\s*(?:(?:public|protected|private|static|readonly|final|abstract|var)\\s+)+${precedingTypes}$`,
+      "iu",
+    ).test(statement)
+  ) {
+    return true;
+  }
+  if (new RegExp(`\\bthrows\\s+${precedingTypes}$`, "iu").test(statement)) return true;
+
+  const openParenthesis = before.lastIndexOf("(");
+  if (openParenthesis > statementStart && before.lastIndexOf(")") < openParenthesis) {
+    const declaration = before.slice(statementStart + 1, openParenthesis);
+    const parameter =
+      before
+        .slice(openParenthesis + 1)
+        .split(",")
+        .at(-1) ?? "";
+    if (
+      new RegExp(`\\b(?:function|fn)\\s*(?:&\\s*)?(?:${IDENTIFIER}\\s*)?$`, "iu").test(
+        declaration,
+      ) &&
+      new RegExp(
+        `^\\s*(?:(?:public|protected|private|readonly)\\s+)*${precedingTypes}$`,
+        "iu",
+      ).test(parameter)
+    ) {
+      return true;
+    }
+  }
+
+  const genericOpen = before.lastIndexOf("<");
+  if (genericOpen > statementStart) {
+    const outer = new RegExp(`${typeName}\\s*$`, "iu").exec(before.slice(0, genericOpen));
+    if (outer?.index !== undefined) {
+      const outerStart = outer.index;
+      const outerEnd = outerStart + outer[0].trimEnd().length;
+      if (isTypeCompletionAt(source, outerStart, outerEnd)) return true;
+    }
+  }
+
+  return false;
 }
 
 function unqualifiedTypeReferences(

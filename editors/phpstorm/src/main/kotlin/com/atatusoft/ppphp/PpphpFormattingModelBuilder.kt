@@ -493,6 +493,7 @@ private object PpphpSpacing {
         right: String,
         common: CommonCodeStyleSettings,
     ): Boolean? {
+        if (left in additiveOperators && right in additiveOperators) return true
         val operator = (assignmentOperators + logicalOperators + wordLogicalOperators +
             equalityOperators + relationalOperators + bitwiseOperators + additiveOperators +
             multiplicativeOperators + shiftOperators).firstOrNull { it == left || it == right }

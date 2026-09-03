@@ -7,7 +7,7 @@ import {
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
 import type { TypeCatalogEntry, TypeKind, TypeOrigin } from "./type-catalog.js";
-import { createTypeImportPlanner } from "./type-import.js";
+import { createTypeImportPlanner, isTypeCompletionAt } from "./type-import.js";
 import type { ImportSorting } from "./server-settings.js";
 
 const MAXIMUM_COMPLETIONS = 200;
@@ -23,10 +23,15 @@ export function typeCompletionsAt(
   const replacement = qualifiedNameRange(document, source, offset);
   const typed = source.slice(document.offsetAt(replacement.start), offset);
   const query = typed.replace(/^\\/u, "").toLowerCase();
-  const context = completionContext(maskNonCode(source), document.offsetAt(replacement.start));
+  const masked = maskNonCode(source);
+  const replacementStart = document.offsetAt(replacement.start);
+  if (!isTypeCompletionAt(masked, replacementStart, document.offsetAt(replacement.end))) {
+    return [];
+  }
+  const context = completionContext(masked, replacementStart);
   const importPlanner = typed.startsWith("\\")
     ? null
-    : createTypeImportPlanner(document, document.offsetAt(replacement.start), importSorting);
+    : createTypeImportPlanner(document, replacementStart, importSorting);
 
   return catalog
     .filter(

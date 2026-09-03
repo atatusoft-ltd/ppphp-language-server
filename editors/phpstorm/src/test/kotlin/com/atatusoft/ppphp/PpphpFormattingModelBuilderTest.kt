@@ -134,6 +134,17 @@ class PpphpFormattingModelBuilderTest : BasePlatformTestCase() {
         )
     }
 
+    fun testDisabledAdditiveSpacingDoesNotMergeBinaryAndUnarySigns() {
+        CodeStyle.getSettings(project)
+            .getCommonSettings(PpphpLanguage.INSTANCE)
+            .SPACE_AROUND_ADDITIVE_OPERATORS = false
+
+        assertFormatted(
+            "<?php\n${'$'}a - -${'$'}b;\n${'$'}a + +${'$'}b;",
+            "<?php\n${'$'}a- -${'$'}b;\n${'$'}a+ +${'$'}b;",
+        )
+    }
+
     fun testChildAttributesUseConfiguredTabsForInteractiveIndentation() {
         configureIndent(indentSize = 4, continuationIndentSize = 4, useTabs = true)
         val file = myFixture.configureByText(

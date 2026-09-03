@@ -41,6 +41,14 @@ describe("type import actions", () => {
     ).toEqual([]);
   });
 
+  it("does not shorten a local type through an imported alias", () => {
+    const local = type("Repository", "App", "interface");
+    const source =
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\nclass Service implements \\App\\Repository {}\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Repository"), [local])).toEqual([]);
+  });
+
   it("does not rebind an existing unqualified type reference", () => {
     const source =
       "<?php\nnamespace App;\n\nclass Service { private Repository $current; public function make(): \\Vendor\\Contracts\\Repository {} }\n";
