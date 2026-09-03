@@ -118,6 +118,78 @@ class PpphpOutputExclusionTest : BasePlatformTestCase() {
         }
     }
 
+    fun testValidBuildManifestKeepsOnlyCompiledPpphpOutputsIndexable() =
+        withProjectDirectory { rootPath ->
+            writeConfiguration(rootPath, validConfiguration())
+            Files.createDirectories(rootPath.resolve("build/ppphp/Application"))
+            Files.createDirectories(rootPath.resolve("build/ppphp/.ppphp"))
+            Files.createDirectories(rootPath.resolve(".ppphp-cache"))
+            Files.writeString(
+                rootPath.resolve("build/ppphp/Application/DemoRunner.php"),
+                "<?php final class DemoRunner {}",
+            )
+            Files.writeString(
+                rootPath.resolve("build/ppphp/Application/LegacyGateway.php"),
+                "<?php final class LegacyGateway {}",
+            )
+            Files.writeString(
+                rootPath.resolve("build/ppphp/.ppphp/manifest.json"),
+                """
+                {
+                  "formatVersion": 2,
+                  "files": [
+                    {"source":"app/DemoRunner.ppphp","output":"Application/DemoRunner.php","sourceKind":"ppphp","operation":"compile"},
+                    {"source":"app/LegacyGateway.php","output":"Application/LegacyGateway.php","sourceKind":"php","operation":"copy"}
+                  ]
+                }
+                """.trimIndent(),
+            )
+            val root = requireNotNull(
+                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(rootPath),
+            )
+            root.refresh(false, true)
+            val output = requireNotNull(root.findFileByRelativePath("build/ppphp"))
+            val compiled = requireNotNull(output.findFileByRelativePath("Application/DemoRunner.php"))
+            val copied = requireNotNull(output.findFileByRelativePath("Application/LegacyGateway.php"))
+            val metadata = requireNotNull(output.findFileByRelativePath(".ppphp"))
+
+            val urls = PpphpProjectConfiguration.excludedUrls(root)
+
+            assertFalse(urls.contains(output.url))
+            assertFalse(urls.contains(compiled.url))
+            assertTrue(urls.contains(copied.url))
+            assertTrue(urls.contains(metadata.url))
+            assertTrue(urls.contains(requireNotNull(root.findChild(".ppphp-cache")).url))
+        }
+
+    fun testInvalidBuildManifestKeepsTheCompleteOutputExcluded() =
+        withProjectDirectory { rootPath ->
+            writeConfiguration(rootPath, validConfiguration())
+            Files.createDirectories(rootPath.resolve("build/ppphp/.ppphp"))
+            Files.writeString(rootPath.resolve("build/ppphp/.ppphp/manifest.json"), "{")
+            val root = requireNotNull(
+                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(rootPath),
+            )
+            root.refresh(false, true)
+            val output = requireNotNull(root.findFileByRelativePath("build/ppphp"))
+
+            assertTrue(PpphpProjectConfiguration.excludedUrls(root).contains(output.url))
+        }
+
+    fun testManifestReplacementAndOwnedDirectoryChangesRefreshIndexRoots() {
+        val activity = PpphpProjectActivity()
+        val watched = setOf("/project/build", "/project/build/.ppphp")
+        fun affects(path: String): Boolean =
+            activity.canAffectIndexRoots(path, "/project/ppphp.json", "/project", watched)
+
+        assertTrue(affects("/project/ppphp.json"))
+        assertTrue(affects("/project/build"))
+        assertTrue(affects("/project/build/.ppphp/manifest.tmp"))
+        assertTrue(affects("/project/build/.ppphp/manifest.json"))
+        assertFalse(affects("/project/build/Application/DemoRunner.php"))
+        assertFalse(affects("/project/src/DemoRunner.ppphp"))
+    }
+
     fun testPolicyIsRegisteredWithPhpStorm() {
         val policies = DirectoryIndexExcludePolicy.EP_NAME.getPoint(project).extensionList
 

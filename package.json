@@ -1,6 +1,6 @@
 {
   "name": "ppphp-language-server-workspace",
-  "version": "2026.3.1",
+  "version": "2026.3.1-rc-2",
   "private": true,
   "description": "Editor tooling and a language server for ++PHP.",
   "license": "Apache-2.0",

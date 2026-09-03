@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+The changes below are prepared for `2026.3.1-rc-2`.
+
 ### Added
 
-- Coordinated `YYYY.Q.patch[-channel]` toolchain versioning with automated cross-package consistency checks.
+- Coordinated `YYYY.Q.R[-channel[-N]]` toolchain versioning with automated cross-package consistency checks.
 - Canonical ++PHP emblem branding for extension listings and `.ppphp` file icons.
 - Editor-neutral Language Server Protocol foundation.
 - Compiler-backed go to definition in VS Code and PhpStorm for project types, functions, local and parameter bindings, inherited members, and typed access chains, including unsaved current-document contents.
@@ -36,7 +38,7 @@ All notable changes to this project will be documented in this file. The format 
 - `.ppphp` is the exclusive source extension across editor manifests, file watchers, language-server validation, fixtures, and documentation.
 - PhpStorm uses its native PHP lexical highlighter for complete PHP-token and color-scheme parity, then layers compiler-owned language-server semantic tokens for PHP symbol roles and ++PHP extensions, without routing `.ppphp` files through PHP parser inspections.
 - PHP tokenizer keywords, contextual keywords, native types, predefined constants, declarations, and references now share one compiler-backed semantic classification path instead of editor-specific word patches.
-- PhpStorm automatically excludes the compiler-owned `output` and `cache` directories configured by `ppphp.json`, preventing generated PHP from producing duplicate-declaration warnings.
+- PhpStorm excludes the compiler cache, metadata, stale output, and copied PHP build artifacts while retaining compiled ++PHP declarations for native indexing.
 - Mixed PhpStorm projects now resolve ++PHP-authored declarations from ordinary PHP code through compiler-manifest-filtered generated PHP, without indexing copied PHP outputs or requiring hand-written shadow stubs.
 - PhpStorm resolves its bundled language server through the plugin descriptor, including when plugin classes have no protection-domain code source.
 - PhpStorm installation and updates request the restart needed to refresh the `.ppphp` language association.

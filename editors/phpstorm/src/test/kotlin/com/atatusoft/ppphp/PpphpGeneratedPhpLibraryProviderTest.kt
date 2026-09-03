@@ -4,31 +4,37 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.RootsChangeRescanningInfo
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ex.ProjectRootManagerEx
+import com.intellij.openapi.roots.impl.DirectoryIndexExcludePolicy
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.NioFiles
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.fixtures.TempDirTestFixture
+import com.intellij.testFramework.fixtures.impl.TempDirTestFixtureImpl
 import com.jetbrains.php.PhpIndex
 import java.nio.file.Files
 import java.nio.file.Path
 
 class PpphpGeneratedPhpLibraryProviderTest : BasePlatformTestCase() {
+    override fun createTempDirTestFixture(): TempDirTestFixture = TempDirTestFixtureImpl()
+
     fun testOnlyCompiledPpphpOutputsAreExposedToPhpIndexing() {
         val compiled = myFixture.tempDirFixture.createFile(
             "build/Application/DemoRunner.php",
             "<?php namespace Atatusoft\\Showcase\\Application; final class DemoRunner {}",
         )
         val copied = myFixture.tempDirFixture.createFile(
-            "build/Infrastructure/LegacyGateway.php",
+            "build/Application/LegacyGateway.php",
             "<?php namespace Atatusoft\\Showcase\\Infrastructure; final class LegacyGateway {}",
         )
         val manifest = myFixture.tempDirFixture.createFile(
             "build/.ppphp/manifest.json",
             manifest(
                 compiled("app/Application/DemoRunner.ppphp", "Application/DemoRunner.php"),
-                copied("app/Infrastructure/LegacyGateway.php", "Infrastructure/LegacyGateway.php"),
+                copied("app/Infrastructure/LegacyGateway.php", "Application/LegacyGateway.php"),
             ),
         )
         val output = requireNotNull(compiled.parent.parent)
@@ -42,6 +48,7 @@ class PpphpGeneratedPhpLibraryProviderTest : BasePlatformTestCase() {
     }
 
     fun testCompiledOutputsAreVisibleToNativePhpReferencesWithoutCopiedDuplicates() {
+        myFixture.tempDirFixture.createFile("ppphp.json", configuration())
         myFixture.tempDirFixture.createFile(
             "app/Infrastructure/LegacyGateway.php",
             "<?php namespace Atatusoft\\Showcase\\Infrastructure; final class LegacyGateway {}",
@@ -50,47 +57,49 @@ class PpphpGeneratedPhpLibraryProviderTest : BasePlatformTestCase() {
             "app/demo.php",
             "<?php use Atatusoft\\Showcase\\Application\\DemoRunner; DemoRunner::create();",
         )
-        val outputPath = Files.createTempDirectory("ppphp-generated-library-")
-        Disposer.register(testRootDisposable) { NioFiles.deleteQuietly(outputPath) }
-        write(
-            outputPath,
-            "Application/DemoRunner.php",
+        val compiled = myFixture.tempDirFixture.createFile(
+            "build/Application/DemoRunner.php",
             "<?php namespace Atatusoft\\Showcase\\Application; final class DemoRunner { public static function create(): self { return new self(); } }",
         )
-        write(
-            outputPath,
-            "Infrastructure/LegacyGateway.php",
+        val copied = myFixture.tempDirFixture.createFile(
+            "build/Application/LegacyGateway.php",
             "<?php namespace Atatusoft\\Showcase\\Infrastructure; final class LegacyGateway {}",
         )
-        write(
-            outputPath,
-            ".ppphp/manifest.json",
+        myFixture.tempDirFixture.createFile(
+            "build/.ppphp/manifest.json",
             manifest(
                 compiled("app/Application/DemoRunner.ppphp", "Application/DemoRunner.php"),
-                copied("app/Infrastructure/LegacyGateway.php", "Infrastructure/LegacyGateway.php"),
+                copied("app/Infrastructure/LegacyGateway.php", "Application/LegacyGateway.php"),
             ),
         )
-        val output = requireNotNull(
-            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(outputPath),
-        )
-        val library = requireNotNull(PpphpGeneratedPhpLibrary.resolve(output))
+        val output = requireNotNull(compiled.parent.parent)
+        val projectRoot = requireNotNull(output.parent)
+        assertSame(output, PpphpProjectConfiguration.outputDirectory(projectRoot))
+        assertTrue(requireNotNull(PpphpGeneratedPhpLibrary.resolve(output)).excludedUrls.contains(copied.url))
         AdditionalLibraryRootsProvider.EP_NAME.point.registerExtension(
-            object : AdditionalLibraryRootsProvider() {
-                override fun getAdditionalProjectLibraries(project: com.intellij.openapi.project.Project) =
-                    listOf(library)
-
-                override fun getRootsToWatch(project: com.intellij.openapi.project.Project) =
-                    listOf(output)
-            },
+            PpphpGeneratedPhpLibraryProvider(projectRoot),
+            testRootDisposable,
+        )
+        DirectoryIndexExcludePolicy.EP_NAME.getPoint(project).registerExtension(
+            PpphpCompilerDirectoriesExcludePolicy(projectRoot),
             testRootDisposable,
         )
 
         refreshProjectRoots()
         IndexingTestUtil.waitUntilIndexesAreReady(project)
 
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        val excludedUrls = PpphpProjectConfiguration.excludedUrls(projectRoot)
+        assertFalse(excludedUrls.contains(output.url))
+        assertTrue(excludedUrls.contains(copied.url))
+        assertFalse(fileIndex.isInContent(compiled))
+        assertFalse(fileIndex.isInContent(copied))
+        assertTrue(fileIndex.isInLibrarySource(compiled))
+        assertFalse(fileIndex.isInLibrarySource(copied))
+
         val index = PhpIndex.getInstance(project)
         assertSize(1, index.getClassesByFQN("Atatusoft\\Showcase\\Application\\DemoRunner"))
-        assertSize(1, index.getClassesByFQN("Atatusoft\\Showcase\\Infrastructure\\LegacyGateway"))
+        assertEmpty(index.getClassesByFQN("Atatusoft\\Showcase\\Infrastructure\\LegacyGateway"))
     }
 
     fun testUnsupportedOrUnsafeManifestsFailClosed() {
@@ -104,6 +113,15 @@ class PpphpGeneratedPhpLibraryProviderTest : BasePlatformTestCase() {
 
         ApplicationManager.getApplication().runWriteAction {
             manifest.setBinaryContent("{".toByteArray())
+        }
+        assertNull(PpphpGeneratedPhpLibrary.resolve(output))
+
+        ApplicationManager.getApplication().runWriteAction {
+            manifest.setBinaryContent(
+                manifest(compiled("app/Unsafe.ppphp", "Unsafe.php"))
+                    .replace("\"formatVersion\": 2", "\"formatVersion\": 2.5")
+                    .toByteArray(),
+            )
         }
         assertNull(PpphpGeneratedPhpLibrary.resolve(output))
 

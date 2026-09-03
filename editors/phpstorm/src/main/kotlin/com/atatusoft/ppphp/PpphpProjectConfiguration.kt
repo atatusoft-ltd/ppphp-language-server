@@ -48,9 +48,15 @@ internal object PpphpProjectConfiguration {
     internal fun excludedUrls(projectRoot: VirtualFile): List<String> {
         val root = projectRoot(projectRoot) ?: return emptyList()
         val directories = load(root.path) ?: return emptyList()
-        return safePathOperation {
-            directories.paths.map { path -> exclusionUrl(root, path) ?: return@safePathOperation emptyList() }
-        } ?: emptyList()
+        val outputUrl = exclusionUrl(root, directories.output) ?: return emptyList()
+        val cacheUrl = exclusionUrl(root, directories.cache) ?: return emptyList()
+        val generatedLibrary = outputDirectory(root.file)?.let(PpphpGeneratedPhpLibrary::resolve)
+
+        return if (generatedLibrary == null) {
+            listOf(outputUrl, cacheUrl)
+        } else {
+            generatedLibrary.excludedUrls.sorted() + cacheUrl
+        }
     }
 
     fun load(project: Project): PpphpCompilerOwnedDirectories? {

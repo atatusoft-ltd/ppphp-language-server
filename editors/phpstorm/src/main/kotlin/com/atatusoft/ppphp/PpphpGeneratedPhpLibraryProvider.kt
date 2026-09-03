@@ -10,16 +10,31 @@ import com.intellij.openapi.roots.SyntheticLibrary
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.util.ArrayDeque
 
-class PpphpGeneratedPhpLibraryProvider : AdditionalLibraryRootsProvider() {
+class PpphpGeneratedPhpLibraryProvider private constructor(
+    private val projectRoot: (Project) -> VirtualFile?,
+    private val outputDirectory: (Project) -> VirtualFile?,
+) : AdditionalLibraryRootsProvider() {
+    constructor() : this(
+        { project -> project.guessProjectDir() },
+        PpphpProjectConfiguration::outputDirectory,
+    )
+
+    internal constructor(projectRoot: VirtualFile) : this(
+        { projectRoot },
+        { PpphpProjectConfiguration.outputDirectory(projectRoot) },
+    )
+
     override fun getAdditionalProjectLibraries(project: Project): Collection<SyntheticLibrary> =
-        PpphpGeneratedPhpLibrary.resolve(PpphpProjectConfiguration.outputDirectory(project))
+        PpphpGeneratedPhpLibrary.resolve(outputDirectory(project))
             ?.let(::listOf)
             ?: emptyList()
 
     override fun getRootsToWatch(project: Project): Collection<VirtualFile> =
-        listOfNotNull(project.guessProjectDir(), PpphpProjectConfiguration.outputDirectory(project))
+        listOfNotNull(projectRoot(project), outputDirectory(project))
 }
 
 internal class PpphpGeneratedPhpLibrary private constructor(
@@ -27,6 +42,8 @@ internal class PpphpGeneratedPhpLibrary private constructor(
     private val includedUrls: Set<String>,
     private val excludedRoots: Set<VirtualFile>,
 ) : SyntheticLibrary() {
+    internal val excludedUrls: Set<String> = excludedRoots.mapTo(linkedSetOf(), VirtualFile::getUrl)
+
     override fun getSourceRoots(): Collection<VirtualFile> = listOf(outputRoot)
 
     override fun getExcludedRoots(): Set<VirtualFile> = excludedRoots
@@ -34,9 +51,11 @@ internal class PpphpGeneratedPhpLibrary private constructor(
     override fun equals(other: Any?): Boolean =
         other is PpphpGeneratedPhpLibrary &&
             outputRoot.url == other.outputRoot.url &&
-            includedUrls == other.includedUrls
+            includedUrls == other.includedUrls &&
+            excludedUrls == other.excludedUrls
 
-    override fun hashCode(): Int = 31 * outputRoot.url.hashCode() + includedUrls.hashCode()
+    override fun hashCode(): Int =
+        31 * (31 * outputRoot.url.hashCode() + includedUrls.hashCode()) + excludedUrls.hashCode()
 
     companion object {
         private const val MANIFEST_PATH = ".ppphp/manifest.json"
@@ -73,7 +92,7 @@ internal class PpphpGeneratedPhpLibrary private constructor(
                 val output = entry.string("output")?.takeIf(::isSafeRelativePhpPath) ?: return null
                 if (sourceKind != "ppphp" || operation != "compile") continue
                 val outputFile = outputRoot.findFileByRelativePath(output)
-                    ?.takeIf { file -> file.isValid && !file.isDirectory }
+                    ?.takeIf { file -> file.isValid && !file.isDirectory && isSafeOutputFile(outputRoot, file) }
                     ?: continue
                 includeWithAncestors(outputRoot, outputFile, included)
             }
@@ -125,12 +144,29 @@ internal class PpphpGeneratedPhpLibrary private constructor(
             return components.none { component -> component.isEmpty() || component == "." || component == ".." }
         }
 
+        private fun isSafeOutputFile(outputRoot: VirtualFile, outputFile: VirtualFile): Boolean = try {
+            val root = outputRoot.toNioPath()
+            val file = outputFile.toNioPath()
+            var current = file
+            while (current != root) {
+                if (!current.startsWith(root) || Files.isSymbolicLink(current)) return false
+                current = current.parent ?: return false
+            }
+            Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
+                && file.toRealPath().startsWith(root.toRealPath())
+        } catch (_: IOException) {
+            false
+        } catch (_: RuntimeException) {
+            false
+        }
+
         private fun JsonObject.string(name: String): String? = get(name)
             ?.takeIf { value -> value.isJsonPrimitive && value.asJsonPrimitive.isString }
             ?.asString
 
         private fun JsonObject.integer(name: String): Int? = get(name)
             ?.takeIf { value -> value.isJsonPrimitive && value.asJsonPrimitive.isNumber }
-            ?.let { value -> runCatching { value.asInt }.getOrNull() }
+            ?.asString
+            ?.toIntOrNull()
     }
 }
