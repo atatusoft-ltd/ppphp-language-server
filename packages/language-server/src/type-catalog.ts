@@ -187,19 +187,25 @@ function declarationModifiers(
 function isAttributedAnonymousClass(source: string, classOffset: number): boolean {
   let offset = skipWhitespaceBackward(source, classOffset);
 
-  while (offset > 0 && source[offset - 1] === "]") {
-    let depth = 1;
-    let cursor = offset - 2;
-    for (; cursor >= 0 && depth > 0; cursor -= 1) {
-      if (source[cursor] === "]") depth += 1;
-      if (source[cursor] === "[") depth -= 1;
+  while (offset > 0) {
+    const modifier = /\b(?:abstract|final|readonly)$/iu.exec(source.slice(0, offset));
+    if (modifier?.index !== undefined) {
+      offset = skipWhitespaceBackward(source, modifier.index);
+      continue;
     }
-    if (depth !== 0 || cursor < 0 || source[cursor] !== "#") return false;
+    if (source[offset - 1] !== "]") break;
+
+    let attributeDepth = 1;
+    let cursor = offset - 2;
+    for (; cursor >= 0 && attributeDepth > 0; cursor -= 1) {
+      if (source[cursor] === "]") attributeDepth += 1;
+      if (source[cursor] === "[") attributeDepth -= 1;
+    }
+    if (attributeDepth !== 0 || cursor < 0 || source[cursor] !== "#") return false;
     offset = skipWhitespaceBackward(source, cursor);
   }
 
-  const match = /\bnew$/iu.exec(source.slice(0, offset));
-  return match !== null;
+  return /\bnew$/iu.test(source.slice(0, offset));
 }
 
 function skipWhitespaceBackward(source: string, offset: number): number {
