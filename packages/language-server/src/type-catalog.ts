@@ -298,8 +298,8 @@ async function discoverComposerSourceFiles(workspaceRoot: string): Promise<Compo
   const roots: ComposerSourceRoot[] = autoloadRoots(manifest, root, "project");
   const installed = await readJson(path.join(vendorDirectory, "composer", "installed.json"));
   for (const package_ of installedPackages(installed)) {
-    if (typeof package_["install-path"] !== "string") continue;
-    const packageRoot = path.resolve(vendorDirectory, "composer", package_["install-path"]);
+    if (typeof package_.install_path !== "string") continue;
+    const packageRoot = path.resolve(vendorDirectory, "composer", package_.install_path);
     if (!pathIsWithin(vendorDirectory, packageRoot)) continue;
     roots.push(...autoloadRoots(package_, packageRoot, "dependency"));
   }

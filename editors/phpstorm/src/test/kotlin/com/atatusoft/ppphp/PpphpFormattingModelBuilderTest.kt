@@ -135,13 +135,13 @@ class PpphpFormattingModelBuilderTest : BasePlatformTestCase() {
     }
 
     fun testDisabledAdditiveSpacingDoesNotMergeBinaryAndUnarySigns() {
-        CodeStyle.getSettings(project)
-            .getCommonSettings(PpphpLanguage.INSTANCE)
-            .SPACE_AROUND_ADDITIVE_OPERATORS = false
+        val common = CodeStyle.getSettings(project).getCommonSettings(PpphpLanguage.INSTANCE)
+        common.SPACE_AROUND_ADDITIVE_OPERATORS = false
+        common.SPACE_AROUND_UNARY_OPERATOR = false
 
         assertFormatted(
-            "<?php\n${'$'}a - -${'$'}b;\n${'$'}a + +${'$'}b;",
-            "<?php\n${'$'}a- -${'$'}b;\n${'$'}a+ +${'$'}b;",
+            "<?php\n${'$'}a - -${'$'}b;\n${'$'}a + +${'$'}b;\n${'$'}a + ++${'$'}b;\n${'$'}a-- - ${'$'}b;",
+            "<?php\n${'$'}a- -${'$'}b;\n${'$'}a+ +${'$'}b;\n${'$'}a+ ++${'$'}b;\n${'$'}a-- -${'$'}b;",
         )
     }
 

@@ -53,12 +53,14 @@ describe("type completion", () => {
   it("does not offer type imports in ordinary expression positions", () => {
     expect(complete("<?php function run() { return Pro", CATALOG)).toEqual([]);
     expect(complete("<?php function run() { Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php #[Example(1, Pro", CATALOG)).toEqual([]);
   });
 
   it("offers types in incomplete declarations and generic arguments", () => {
     expect(complete("<?php class Service { public Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(): Repository<Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php #[Pro", CATALOG)[0]?.label).toBe("Product");
   });
 
   it("reuses existing imports and aliases instead of inserting qualified names", () => {

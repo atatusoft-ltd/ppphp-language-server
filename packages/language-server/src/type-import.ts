@@ -426,7 +426,46 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   );
   if (returnType.test(statement)) return true;
 
-  return before.lastIndexOf("#[") > before.lastIndexOf("]") && /(?:#\[|,)\s*$/u.test(before);
+  return isAttributeNamePosition(before);
+}
+
+function isAttributeNamePosition(source: string): boolean {
+  let bracketDepth = 0;
+  let parenthesisDepth = 0;
+  let candidateStart = -1;
+
+  for (let index = 0; index < source.length; index += 1) {
+    if (bracketDepth === 0) {
+      if (source[index] === "#" && source[index + 1] === "[") {
+        bracketDepth = 1;
+        candidateStart = index + 2;
+        index += 1;
+      }
+      continue;
+    }
+
+    const character = source[index];
+    if (character === "[") bracketDepth += 1;
+    if (character === "]") {
+      bracketDepth -= 1;
+      if (bracketDepth === 0) {
+        parenthesisDepth = 0;
+        candidateStart = -1;
+      }
+    }
+    if (character === "(") parenthesisDepth += 1;
+    if (character === ")") parenthesisDepth = Math.max(0, parenthesisDepth - 1);
+    if (character === "," && bracketDepth === 1 && parenthesisDepth === 0) {
+      candidateStart = index + 1;
+    }
+  }
+
+  return (
+    bracketDepth === 1 &&
+    parenthesisDepth === 0 &&
+    candidateStart >= 0 &&
+    /^\s*$/u.test(source.slice(candidateStart))
+  );
 }
 
 export function isTypeCompletionAt(source: string, start: number, end: number): boolean {

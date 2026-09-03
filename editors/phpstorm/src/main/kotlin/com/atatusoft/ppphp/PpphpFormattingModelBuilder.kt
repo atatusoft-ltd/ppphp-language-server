@@ -191,6 +191,7 @@ private object PpphpSpacing {
     private val relationalOperators = setOf("<", ">", "<=", ">=")
     private val bitwiseOperators = setOf("&", "|", "^")
     private val additiveOperators = setOf("+", "-")
+    private val incrementOperators = setOf("++", "--")
     private val multiplicativeOperators = setOf("*", "/", "%", "**")
     private val shiftOperators = setOf("<<", ">>", "<<=", ">>=")
     private val tightOperators = setOf("\\", "->", "?->", "::", "...")
@@ -283,6 +284,12 @@ private object PpphpSpacing {
         if (leftText == "!" || rightText == "!") {
             val enabled = if (leftText == "!") php.SPACE_AFTER_UNARY_NOT else php.SPACE_BEFORE_UNARY_NOT
             return spaces(if (enabled) 1 else 0)
+        }
+        if (
+            leftText in additiveOperators && rightText in incrementOperators ||
+            rightText in additiveOperators && leftText in incrementOperators
+        ) {
+            return spaces(1)
         }
         if (leftText in setOf("~", "++", "--") || rightText in setOf("~", "++", "--")) {
             return spaces(if (common.SPACE_AROUND_UNARY_OPERATOR) 1 else 0)

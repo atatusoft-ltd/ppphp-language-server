@@ -87,6 +87,16 @@ describe("type import actions", () => {
     expect(actionsAt(constant, constant.indexOf("Repository"), [REPOSITORY])).toEqual([]);
   });
 
+  it("distinguishes attribute names from attribute argument expressions", () => {
+    const attribute = "<?php #[\\Vendor\\Contracts\\Repository] class Service {}\n";
+    const grouped = "<?php #[Example, \\Vendor\\Contracts\\Repository] class Service {}\n";
+    const argument = "<?php #[Example(1, \\Vendor\\Contracts\\Repository())] class Service {}\n";
+
+    expect(actionsAt(attribute, attribute.indexOf("Repository"), [REPOSITORY])).toHaveLength(1);
+    expect(actionsAt(grouped, grouped.indexOf("Repository"), [REPOSITORY])).toHaveLength(1);
+    expect(actionsAt(argument, argument.indexOf("Repository"), [REPOSITORY])).toEqual([]);
+  });
+
   it("inserts the first import after leading declare statements", () => {
     const source =
       "<?php\ndeclare(strict_types=1);\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
