@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { TextDocument } from "vscode-languageserver-textdocument";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   getTypeCatalog,
@@ -97,6 +99,36 @@ enum State {}
     expect(catalog).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ fqn: "Vendor\\Library\\Tests\\FakeClock" }),
+      ]),
+    );
+  });
+
+  it("replaces saved declarations with the contents of open documents", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-open-types-"));
+    const sourcePath = path.join(root, "src", "Model.ppphp");
+    await mkdir(path.dirname(sourcePath), { recursive: true });
+    await writeFile(
+      path.join(root, "ppphp.json"),
+      JSON.stringify({ source: ["src"], output: "build", cache: ".ppphp-cache" }),
+    );
+    await writeFile(sourcePath, "<?php namespace App; class OldModel {}\n");
+    const openDocument = TextDocument.create(
+      pathToFileURL(sourcePath).href,
+      "ppphp",
+      2,
+      "<?php namespace App; class NewModel {}\n",
+    );
+
+    const catalog = await getTypeCatalog(root, [openDocument]);
+
+    expect(catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "App\\NewModel", origin: "project" }),
+      ]),
+    );
+    expect(catalog).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "App\\OldModel", origin: "project" }),
       ]),
     );
   });

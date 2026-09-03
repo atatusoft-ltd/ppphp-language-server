@@ -21,7 +21,12 @@ export interface TypeCatalogEntry {
 
 interface CatalogCacheEntry {
   createdAt: number;
-  catalog: Promise<TypeCatalogEntry[]>;
+  catalog: Promise<SavedTypeCatalog>;
+}
+
+interface SavedTypeCatalog {
+  external: TypeCatalogEntry[];
+  projectByFile: Map<string, TypeCatalogEntry[]>;
 }
 
 interface ComposerSourceFile {
@@ -61,15 +66,23 @@ export async function getTypeCatalog(
   }
 
   const saved = await cached.catalog;
+  const openPaths = new Set<string>();
   const open = openDocuments.flatMap((document) => {
     const filePath = filePathFromUri(document.uri);
-    return filePath &&
-      path.extname(filePath).toLowerCase() === ".ppphp" &&
-      pathIsWithin(root, filePath)
-      ? parseTypeDeclarations(document.getText(), "project")
-      : [];
+    if (
+      !filePath ||
+      path.extname(filePath).toLowerCase() !== ".ppphp" ||
+      !pathIsWithin(root, filePath)
+    ) {
+      return [];
+    }
+    openPaths.add(normalizePath(filePath));
+    return parseTypeDeclarations(document.getText(), "project");
   });
-  return mergeTypeCatalog([...saved, ...open]);
+  const savedProject = [...saved.projectByFile]
+    .filter(([filePath]) => !openPaths.has(filePath))
+    .flatMap(([, types]) => types);
+  return mergeTypeCatalog([...saved.external, ...savedProject, ...open]);
 }
 
 export function invalidateTypeCatalog(workspaceRoot?: string): void {
@@ -215,15 +228,18 @@ function parseNamespace(
   return null;
 }
 
-async function buildSavedTypeCatalog(workspaceRoot: string): Promise<TypeCatalogEntry[]> {
+async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCatalog> {
   const [project, composerSources, builtins] = await Promise.all([
     discoverProjectDocuments(workspaceRoot, []).catch(() => []),
     discoverComposerSourceFiles(workspaceRoot).catch(() => []),
     getPhpRuntimeTypes(),
   ]);
   const projectPaths = new Set(project.map(({ filePath }) => normalizePath(filePath)));
-  const projectTypes = project.flatMap(({ document }) =>
-    parseTypeDeclarations(document.getText(), "project"),
+  const projectByFile = new Map(
+    project.map(({ filePath, document }) => [
+      normalizePath(filePath),
+      parseTypeDeclarations(document.getText(), "project"),
+    ]),
   );
   const composerTypes = await mapWithConcurrency(
     composerSources.filter(({ filePath }) => !projectPaths.has(normalizePath(filePath))),
@@ -239,7 +255,10 @@ async function buildSavedTypeCatalog(workspaceRoot: string): Promise<TypeCatalog
     },
   );
 
-  return mergeTypeCatalog([...builtins, ...composerTypes.flat(), ...projectTypes]);
+  return {
+    external: mergeTypeCatalog([...builtins, ...composerTypes.flat()]),
+    projectByFile,
+  };
 }
 
 async function discoverComposerSourceFiles(workspaceRoot: string): Promise<ComposerSourceFile[]> {

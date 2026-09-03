@@ -24,6 +24,7 @@ interface ImportedType {
 interface ImportStatement {
   start: number;
   end: number;
+  appendOffset: number;
   types: ImportedType[];
 }
 
@@ -119,6 +120,7 @@ export function createTypeImportPlanner(
     return null;
   }
   const imported = statements.flatMap((statement) => statement.types);
+  const referencedLocalTypes = unqualifiedTypeReferences(masked, scope, offset);
   const localNames = new Set(
     parseTypeDeclarations(source, "project")
       .filter((type) => equalName(type.namespace, scope.namespace))
@@ -134,6 +136,7 @@ export function createTypeImportPlanner(
       importAnchor,
       statements,
       imported,
+      referencedLocalTypes,
       localNames,
       source,
       lineEnding,
@@ -148,6 +151,7 @@ function planTypeImport(
   importAnchor: number,
   statements: readonly ImportStatement[],
   imported: readonly ImportedType[],
+  referencedLocalTypes: ReadonlySet<string>,
   localNames: ReadonlySet<string>,
   source: string,
   lineEnding: string,
@@ -166,7 +170,8 @@ function planTypeImport(
       type.startsWith(`${entry.name.toLowerCase()}\0`) &&
       type !== `${entry.name.toLowerCase()}\0${entry.fqn.toLowerCase()}`,
   );
-  if (collision || localCollision) return null;
+  if (collision || localCollision || referencedLocalTypes.has(entry.name.toLowerCase()))
+    return null;
 
   const sortedBeforeIndex =
     importSorting === "none"
@@ -181,12 +186,14 @@ function planTypeImport(
       ? statements[sortedBeforeIndex]
       : undefined;
   const lastStatement = statements.at(-1);
-  const insertionOffset = sortedBefore?.start ?? lastStatement?.end ?? importAnchor;
+  const insertionOffset = sortedBefore?.start ?? lastStatement?.appendOffset ?? importAnchor;
   const indentation = lineIndentationAt(source, sortedBefore?.start ?? lastStatement?.start);
   const newText = sortedBefore
     ? `use ${entry.fqn};${lineEnding}${indentation}`
     : lastStatement
-      ? `${lineEnding}${indentation}use ${entry.fqn};`
+      ? lastStatement.appendOffset > lastStatement.end
+        ? `${indentation}use ${entry.fqn};${lineEnding}`
+        : `${lineEnding}${indentation}use ${entry.fqn};`
       : `${lineEnding}${lineEnding}${namespaceBodyIndentation(source, scope)}use ${entry.fqn};`;
 
   return {
@@ -318,10 +325,18 @@ function importStatements(source: string, scope: ImportScope): ImportStatement[]
     statements.push({
       start,
       end: end + 1,
+      appendOffset: importAppendOffset(source, end + 1, scope.end),
       types: importedTypes(source.slice(start + token[0].length, end)),
     });
   }
   return statements;
+}
+
+function importAppendOffset(source: string, statementEnd: number, scopeEnd: number): number {
+  const lineFeed = source.indexOf("\n", statementEnd);
+  const lineEnd = lineFeed >= 0 && lineFeed < scopeEnd ? lineFeed + 1 : scopeEnd;
+  const contentEnd = lineFeed >= 0 && lineFeed < scopeEnd ? lineFeed : scopeEnd;
+  return /^[\t ]*\r?$/u.test(source.slice(statementEnd, contentEnd)) ? lineEnd : statementEnd;
 }
 
 function importedTypes(body: string): ImportedType[] {
@@ -410,6 +425,23 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   if (returnType.test(statement)) return true;
 
   return before.lastIndexOf("#[") > before.lastIndexOf("]") && /(?:#\[|,)\s*$/u.test(before);
+}
+
+function unqualifiedTypeReferences(
+  source: string,
+  scope: ImportScope,
+  ignoredOffset: number,
+): Set<string> {
+  const references = new Set<string>();
+  const expression = new RegExp(IDENTIFIER, "giu");
+  for (const match of source.slice(scope.start, scope.end).matchAll(expression)) {
+    const start = scope.start + (match.index ?? 0);
+    const end = start + match[0].length;
+    if (start <= ignoredOffset && ignoredOffset <= end) continue;
+    if (source[start - 1] === "\\" || source[end] === "\\") continue;
+    if (isTypeReferenceAt(source, start, end)) references.add(match[0].toLowerCase());
+  }
+  return references;
 }
 
 function equalName(left: string, right: string): boolean {

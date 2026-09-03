@@ -84,7 +84,29 @@ describe("type completion", () => {
     });
     expect(unsorted).toMatchObject({
       textEdit: { newText: "Repository" },
-      additionalTextEdits: [{ newText: "\nuse Vendor\\Contracts\\Repository;" }],
+      additionalTextEdits: [{ newText: "use Vendor\\Contracts\\Repository;\n" }],
+    });
+  });
+
+  it("keeps a qualified completion when an unimported short type is already referenced", () => {
+    const items = complete(
+      "<?php\nnamespace App;\n\nclass Service { private Product $current; public function make(): Pro",
+      CATALOG,
+    );
+
+    expect(items[0]).toMatchObject({
+      label: "Product",
+      textEdit: { newText: "\\Vendor\\Domain\\Product" },
+      additionalTextEdits: undefined,
+    });
+  });
+
+  it("does not treat the completion target as a pre-existing short reference", () => {
+    const item = complete("<?php namespace App; function make(): Product", CATALOG)[0];
+
+    expect(item).toMatchObject({
+      textEdit: { newText: "Product" },
+      additionalTextEdits: [{ newText: "\n\nuse Vendor\\Domain\\Product;" }],
     });
   });
 

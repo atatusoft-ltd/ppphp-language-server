@@ -41,6 +41,13 @@ describe("type import actions", () => {
     ).toEqual([]);
   });
 
+  it("does not rebind an existing unqualified type reference", () => {
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private Repository $current; public function make(): \\Vendor\\Contracts\\Repository {} }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Repository"), [REPOSITORY])).toEqual([]);
+  });
+
   it("preserves CRLF and supports bracketed namespaces", () => {
     const source =
       "<?php\r\nnamespace App {\r\n\r\nclass Service implements \\Vendor\\Contracts\\Repository {}\r\n}\r\n";
@@ -137,6 +144,21 @@ describe("type import actions", () => {
       applyFirstAction(commented, commented.lastIndexOf("Repository") + 2, [REPOSITORY]),
     ).toContain(
       "// Required by the product boundary.\nuse Vendor\\Domain\\Product;\nuse Vendor\\Contracts\\Repository;",
+    );
+  });
+
+  it("preserves a trailing comment when appending an import", () => {
+    const source =
+      "<?php\nnamespace App;\n\nuse Vendor\\Domain\\Product; // Domain model.\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
+    const updated = applyFirstAction(
+      source,
+      source.lastIndexOf("Repository") + 2,
+      [REPOSITORY],
+      "none",
+    );
+
+    expect(updated).toContain(
+      "use Vendor\\Domain\\Product; // Domain model.\nuse Vendor\\Contracts\\Repository;",
     );
   });
 });
