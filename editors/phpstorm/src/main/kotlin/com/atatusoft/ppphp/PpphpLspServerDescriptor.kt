@@ -1,5 +1,6 @@
 package com.atatusoft.ppphp
 
+import com.intellij.application.options.CodeStyle
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
@@ -8,6 +9,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
 import com.intellij.platform.lsp.api.customization.LspCustomization
+import com.jetbrains.php.lang.formatter.PhpCodeStyleSettings
+import org.eclipse.lsp4j.ConfigurationItem
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -26,6 +29,22 @@ class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
             pluginRoot,
             project.basePath,
             "--stdio",
+        )
+    }
+
+    override fun getWorkspaceConfiguration(item: ConfigurationItem): Any? {
+        if (item.section != "ppphp") return super.getWorkspaceConfiguration(item)
+
+        val sorting = CodeStyle.getSettings(project)
+            .getCustomSettings(PpphpCodeStyleSettings::class.java)
+            .IMPORT_SORTING
+        val protocolSorting = when (sorting) {
+            PhpCodeStyleSettings.ImportSorting.ALPHABETIC -> "alphabetic"
+            PhpCodeStyleSettings.ImportSorting.BY_LENGTH -> "length"
+            PhpCodeStyleSettings.ImportSorting.DONT_SORT -> "none"
+        }
+        return mapOf(
+            "completion" to mapOf("importSorting" to protocolSorting),
         )
     }
 }

@@ -70,18 +70,68 @@ describe("type import actions", () => {
       "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\n$callback = function () use ($value) {};\n\nclass Service implements Repository {}\n",
     );
   });
+
+  it("places generated imports alphabetically, by length, or after existing imports", () => {
+    const alphabeticSource =
+      "<?php\nnamespace App;\n\nuse Vendor\\Domain\\Product;\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
+    const lengthSource =
+      "<?php\nnamespace App;\n\nuse Vendor\\LongerNamespace\\Zebra;\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
+
+    expect(
+      applyFirstAction(
+        alphabeticSource,
+        alphabeticSource.lastIndexOf("Repository") + 2,
+        [REPOSITORY],
+        "alphabetic",
+      ),
+    ).toContain("use Vendor\\Contracts\\Repository;\nuse Vendor\\Domain\\Product;");
+    expect(
+      applyFirstAction(
+        lengthSource,
+        lengthSource.lastIndexOf("Repository") + 2,
+        [REPOSITORY],
+        "length",
+      ),
+    ).toContain("use Vendor\\Contracts\\Repository;\nuse Vendor\\LongerNamespace\\Zebra;");
+    expect(
+      applyFirstAction(
+        lengthSource,
+        lengthSource.lastIndexOf("Repository") + 2,
+        [REPOSITORY],
+        "none",
+      ),
+    ).toContain("use Vendor\\LongerNamespace\\Zebra;\nuse Vendor\\Contracts\\Repository;");
+  });
+
+  it("preserves indentation and comments attached to existing imports", () => {
+    const indented =
+      "<?php\nnamespace App {\n    use Vendor\\Domain\\Product;\n\n    class Service implements \\Vendor\\Contracts\\Repository {}\n}\n";
+    const commented =
+      "<?php\nnamespace App;\n\n// Required by the product boundary.\nuse Vendor\\Domain\\Product;\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
+
+    expect(
+      applyFirstAction(indented, indented.lastIndexOf("Repository") + 2, [REPOSITORY]),
+    ).toContain("    use Vendor\\Contracts\\Repository;\n    use Vendor\\Domain\\Product;");
+    expect(
+      applyFirstAction(commented, commented.lastIndexOf("Repository") + 2, [REPOSITORY]),
+    ).toContain(
+      "// Required by the product boundary.\nuse Vendor\\Domain\\Product;\nuse Vendor\\Contracts\\Repository;",
+    );
+  });
 });
 
 function applyFirstAction(
   source: string,
   offset: number,
   catalog: readonly TypeCatalogEntry[],
+  importSorting: "alphabetic" | "length" | "none" = "alphabetic",
 ): string {
   const document = createDocument(source);
   const actions = typeImportCodeActionsAt(
     document,
     { start: document.positionAt(offset), end: document.positionAt(offset) },
     catalog,
+    importSorting,
   );
   expect(actions[0]?.title).toBe(`Use import for ${catalog[0]?.fqn}`);
   const edits = actions[0]?.edit?.changes?.[document.uri] ?? [];

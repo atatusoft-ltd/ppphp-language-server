@@ -1,5 +1,6 @@
 package com.atatusoft.ppphp
 
+import com.intellij.application.options.CodeStyle
 import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.openapi.editor.highlighter.EditorHighlighter
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
@@ -15,9 +16,11 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.jetbrains.php.lang.PhpFileType
 import com.jetbrains.php.lang.PhpLanguage
+import com.jetbrains.php.lang.formatter.PhpCodeStyleSettings
 import com.jetbrains.php.lang.highlighter.PhpHighlightingData
-import com.jetbrains.php.lang.lexer.PhpTokenTypes
 import com.jetbrains.php.lang.inspections.PhpUndefinedConstantInspection
+import com.jetbrains.php.lang.lexer.PhpTokenTypes
+import org.eclipse.lsp4j.ConfigurationItem
 import java.nio.file.Path
 
 class PpphpPluginIntegrationTest : BasePlatformTestCase() {
@@ -67,6 +70,19 @@ class PpphpPluginIntegrationTest : BasePlatformTestCase() {
             "<?php\nclass Box<T> { public T \$value; }\n",
         )
         assertTrue((support as LspSemanticTokensSupport).shouldAskServerForSemanticTokens(file))
+    }
+
+    fun testLspDescriptorExposesCurrentPpphpImportSorting() {
+        val descriptor = PpphpLspServerDescriptor(project, Path.of("unused-in-this-test"))
+        val ppphp = CodeStyle.getSettings(project)
+            .getCustomSettings(PpphpCodeStyleSettings::class.java)
+        val item = ConfigurationItem().apply { section = "ppphp" }
+
+        ppphp.IMPORT_SORTING = PhpCodeStyleSettings.ImportSorting.BY_LENGTH
+        val configuration = descriptor.getWorkspaceConfiguration(item) as Map<*, *>
+        val completion = configuration["completion"] as Map<*, *>
+
+        assertEquals("length", completion["importSorting"])
     }
 
     fun testSemanticSymbolsUseNativePhpColourSchemeKeys() {

@@ -147,6 +147,14 @@ require_source_contains(
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    '<lang.formatter',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
+    'implementationClass="com.atatusoft.ppphp.PpphpFormattingModelBuilder"',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',
     'id="com.atatusoft.ppphp.actions.PpphpCreateFileAction"',
 );
 require_source_contains(
@@ -172,6 +180,18 @@ require_source_contains(
 require_source_contains(
     $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpCodeStyleSettings.kt',
     'PhpLanguageCodeStyleSettingsProvider',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpFormattingModelBuilder.kt',
+    'PpphpElementTypes.INTERPOLATED_STRING',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpLspServerDescriptor.kt',
+    '"completion" to mapOf("importSorting" to protocolSorting)',
+);
+require_check(
+    isset($vscodeManifest['contributes']['configuration']['properties']['ppphp.completion.importSorting']),
+    'the VS Code manifest must expose deterministic completion import sorting',
 );
 require_source_contains(
     $root . '/editors/phpstorm/src/main/resources/META-INF/plugin.xml',

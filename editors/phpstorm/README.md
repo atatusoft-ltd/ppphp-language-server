@@ -6,7 +6,7 @@ For projects with `ppphp.json`, the configured compiler-owned `output` and `cach
 
 PhpStorm's **Refactor | Rename** action is available on ++PHP classes, interfaces, traits, and enums. The language server verifies every project occurrence through compiler symbol identity, updates references across configured source roots, and renames a matching `.ppphp` source file. Refactors that would collide, cross project boundaries, or require unsupported editor file operations are refused without partial edits.
 
-Type completion reuses existing `use` imports and aliases, adding a safe import when no short-name collision exists. A fully qualified type offers **Use import** through the intention menu; both behaviors come from the shared language server and therefore match VS Code.
+Type completion reuses existing `use` imports and aliases, adding a safe import when no short-name collision exists. Generated imports follow the ++PHP import-sorting choice under code-conversion settings. A fully qualified type offers **Use import** through the intention menu; both behaviors come from the shared language server and therefore match VS Code.
 
 ## Creating source files
 
@@ -14,7 +14,7 @@ The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Bot
 
 The class action follows PhpStorm's PHP creation workflow: choose a class, interface, trait, or enum; accept or edit the Composer/PSR namespace suggestion; optionally choose its PHP parent types; and choose `string` or `int` for a backed enum. The parent controls offer deterministic completion from ++PHP project sources, Composer dependencies, the active PHP runtime, and PhpStorm's PHP index; class and interface candidates are kept distinct, and final classes are excluded from `extends`. While the Name editor is focused, Up and Down cycle through declaration templates using PhpStorm's native template-cycling behavior. Generated declarations deliberately mirror PhpStorm's bundled PHP templates, including the configured PHP file header. The plugin does not insert inactive ++PHP syntax.
 
-The plugin also adds **Editor | Code Style | ++PHP**. Its formatter, PHPDoc, code-conversion, and code-generation tabs mirror PhpStorm's PHP controls but store their values independently for ++PHP. Declaration creation reads those values; class-family braces appear on a new line by default and follow the selected PHP-compatible class-brace placement and spacing options.
+The plugin also adds **Editor | Code Style | ++PHP**. Its formatter, PHPDoc, code-conversion, and code-generation tabs mirror PhpStorm's PHP controls but store their values independently for ++PHP. Reformat Code and live Enter indentation apply the structural indentation, spacing, brace-placement, and blank-line choices through ++PHP's shallow PSI, preserving strings and ++PHP-only syntax rather than feeding the source to PHP's parser. Declaration creation reads the same values; class-family braces appear on a new line by default and follow the selected PHP-compatible class-brace placement and spacing options.
 
 The filename defaults to the declaration name but can be changed independently. Namespace suggestions first use the nearest Composer manifest's canonical ++PHP source mappings (`extra.ppphp.source-autoload` and `extra.ppphp.source-autoload-dev`). When no source mapping applies, they fall back to PhpStorm's PHP project model. This keeps creation correct after `ppphp composer:configure` moves Composer's runtime mappings to generated PHP while requiring no editor-only namespace configuration.
 

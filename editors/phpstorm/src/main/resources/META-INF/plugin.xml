@@ -17,6 +17,9 @@
         <lang.parserDefinition language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpParserDefinition" />
         <langCodeStyleSettingsProvider
             implementation="com.atatusoft.ppphp.PpphpLanguageCodeStyleSettingsProvider" />
+        <lang.formatter
+            language="++PHP"
+            implementationClass="com.atatusoft.ppphp.PpphpFormattingModelBuilder" />
         <internalFileTemplate name="++PHP File" />
         <internalFileTemplate name="++PHP Class" />
         <internalFileTemplate name="++PHP Interface" />

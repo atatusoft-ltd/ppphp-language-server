@@ -71,11 +71,31 @@ describe("type completion", () => {
       additionalTextEdits: undefined,
     });
   });
+
+  it("adds an unimported type according to the configured import order", () => {
+    const source =
+      "<?php\nnamespace App;\n\nuse Vendor\\Domain\\Product;\n\nclass Service { public Repo";
+    const alphabetic = complete(source, CATALOG, "alphabetic")[0];
+    const unsorted = complete(source, CATALOG, "none")[0];
+
+    expect(alphabetic).toMatchObject({
+      textEdit: { newText: "Repository" },
+      additionalTextEdits: [{ newText: "use Vendor\\Contracts\\Repository;\n" }],
+    });
+    expect(unsorted).toMatchObject({
+      textEdit: { newText: "Repository" },
+      additionalTextEdits: [{ newText: "\nuse Vendor\\Contracts\\Repository;" }],
+    });
+  });
 });
 
-function complete(source: string, catalog: readonly TypeCatalogEntry[]) {
+function complete(
+  source: string,
+  catalog: readonly TypeCatalogEntry[],
+  importSorting: "alphabetic" | "length" | "none" = "alphabetic",
+) {
   const document = TextDocument.create("file:///workspace/Example.ppphp", "ppphp", 1, source);
-  return typeCompletionsAt(document, document.positionAt(source.length), catalog);
+  return typeCompletionsAt(document, document.positionAt(source.length), catalog, importSorting);
 }
 
 function type(

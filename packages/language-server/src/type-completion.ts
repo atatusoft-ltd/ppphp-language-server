@@ -8,6 +8,7 @@ import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
 import type { TypeCatalogEntry, TypeKind, TypeOrigin } from "./type-catalog.js";
 import { createTypeImportPlanner } from "./type-import.js";
+import type { ImportSorting } from "./server-settings.js";
 
 const MAXIMUM_COMPLETIONS = 200;
 
@@ -15,6 +16,7 @@ export function typeCompletionsAt(
   document: TextDocument,
   position: Position,
   catalog: readonly TypeCatalogEntry[],
+  importSorting: ImportSorting = "alphabetic",
 ): CompletionItem[] {
   const source = document.getText();
   const offset = document.offsetAt(position);
@@ -24,7 +26,7 @@ export function typeCompletionsAt(
   const context = completionContext(maskNonCode(source), document.offsetAt(replacement.start));
   const importPlanner = typed.startsWith("\\")
     ? null
-    : createTypeImportPlanner(document, document.offsetAt(replacement.start));
+    : createTypeImportPlanner(document, document.offsetAt(replacement.start), importSorting);
 
   return catalog
     .filter(

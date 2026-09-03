@@ -18,6 +18,7 @@ describe("language-server host settings", () => {
     ).toEqual({
       compilerPath: "/tools/ppphp",
       enabled: false,
+      importSorting: "alphabetic",
       timeoutMilliseconds: 2_500,
     });
 
@@ -27,6 +28,16 @@ describe("language-server host settings", () => {
         diagnostics: { compiler: { enabled: "no", timeoutMilliseconds: Number.NaN } },
       }),
     ).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("accepts only supported deterministic import sorting modes", () => {
+    expect(
+      compilerSettingsFromConfiguration({ completion: { importSorting: "length" } }).importSorting,
+    ).toBe("length");
+    expect(
+      compilerSettingsFromConfiguration({ completion: { importSorting: "unexpected" } })
+        .importSorting,
+    ).toBe(DEFAULT_SETTINGS.importSorting);
   });
 
   it("preserves the host path and adds existing desktop fallback directories", () => {

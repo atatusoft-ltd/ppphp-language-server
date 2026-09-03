@@ -7,7 +7,6 @@ import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
 import com.intellij.lexer.Lexer
-import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
 import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiElement
@@ -15,7 +14,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.IFileElementType
 import com.intellij.psi.tree.TokenSet
-import com.jetbrains.php.lang.PhpLanguage
+import com.jetbrains.php.lang.lexer.PhpLexer
 import com.jetbrains.php.lang.lexer.PhpTokenTypes
 
 class PpphpParserDefinition : ParserDefinition {
@@ -49,14 +48,8 @@ class PpphpParserDefinition : ParserDefinition {
     companion object {
         val FILE = IFileElementType(PpphpLanguage.INSTANCE)
 
-        private fun createPhpLexer(project: Project?): Lexer =
-            requireNotNull(
-                SyntaxHighlighterFactory.getSyntaxHighlighter(
-                    PhpLanguage.INSTANCE,
-                    project,
-                    null,
-                ),
-            ).highlightingLexer
+        private fun createPhpLexer(@Suppress("UNUSED_PARAMETER") project: Project?): Lexer =
+            PhpLexer(false)
 
         private fun parseChildren(builder: PsiBuilder, closingType: IElementType?) {
             while (
@@ -64,6 +57,27 @@ class PpphpParserDefinition : ParserDefinition {
                     (closingType == null || PpphpTokenTypes.unwrap(builder.tokenType) !== closingType)
             ) {
                 when (PpphpTokenTypes.unwrap(builder.tokenType)) {
+                    PhpTokenTypes.chLDOUBLE_QUOTE ->
+                        parseOpaque(
+                            builder,
+                            PhpTokenTypes.chRDOUBLE_QUOTE,
+                            PpphpElementTypes.INTERPOLATED_STRING,
+                        )
+
+                    PhpTokenTypes.chLBACKTRICK ->
+                        parseOpaque(
+                            builder,
+                            PhpTokenTypes.chRBACKTRICK,
+                            PpphpElementTypes.INTERPOLATED_STRING,
+                        )
+
+                    PhpTokenTypes.HEREDOC_START ->
+                        parseOpaque(
+                            builder,
+                            PhpTokenTypes.HEREDOC_END,
+                            PpphpElementTypes.HEREDOC,
+                        )
+
                     PhpTokenTypes.chLBRACE ->
                         parseDelimited(builder, PhpTokenTypes.chRBRACE, PpphpElementTypes.BLOCK)
 
@@ -95,6 +109,25 @@ class PpphpParserDefinition : ParserDefinition {
             }
             group.done(elementType)
         }
+
+        private fun parseOpaque(
+            builder: PsiBuilder,
+            closingType: IElementType,
+            elementType: IElementType,
+        ) {
+            val group = builder.mark()
+            builder.advanceLexer()
+            while (
+                !builder.eof() &&
+                PpphpTokenTypes.unwrap(builder.tokenType) !== closingType
+            ) {
+                builder.advanceLexer()
+            }
+            if (PpphpTokenTypes.unwrap(builder.tokenType) === closingType) {
+                builder.advanceLexer()
+            }
+            group.done(elementType)
+        }
     }
 }
 
@@ -102,6 +135,8 @@ internal object PpphpElementTypes {
     val BLOCK = IElementType("++PHP block", PpphpLanguage.INSTANCE)
     val PARENTHESIZED = IElementType("++PHP parenthesized", PpphpLanguage.INSTANCE)
     val BRACKETED = IElementType("++PHP bracketed", PpphpLanguage.INSTANCE)
+    val INTERPOLATED_STRING = IElementType("++PHP interpolated string", PpphpLanguage.INSTANCE)
+    val HEREDOC = IElementType("++PHP heredoc", PpphpLanguage.INSTANCE)
 }
 
 class PpphpPsiFile(viewProvider: FileViewProvider) :

@@ -6,7 +6,7 @@
 - Add compiler-verified project-wide rename for ++PHP class-family declarations and references.
 - Preserve native PHP highlighting for `$this` and PHP superglobals.
 - Add deterministic project, Composer dependency, and PHP runtime type completion.
-- Reuse existing imports during completion, add safe imports for external types, and offer a `Use import` Quick Fix for fully qualified types.
+- Reuse existing imports during completion, add safely ordered imports for external types, and offer a `Use import` Quick Fix for fully qualified types.
 - Show the specific compiler diagnostic first in the Problems panel.
 
 ## 0.1.1

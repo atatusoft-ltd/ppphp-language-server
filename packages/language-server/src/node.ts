@@ -12,7 +12,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
-import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
+import { checkFile, filePathFromUri } from "./compiler-diagnostics.js";
 import { prepareTypeRenameAt, renameTypeAt, type RenameClientSupport } from "./compiler-rename.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
 import {
@@ -21,7 +21,11 @@ import {
 } from "./composer-namespace.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
-import { compilerSettingsFromConfiguration, DEFAULT_SETTINGS } from "./server-settings.js";
+import {
+  compilerSettingsFromConfiguration,
+  DEFAULT_SETTINGS,
+  type ServerSettings,
+} from "./server-settings.js";
 import { getTypeCatalog, invalidateTypeCatalog } from "./type-catalog.js";
 import { typeCompletionsAt } from "./type-completion.js";
 import { typeImportCodeActionsAt } from "./type-import.js";
@@ -103,7 +107,8 @@ connection.onCompletion(async ({ textDocument, position }) => {
 
   const workspaceRoot = findWorkspaceRoot(filePath);
   const catalog = await getTypeCatalog(workspaceRoot, documents.all());
-  const types = typeCompletionsAt(document, position, catalog);
+  const settings = await getSettings(document.uri);
+  const types = typeCompletionsAt(document, position, catalog, settings.importSorting);
   return types.length > 0 ? [...types, ...COMPLETIONS] : [...COMPLETIONS];
 });
 connection.onCodeAction(async ({ textDocument, range }) => {
@@ -113,7 +118,8 @@ connection.onCodeAction(async ({ textDocument, range }) => {
 
   const workspaceRoot = findWorkspaceRoot(filePath);
   const catalog = await getTypeCatalog(workspaceRoot, documents.all());
-  return typeImportCodeActionsAt(document, range, catalog);
+  const settings = await getSettings(document.uri);
+  return typeImportCodeActionsAt(document, range, catalog, settings.importSorting);
 });
 connection.onExecuteCommand(({ command, arguments: arguments_ }) =>
   command === INFER_COMPOSER_NAMESPACE_COMMAND ? handleComposerNamespaceCommand(arguments_) : null,
@@ -227,7 +233,7 @@ async function validate(document: TextDocument): Promise<void> {
   }
 }
 
-async function getSettings(scopeUri: string): Promise<CompilerSettings> {
+async function getSettings(scopeUri: string): Promise<ServerSettings> {
   if (!supportsConfiguration) return DEFAULT_SETTINGS;
 
   try {

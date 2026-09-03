@@ -7,6 +7,7 @@ import {
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
 import { parseTypeDeclarations, type TypeCatalogEntry } from "./type-catalog.js";
+import type { ImportSorting } from "./server-settings.js";
 
 interface ImportScope {
   namespace: string;
@@ -45,6 +46,7 @@ export function typeImportCodeActionsAt(
   document: TextDocument,
   range: Range,
   catalog: readonly TypeCatalogEntry[],
+  importSorting: ImportSorting = "alphabetic",
 ): CodeAction[] {
   const source = document.getText();
   const masked = maskNonCode(source);
@@ -68,7 +70,7 @@ export function typeImportCodeActionsAt(
   const entry = catalog.find((candidate) => equalName(candidate.fqn, fqn));
   if (!entry) return [];
 
-  const plan = createTypeImportPlanner(document, start)?.(entry);
+  const plan = createTypeImportPlanner(document, start, importSorting)?.(entry);
   if (!plan) return [];
 
   const edits: TextEdit[] = [
@@ -96,13 +98,15 @@ export function planTypeImportAt(
   document: TextDocument,
   offset: number,
   entry: TypeCatalogEntry,
+  importSorting: ImportSorting = "alphabetic",
 ): TypeImportPlan | null {
-  return createTypeImportPlanner(document, offset)?.(entry) ?? null;
+  return createTypeImportPlanner(document, offset, importSorting)?.(entry) ?? null;
 }
 
 export function createTypeImportPlanner(
   document: TextDocument,
   offset: number,
+  importSorting: ImportSorting = "alphabetic",
 ): TypeImportPlanner | null {
   const source = document.getText();
   const masked = maskNonCode(source);
@@ -121,7 +125,17 @@ export function createTypeImportPlanner(
   const lineEnding = source.includes("\r\n") ? "\r\n" : "\n";
 
   return (entry) =>
-    planTypeImport(document, entry, scope, statements, imported, localNames, lineEnding);
+    planTypeImport(
+      document,
+      entry,
+      scope,
+      statements,
+      imported,
+      localNames,
+      source,
+      lineEnding,
+      importSorting,
+    );
 }
 
 function planTypeImport(
@@ -131,7 +145,9 @@ function planTypeImport(
   statements: readonly ImportStatement[],
   imported: readonly ImportedType[],
   localNames: ReadonlySet<string>,
+  source: string,
   lineEnding: string,
+  importSorting: ImportSorting,
 ): TypeImportPlan | null {
   const existing = imported.find((type) => equalName(type.fqn, entry.fqn));
   if (existing) return { reference: existing.alias };
@@ -148,11 +164,25 @@ function planTypeImport(
   );
   if (collision || localCollision) return null;
 
+  const sortedBeforeIndex =
+    importSorting === "none"
+      ? -1
+      : statements.findIndex((statement) => {
+          const importedFqn = statement.types[0]?.fqn;
+          return importedFqn ? compareImports(entry.fqn, importedFqn, importSorting) < 0 : false;
+        });
+  const sortedBefore =
+    sortedBeforeIndex >= 0 && hasOnlyWhitespaceBefore(source, scope, statements, sortedBeforeIndex)
+      ? statements[sortedBeforeIndex]
+      : undefined;
   const lastStatement = statements.at(-1);
-  const insertionOffset = lastStatement?.end ?? scope.anchor;
-  const newText = lastStatement
-    ? `${lineEnding}use ${entry.fqn};`
-    : `${lineEnding}${lineEnding}use ${entry.fqn};`;
+  const insertionOffset = sortedBefore?.start ?? lastStatement?.end ?? scope.anchor;
+  const indentation = lineIndentationAt(source, sortedBefore?.start ?? lastStatement?.start);
+  const newText = sortedBefore
+    ? `use ${entry.fqn};${lineEnding}${indentation}`
+    : lastStatement
+      ? `${lineEnding}${indentation}use ${entry.fqn};`
+      : `${lineEnding}${lineEnding}${namespaceBodyIndentation(source, scope)}use ${entry.fqn};`;
 
   return {
     reference: entry.name,
@@ -164,6 +194,46 @@ function planTypeImport(
       newText,
     },
   };
+}
+
+function hasOnlyWhitespaceBefore(
+  source: string,
+  scope: ImportScope,
+  statements: readonly ImportStatement[],
+  index: number,
+): boolean {
+  const statement = statements[index];
+  if (!statement) return false;
+  const previousEnd = index > 0 ? statements[index - 1]?.end : scope.anchor;
+  return previousEnd !== undefined && /^\s*$/u.test(source.slice(previousEnd, statement.start));
+}
+
+function lineIndentationAt(source: string, offset: number | undefined): string {
+  if (offset === undefined) return "";
+  const lineStart = source.lastIndexOf("\n", Math.max(0, offset - 1)) + 1;
+  const indentation = source.slice(lineStart, offset);
+  return /^\s*$/u.test(indentation) ? indentation : "";
+}
+
+function namespaceBodyIndentation(source: string, scope: ImportScope): string {
+  if (source[scope.anchor - 1] !== "{") return "";
+  const body = source.slice(scope.anchor, scope.end);
+  const firstContent = /(?:^|\r?\n)([\t ]*)\S/u.exec(body);
+  return firstContent?.[1] ?? "";
+}
+
+function compareImports(
+  left: string,
+  right: string,
+  sorting: Exclude<ImportSorting, "none">,
+): number {
+  if (sorting === "length") {
+    const length = left.length - right.length;
+    if (length !== 0) return length;
+  }
+  const normalizedLeft = left.toLowerCase();
+  const normalizedRight = right.toLowerCase();
+  return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
 }
 
 function importScopeAt(source: string, offset: number): ImportScope | null {
