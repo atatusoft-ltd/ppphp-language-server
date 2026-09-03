@@ -8,15 +8,21 @@ import com.intellij.openapi.roots.ex.ProjectRootManagerEx
 import com.intellij.openapi.roots.impl.DirectoryIndexExcludePolicy
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 
-class PpphpCompilerDirectoriesExcludePolicy(
-    private val project: Project,
+class PpphpCompilerDirectoriesExcludePolicy private constructor(
+    private val exclusions: () -> List<String>,
 ) : DirectoryIndexExcludePolicy {
+    constructor(project: Project) : this({ PpphpProjectConfiguration.excludedUrls(project) })
+
+    internal constructor(projectRoot: VirtualFile) :
+        this({ PpphpProjectConfiguration.excludedUrls(projectRoot) })
+
     override fun getExcludeUrlsForProject(): Array<String> =
-        PpphpProjectConfiguration.excludedUrls(project).toTypedArray()
+        exclusions().toTypedArray()
 }
 
 class PpphpProjectActivity : ProjectActivity {

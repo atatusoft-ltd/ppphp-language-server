@@ -100,7 +100,12 @@ export function semanticTokens(
   document: TextDocument,
   compilerTokens: SemanticTokenClassification[] = [],
 ): SemanticTokens {
-  const classified = compilerTokens.map((token) => toOffsetClassification(document, token));
+  // Plain variable usages are already fully classified by each host's PHP
+  // lexer. Re-emitting them would erase more precise scopes such as `$this`
+  // and PHP superglobals without adding semantic information.
+  const classified = compilerTokens
+    .filter((token) => token.type !== "variable" || token.modifiers.length > 0)
+    .map((token) => toOffsetClassification(document, token));
 
   for (const fallback of classifyFallback(document.getText())) {
     if (!classified.some((candidate) => overlaps(candidate, fallback))) {

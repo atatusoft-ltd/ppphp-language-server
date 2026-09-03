@@ -2,10 +2,14 @@ package com.atatusoft.ppphp
 
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.refactoring.rename.RenameHandler
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class PpphpRenameHandlerTest : BasePlatformTestCase() {
     fun testStandardRenameActionFindsThePpphpHandlerAtATypeName() {
@@ -65,6 +69,7 @@ class PpphpRenameHandlerTest : BasePlatformTestCase() {
         val root = Files.createTempDirectory("ppphp-rename-response-")
         val sourcePath = root.resolve("Cart.ppphp")
         Files.writeString(sourcePath, source)
+        val rootFile = requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(root))
         val file = requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(sourcePath))
         val oldUri = file.url
         val newUri = root.resolve("Basket.ppphp").toUri().toString()
@@ -96,11 +101,60 @@ class PpphpRenameHandlerTest : BasePlatformTestCase() {
             }
         """.trimIndent()
 
-        val rename = PpphpRenameSupport.parseResponse(response, root.toString())
+        val rename = PpphpRenameSupport.parseResponse(response, rootFile)
 
         assertEquals(1, rename.textEdits.size)
         assertEquals(source.indexOf("Cart"), rename.textEdits.single().edits.single().start)
         assertEquals(source.indexOf("Cart") + "Cart".length, rename.textEdits.single().edits.single().end)
         assertEquals("Basket.ppphp", rename.fileRename?.newName)
+    }
+
+    fun testWorkspaceResponseUsesVirtualFileProviderForProjectContainment() {
+        val archive = Files.createTempFile("ppphp-rename-provider-", ".jar")
+        val source = "<?php\nclass Cart {}\n"
+        ZipOutputStream(Files.newOutputStream(archive)).use { output ->
+            output.putNextEntry(ZipEntry("Cart.ppphp"))
+            output.write(source.toByteArray(StandardCharsets.UTF_8))
+            output.closeEntry()
+        }
+
+        try {
+            val localArchive = requireNotNull(
+                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(archive),
+            )
+            val root = requireNotNull(
+                JarFileSystem.getInstance().getJarRootForLocalFile(localArchive),
+            )
+            val file = requireNotNull(root.findFileByRelativePath("Cart.ppphp"))
+            val response = """
+                {
+                  "version": 1,
+                  "edit": {
+                    "documentChanges": [
+                      {
+                        "textDocument": {"uri": "${file.url}", "version": 1},
+                        "edits": [
+                          {
+                            "range": {
+                              "start": {"line": 1, "character": 6},
+                              "end": {"line": 1, "character": 10}
+                            },
+                            "newText": "Basket"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "error": null
+                }
+            """.trimIndent()
+
+            val rename = PpphpRenameSupport.parseResponse(response, root)
+
+            assertEquals(file, rename.textEdits.single().file)
+            assertEquals(source.indexOf("Cart"), rename.textEdits.single().edits.single().start)
+        } finally {
+            Files.deleteIfExists(archive)
+        }
     }
 }

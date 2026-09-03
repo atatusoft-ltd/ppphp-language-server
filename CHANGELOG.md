@@ -20,6 +20,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Fixed
 
+- Unmodified variable semantic tokens no longer override precise host PHP scopes, preserving native highlighting for `$this` and PHP superglobals in VS Code and PhpStorm.
+- Fixed a PhpStorm startup and indexing failure when ++PHP projects are accessed through WSL or another non-default filesystem provider.
 - Language-server and editor builds now verify workspace links, detect missing or wrong-platform npm dependencies, and restore the complete locked tree automatically with bounded subprocess execution, including on native Windows and WSL.
 - The PhpStorm class-creation Name editor now uses the same Up/Down template cycling and shortcut hint as the native PHP dialog.
 - PhpStorm clients that advertise workspace configuration but return no `ppphp` settings no longer terminate the language server; defaults are applied and compiler-backed features remain available.
