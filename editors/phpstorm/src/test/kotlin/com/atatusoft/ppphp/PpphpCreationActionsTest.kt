@@ -1,5 +1,6 @@
 package com.atatusoft.ppphp
 
+import com.google.gson.JsonParser
 import com.intellij.application.options.CodeStyle
 import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.openapi.actionSystem.ActionManager
@@ -256,6 +257,30 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
 
         performArrowAction(action, nameField, KeyEvent.VK_UP)
         assertEquals(PpphpDeclarationTemplate.CLASS, selector.selectedItem)
+    }
+
+    fun testTypeCatalogSeparatesInheritableClassesFromInterfaces() {
+        val decoded = PpphpTypeCatalogResolver.decode(
+            JsonParser.parseString(
+                """{
+                    "version": 1,
+                    "types": [
+                        {"fqn":"Exception","kind":"class","final":false},
+                        {"fqn":"Vendor\\Closed","kind":"class","final":true},
+                        {"fqn":"JsonSerializable","kind":"interface","final":false},
+                        {"fqn":"IgnoredTrait","kind":"trait","final":false}
+                    ]
+                }""",
+            ).asJsonObject,
+        )
+        val catalog = PpphpKnownTypeCatalog.from(decoded)
+
+        assertEquals(listOf("Exception"), catalog.classes.map(PpphpKnownType::fqn))
+        assertEquals(
+            listOf("JsonSerializable"),
+            catalog.interfaces.map(PpphpKnownType::fqn),
+        )
+        assertEquals("\\Exception", catalog.classes.single().reference)
     }
 
     private fun specification(

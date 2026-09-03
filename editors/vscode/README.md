@@ -6,6 +6,8 @@ Extension releases use the quarterly CalVer shared by the ++PHP toolchain. The c
 
 Compiler diagnostics run when a document is opened or saved. Configure `ppphp.compiler.path` if `ppphp` is not available at `vendor/bin/ppphp` or on `PATH`.
 
+Completion suggestions are built from configured ++PHP sources, Composer autoload metadata, installed dependencies, and the active PHP runtime. Class inheritance suggests inheritable classes, while interface inheritance and `implements` suggest interfaces. These results are deterministic and do not use generated guesses.
+
 **Rename Symbol** performs a compiler-verified project-wide rename for ++PHP classes, interfaces, traits, and enums. When the declaration filename matches the type, the `.ppphp` file is renamed with it.
 
 See the repository README for the current capability matrix and development instructions.

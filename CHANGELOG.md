@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file. The format 
 - VS Code extension with diagnostics, completions, hover help, and document symbols.
 - PhpStorm 2025.2-or-newer plugin using native JetBrains LSP and a dedicated ++PHP presentation language.
 - PhpStorm `++PHP File` and `++PHP Class` actions with PHP-shaped `.ppphp` templates, Composer-aware namespace suggestions, and class, interface, trait, and enum creation.
+- Deterministic class and interface completion from ++PHP project sources, Composer dependencies, and PHP runtime types in both editors and PhpStorm's class-creation parent controls.
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed

@@ -22,6 +22,8 @@ import {
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
 import { compilerSettingsFromConfiguration, DEFAULT_SETTINGS } from "./server-settings.js";
+import { getTypeCatalog, invalidateTypeCatalog } from "./type-catalog.js";
+import { typeCompletionsAt } from "./type-completion.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -81,13 +83,27 @@ connection.onInitialized(() => {
   if (supportsConfiguration) {
     void connection.client.register(DidChangeConfigurationNotification.type);
   }
+  for (const workspaceRoot of workspaceFolders) {
+    void getTypeCatalog(workspaceRoot).catch(() => undefined);
+  }
 });
 
 connection.onDidChangeConfiguration(() => {
+  invalidateTypeCatalog();
   for (const document of documents.all()) void validate(document);
 });
+connection.onDidChangeWatchedFiles(() => invalidateTypeCatalog());
 
-connection.onCompletion(() => [...COMPLETIONS]);
+connection.onCompletion(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+  if (!document || !filePath) return [...COMPLETIONS];
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const catalog = await getTypeCatalog(workspaceRoot, documents.all());
+  const types = typeCompletionsAt(document, position, catalog);
+  return types.length > 0 ? [...types, ...COMPLETIONS] : [...COMPLETIONS];
+});
 connection.onExecuteCommand(({ command, arguments: arguments_ }) =>
   command === INFER_COMPOSER_NAMESPACE_COMMAND ? handleComposerNamespaceCommand(arguments_) : null,
 );
@@ -172,7 +188,11 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
 });
 
 documents.onDidOpen(({ document }) => void validate(document));
-documents.onDidSave(({ document }) => void validate(document));
+documents.onDidSave(({ document }) => {
+  const filePath = filePathFromUri(document.uri);
+  if (filePath) invalidateTypeCatalog(findWorkspaceRoot(filePath));
+  void validate(document);
+});
 documents.onDidClose(({ document }) => {
   validationGenerations.delete(document.uri);
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });

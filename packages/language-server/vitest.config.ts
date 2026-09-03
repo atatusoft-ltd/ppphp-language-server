@@ -14,6 +14,8 @@ export default defineConfig({
         "src/rename-command.ts",
         "src/semantic-tokens.ts",
         "src/server-settings.ts",
+        "src/type-catalog.ts",
+        "src/type-completion.ts",
       ],
       provider: "v8",
       reporter: ["text"],
