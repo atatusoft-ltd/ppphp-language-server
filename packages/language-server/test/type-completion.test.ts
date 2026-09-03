@@ -8,6 +8,8 @@ const CATALOG: TypeCatalogEntry[] = [
   type("FinalBase", "Vendor", "class", "dependency", true),
   type("JsonSerializable", "", "interface", "php-runtime"),
   type("LocalContract", "App", "interface", "project"),
+  type("Repository", "Vendor\\Contracts", "interface", "dependency"),
+  type("Product", "Vendor\\Domain", "class", "dependency"),
 ];
 
 describe("type completion", () => {
@@ -15,7 +17,8 @@ describe("type completion", () => {
     const items = complete("<?php namespace App; class Child extends Ex", CATALOG);
 
     expect(items.map(({ label }) => label)).toEqual(["Exception"]);
-    expect(items[0]?.textEdit).toMatchObject({ newText: "\\Exception" });
+    expect(items[0]?.textEdit).toMatchObject({ newText: "Exception" });
+    expect(items[0]?.additionalTextEdits).toMatchObject([{ newText: "\n\nuse Exception;" }]);
     expect(complete("<?php class Child extends Final", CATALOG)).toEqual([]);
   });
 
@@ -32,6 +35,41 @@ describe("type completion", () => {
 
     expect(items.map(({ label }) => label)).toEqual(["FinalBase"]);
     expect(items[0]?.detail).toContain("Composer dependency");
+  });
+
+  it("reuses existing imports and aliases instead of inserting qualified names", () => {
+    const imported = complete(
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\nclass Service { public Repo",
+      CATALOG,
+    );
+    const aliased = complete(
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository as Store;\n\nclass Service { public Sto",
+      CATALOG,
+    );
+
+    expect(imported[0]).toMatchObject({
+      label: "Repository",
+      textEdit: { newText: "Repository" },
+      additionalTextEdits: undefined,
+    });
+    expect(aliased[0]).toMatchObject({
+      label: "Store",
+      textEdit: { newText: "Store" },
+      additionalTextEdits: undefined,
+    });
+  });
+
+  it("keeps a qualified completion when the short name would collide", () => {
+    const items = complete(
+      "<?php\nnamespace App;\n\nuse Other\\Product;\n\nclass Service { public Pro",
+      CATALOG,
+    );
+
+    expect(items[0]).toMatchObject({
+      label: "Product",
+      textEdit: { newText: "\\Vendor\\Domain\\Product" },
+      additionalTextEdits: undefined,
+    });
   });
 });
 

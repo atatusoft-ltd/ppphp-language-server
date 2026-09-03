@@ -6,6 +6,8 @@ For projects with `ppphp.json`, the configured compiler-owned `output` and `cach
 
 PhpStorm's **Refactor | Rename** action is available on ++PHP classes, interfaces, traits, and enums. The language server verifies every project occurrence through compiler symbol identity, updates references across configured source roots, and renames a matching `.ppphp` source file. Refactors that would collide, cross project boundaries, or require unsupported editor file operations are refused without partial edits.
 
+Type completion reuses existing `use` imports and aliases, adding a safe import when no short-name collision exists. A fully qualified type offers **Use import** through the intention menu; both behaviors come from the shared language server and therefore match VS Code.
+
 ## Creating source files
 
 The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Both actions always create `.ppphp` files and use the ++PHP emblem.

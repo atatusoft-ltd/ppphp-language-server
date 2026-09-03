@@ -17,10 +17,13 @@ All notable changes to this project will be documented in this file. The format 
 - PhpStorm 2025.2-or-newer plugin using native JetBrains LSP and a dedicated ++PHP presentation language.
 - PhpStorm `++PHP File` and `++PHP Class` actions with PHP-shaped `.ppphp` templates, Composer-aware namespace suggestions, and class, interface, trait, and enum creation.
 - Deterministic class and interface completion from ++PHP project sources, Composer dependencies, and PHP runtime types in both editors and PhpStorm's class-creation parent controls.
+- Shared `Use import` actions for fully qualified types in VS Code and PhpStorm.
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
 
+- Compiler diagnostics now lead with their specific message so editor problem lists do not hide it behind a generic category.
+- Type completion now reuses existing imports and aliases, adds a safe import for an unambiguous external type, and retains a fully qualified reference when a short name would collide.
 - Unmodified variable semantic tokens no longer override precise host PHP scopes, preserving native highlighting for `$this` and PHP superglobals in VS Code and PhpStorm.
 - Fixed a PhpStorm startup and indexing failure when ++PHP projects are accessed through WSL or another non-default filesystem provider.
 - Language-server and editor builds now verify workspace links, detect missing or wrong-platform npm dependencies, and restore the complete locked tree automatically with bounded subprocess execution, including on native Windows and WSL.

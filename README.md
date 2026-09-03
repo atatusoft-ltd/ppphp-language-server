@@ -16,13 +16,14 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 | File/declaration creation | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions    |
 | Code-style settings       | No      | Yes      | PHP formatter controls with ++PHP-owned values     |
 | Class-family rename       | Yes     | Yes      | Compiler-verified project edits and file rename    |
+| Use import                | Yes     | Yes      | Safe type imports from the shared symbol catalog   |
 | Formatting                | Not yet | Not yet  | Requires an agreed canonical formatter             |
 
 Go to definition uses compiler-owned symbol identity across scopes and files. Rename uses the same identity to verify every candidate class, interface, trait, or enum reference before returning project-wide edits. Comments, strings, unrelated same-spelling symbols, generated output, cache directories, and non-`.ppphp` files are not edited. A matching source filename is renamed with its declaration, and collisions or incomplete editor support are refused instead of producing a partial refactor. Function, method, property, variable, and parameter rename remain unavailable until their dynamic and scope-specific safety contracts are complete.
 
 Syntax highlighting follows the same ownership boundary in both editors: each host supplies its PHP lexical baseline, while the compiler fills every parser-dependent PHP role and adds ++PHP semantics. Compiler roles cover PHP tokenizer keywords, native types and constants, classes, functions, methods, properties, parameters, variables, generic parameters, and ++PHP keywords. The language server converts the compiler's UTF-8 ranges into standard LSP semantic tokens. A small grammar-derived ++PHP fallback remains available when the compiler cannot parse the current buffer.
 
-Completion is deterministic rather than generative. The language server catalogs class-family declarations from configured ++PHP source roots, Composer autoload roots, installed Composer packages, and the active PHP runtime. It narrows `extends` to inheritable classes and `implements` or interface inheritance to interfaces, and inserts unambiguous fully qualified references when the type is outside the current namespace. PhpStorm uses the same catalog in its class-creation parent controls and supplements it with PhpStorm's PHP project index.
+Completion is deterministic rather than generative. The language server catalogs class-family declarations from configured ++PHP source roots, Composer autoload roots, installed Composer packages, and the active PHP runtime. It narrows `extends` to inheritable classes and `implements` or interface inheritance to interfaces. Completion reuses an existing import or alias, adds a safe import when the short name is available, and retains a fully qualified reference when importing would collide. A fully qualified type also offers a shared `Use import` action. PhpStorm uses the same catalog in its class-creation parent controls and supplements it with PhpStorm's PHP project index.
 
 ## Requirements
 

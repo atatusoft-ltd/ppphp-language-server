@@ -249,6 +249,18 @@ require_source_contains(
     'renameProvider: { prepareProvider: true }',
 );
 require_source_contains(
+    $root . '/packages/language-server/src/node.ts',
+    'codeActionProvider: true',
+);
+require_source_contains(
+    $root . '/packages/language-server/src/type-import.ts',
+    'Use import for ${entry.fqn}',
+);
+require_source_contains(
+    $root . '/editors/phpstorm/src/main/resources/META-INF/ppphp-lsp.xml',
+    'com.atatusoft.ppphp.PpphpImportIntention',
+);
+require_source_contains(
     $root . '/packages/language-server/src/compiler-rename.ts',
     'result.symbol?.symbolId === target.symbolId',
 );

@@ -7,6 +7,7 @@ import {
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
 import type { TypeCatalogEntry, TypeKind, TypeOrigin } from "./type-catalog.js";
+import { createTypeImportPlanner } from "./type-import.js";
 
 const MAXIMUM_COMPLETIONS = 200;
 
@@ -21,7 +22,9 @@ export function typeCompletionsAt(
   const typed = source.slice(document.offsetAt(replacement.start), offset);
   const query = typed.replace(/^\\/u, "").toLowerCase();
   const context = completionContext(maskNonCode(source), document.offsetAt(replacement.start));
-  const namespace = namespaceAt(source, offset);
+  const importPlanner = typed.startsWith("\\")
+    ? null
+    : createTypeImportPlanner(document, document.offsetAt(replacement.start));
 
   return catalog
     .filter(
@@ -29,7 +32,10 @@ export function typeCompletionsAt(
         context.kinds.has(entry.kind) &&
         !(context.inheritableClassesOnly && entry.kind === "class" && entry.final),
     )
-    .map((entry) => ({ entry, score: matchScore(entry, query) }))
+    .map((entry) => {
+      const importPlan = importPlanner?.(entry) ?? null;
+      return { entry, importPlan, score: matchScore(entry, query, importPlan?.reference) };
+    })
     .filter((candidate) => candidate.score >= 0)
     .sort(
       (left, right) =>
@@ -39,17 +45,20 @@ export function typeCompletionsAt(
         left.entry.fqn.localeCompare(right.entry.fqn),
     )
     .slice(0, MAXIMUM_COMPLETIONS)
-    .map(({ entry }, index) => ({
-      label: entry.name,
-      kind: completionKind(entry.kind),
-      detail: `${entry.fqn} — ${originLabel(entry.origin)}`,
-      filterText: typed.includes("\\") ? entry.fqn : entry.name,
-      sortText: index.toString().padStart(3, "0"),
-      textEdit: {
-        range: replacement,
-        newText: insertionName(entry, namespace, typed.startsWith("\\")),
-      },
-    }));
+    .map(({ entry, importPlan }, index) => {
+      const reference = typed.startsWith("\\")
+        ? `\\${entry.fqn}`
+        : (importPlan?.reference ?? `\\${entry.fqn}`);
+      return {
+        label: importPlan?.reference ?? entry.name,
+        kind: completionKind(entry.kind),
+        detail: `${entry.fqn} — ${originLabel(entry.origin)}`,
+        filterText: typed.includes("\\") ? entry.fqn : (importPlan?.reference ?? entry.name),
+        sortText: index.toString().padStart(3, "0"),
+        textEdit: { range: replacement, newText: reference },
+        additionalTextEdits: importPlan?.importEdit ? [importPlan.importEdit] : undefined,
+      };
+    });
 }
 
 function qualifiedNameRange(document: TextDocument, source: string, offset: number): Range {
@@ -91,26 +100,13 @@ function completionContext(
   };
 }
 
-function namespaceAt(source: string, offset: number): string {
-  const searchable = maskNonCode(source.slice(0, offset));
-  const matches = [
-    ...searchable.matchAll(
-      /\bnamespace\s+([A-Z_\u0080-\u{10ffff}][A-Z0-9_\\\u0080-\u{10ffff}]*)\s*[;{]/giu,
-    ),
-  ];
-  return matches.at(-1)?.[1]?.replace(/^\\|\\$/gu, "") ?? "";
-}
-
-function insertionName(entry: TypeCatalogEntry, namespace: string, absolute: boolean): string {
-  if (!absolute && entry.namespace.toLowerCase() === namespace.toLowerCase()) return entry.name;
-  if (!absolute && namespace === "" && entry.namespace === "") return entry.name;
-  return `\\${entry.fqn}`;
-}
-
-function matchScore(entry: TypeCatalogEntry, query: string): number {
+function matchScore(entry: TypeCatalogEntry, query: string, reference?: string): number {
   if (query === "") return 4;
   const name = entry.name.toLowerCase();
   const fqn = entry.fqn.toLowerCase();
+  const imported = reference?.toLowerCase();
+  if (imported === query) return 0;
+  if (imported?.startsWith(query)) return 1;
   if (name === query) return 0;
   if (name.startsWith(query)) return 1;
   if (fqn.startsWith(query)) return 2;

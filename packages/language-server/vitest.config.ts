@@ -16,6 +16,7 @@ export default defineConfig({
         "src/server-settings.ts",
         "src/type-catalog.ts",
         "src/type-completion.ts",
+        "src/type-import.ts",
       ],
       provider: "v8",
       reporter: ["text"],

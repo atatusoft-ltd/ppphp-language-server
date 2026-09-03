@@ -24,6 +24,7 @@ import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
 import { compilerSettingsFromConfiguration, DEFAULT_SETTINGS } from "./server-settings.js";
 import { getTypeCatalog, invalidateTypeCatalog } from "./type-catalog.js";
 import { typeCompletionsAt } from "./type-completion.js";
+import { typeImportCodeActionsAt } from "./type-import.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -60,6 +61,7 @@ connection.onInitialize((params: InitializeParams) => {
       version: packageMetadata.ppphpToolchainVersion,
     },
     capabilities: {
+      codeActionProvider: true,
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       definitionProvider: true,
       documentSymbolProvider: true,
@@ -103,6 +105,15 @@ connection.onCompletion(async ({ textDocument, position }) => {
   const catalog = await getTypeCatalog(workspaceRoot, documents.all());
   const types = typeCompletionsAt(document, position, catalog);
   return types.length > 0 ? [...types, ...COMPLETIONS] : [...COMPLETIONS];
+});
+connection.onCodeAction(async ({ textDocument, range }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+  if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return [];
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const catalog = await getTypeCatalog(workspaceRoot, documents.all());
+  return typeImportCodeActionsAt(document, range, catalog);
 });
 connection.onExecuteCommand(({ command, arguments: arguments_ }) =>
   command === INFER_COMPOSER_NAMESPACE_COMMAND ? handleComposerNamespaceCommand(arguments_) : null,
