@@ -158,9 +158,9 @@ export function parseTypeDeclarations(
       continue;
     }
 
+    if (!isTypeKind(keyword)) continue;
     const context = declarationContext(searchable, token.offset);
     if (
-      !isTypeKind(keyword) ||
       /::\s*$/u.test(searchable.slice(0, context.start)) ||
       (keyword === "class" && /\bnew\s*$/iu.test(searchable.slice(0, context.start)))
     ) {
