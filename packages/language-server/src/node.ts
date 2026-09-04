@@ -26,7 +26,11 @@ import {
   DEFAULT_SETTINGS,
   type ServerSettings,
 } from "./server-settings.js";
-import { getTypeCatalog, invalidateTypeCatalog } from "./type-catalog.js";
+import {
+  getTypeCatalog,
+  invalidateTypeCatalog,
+  updateTypeCatalogDocument,
+} from "./type-catalog.js";
 import { typeCompletionsAt } from "./type-completion.js";
 import { typeImportCodeActionsAt } from "./type-import.js";
 
@@ -207,7 +211,9 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
 documents.onDidOpen(({ document }) => void validate(document));
 documents.onDidSave(({ document }) => {
   const filePath = filePathFromUri(document.uri);
-  if (filePath) invalidateTypeCatalog(findWorkspaceRoot(filePath));
+  if (filePath) {
+    updateTypeCatalogDocument(findWorkspaceRoot(filePath), filePath, document.getText());
+  }
   void validate(document);
 });
 documents.onDidClose(({ document }) => {

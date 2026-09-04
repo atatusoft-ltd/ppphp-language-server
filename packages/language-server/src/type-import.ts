@@ -432,6 +432,11 @@ function isFollowedByDeclaredVariable(source: string): boolean {
     if (source[offset] === "$") {
       return new RegExp(`^\\$${IDENTIFIER}`, "iu").test(source.slice(offset));
     }
+    if (source.startsWith("...", offset)) {
+      offset += 3;
+      while (/\s/u.test(source[offset] ?? "")) offset += 1;
+      return new RegExp(`^\\$${IDENTIFIER}`, "iu").test(source.slice(offset));
+    }
     if (/[|&)]/u.test(source[offset] ?? "")) {
       offset += 1;
       continue;

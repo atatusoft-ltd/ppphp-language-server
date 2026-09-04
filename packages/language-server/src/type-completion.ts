@@ -66,7 +66,11 @@ export function typeCompletionsAt(
         label: importPlan?.reference ?? entry.name,
         kind: completionKind(entry.kind),
         detail: `${entry.fqn} — ${originLabel(entry.origin)}`,
-        filterText: typed.includes("\\") ? entry.fqn : (importPlan?.reference ?? entry.name),
+        filterText: typed.startsWith("\\")
+          ? `\\${entry.fqn}`
+          : typed.includes("\\")
+            ? entry.fqn
+            : (importPlan?.reference ?? entry.name),
         sortText: index.toString().padStart(3, "0"),
         textEdit: { range: replacement, newText: reference },
         additionalTextEdits: importPlan?.importEdit ? [importPlan.importEdit] : undefined,

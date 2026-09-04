@@ -60,6 +60,13 @@ describe("type completion", () => {
     expect(complete("<?php function make() { return new Clo", CATALOG)).toEqual([]);
   });
 
+  it("keeps the leading separator when filtering absolute completions", () => {
+    expect(complete("<?php function make(): \\Vendor\\Domain\\Pro", CATALOG)[0]).toMatchObject({
+      filterText: "\\Vendor\\Domain\\Product",
+      textEdit: { newText: "\\Vendor\\Domain\\Product" },
+    });
+  });
+
   it("does not offer type imports in ordinary expression positions", () => {
     expect(complete("<?php function run() { return Pro", CATALOG)).toEqual([]);
     expect(complete("<?php function run() { Pro", CATALOG)).toEqual([]);

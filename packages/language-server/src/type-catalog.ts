@@ -98,6 +98,31 @@ export function invalidateTypeCatalog(workspaceRoot?: string): void {
   }
 }
 
+export function updateTypeCatalogDocument(
+  workspaceRoot: string,
+  filePath: string,
+  source: string,
+): void {
+  const root = path.resolve(workspaceRoot);
+  const normalizedFile = normalizePath(filePath);
+  const cached = cache.get(root);
+  if (
+    !cached ||
+    path.extname(normalizedFile).toLowerCase() !== ".ppphp" ||
+    !pathIsWithin(root, normalizedFile)
+  ) {
+    return;
+  }
+
+  cached.createdAt = Date.now();
+  cached.catalog = cached.catalog.then((saved) => {
+    if (!saved.projectByFile.has(normalizedFile)) return saved;
+    const projectByFile = new Map(saved.projectByFile);
+    projectByFile.set(normalizedFile, parseTypeDeclarations(source, "project"));
+    return { ...saved, projectByFile };
+  });
+}
+
 export async function runTypeCatalogCommand(workspaceRoot: string): Promise<{
   version: 1;
   types: TypeCatalogEntry[];

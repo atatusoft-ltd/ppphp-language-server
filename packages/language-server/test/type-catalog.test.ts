@@ -8,6 +8,7 @@ import {
   getTypeCatalog,
   invalidateTypeCatalog,
   parseTypeDeclarations,
+  updateTypeCatalogDocument,
 } from "../src/type-catalog.js";
 
 afterEach(() => invalidateTypeCatalog());
@@ -224,6 +225,32 @@ use Attribute as AttributeMarker;
     );
 
     const catalog = await getTypeCatalog(root, [openDocument]);
+
+    expect(catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "App\\NewModel", origin: "project" }),
+      ]),
+    );
+    expect(catalog).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "App\\OldModel", origin: "project" }),
+      ]),
+    );
+  });
+
+  it("updates a saved project file without rebuilding the workspace catalog", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-saved-types-"));
+    const sourcePath = path.join(root, "src", "Model.ppphp");
+    await mkdir(path.dirname(sourcePath), { recursive: true });
+    await writeFile(
+      path.join(root, "ppphp.json"),
+      JSON.stringify({ source: ["src"], output: "build", cache: ".ppphp-cache" }),
+    );
+    await writeFile(sourcePath, "<?php namespace App; class OldModel {}\n");
+    await getTypeCatalog(root);
+
+    updateTypeCatalogDocument(root, sourcePath, "<?php namespace App; class NewModel {}\n");
+    const catalog = await getTypeCatalog(root);
 
     expect(catalog).toEqual(
       expect.arrayContaining([

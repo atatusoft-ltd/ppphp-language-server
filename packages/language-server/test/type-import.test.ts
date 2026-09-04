@@ -109,6 +109,16 @@ describe("type import actions", () => {
     );
   });
 
+  it("shortens a fully qualified variadic parameter type", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nfunction consume(\\Vendor\\Product ...$products): void {}\n";
+
+    expect(applyFirstAction(source, source.indexOf("Product"), [product])).toBe(
+      "<?php\nnamespace App;\n\nuse Vendor\\Product;\n\nfunction consume(Product ...$products): void {}\n",
+    );
+  });
+
   it("ignores qualified names in comments and import declarations", () => {
     const comment = "<?php\n// \\Vendor\\Contracts\\Repository\nclass Service {}\n";
     const imported = "<?php\nuse \\Vendor\\Contracts\\Repository;\nclass Service {}\n";
