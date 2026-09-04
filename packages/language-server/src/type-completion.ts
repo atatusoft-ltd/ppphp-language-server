@@ -37,6 +37,7 @@ export function typeCompletionsAt(
     .filter(
       (entry) =>
         context.kinds.has(entry.kind) &&
+        !(context.instantiableClassesOnly && entry.abstract) &&
         !(context.inheritableClassesOnly && entry.kind === "class" && entry.final),
     )
     .map((entry) => {
@@ -83,13 +84,21 @@ function qualifiedNameRange(document: TextDocument, source: string, offset: numb
 function completionContext(
   source: string,
   offset: number,
-): { kinds: Set<TypeKind>; inheritableClassesOnly: boolean } {
+): {
+  kinds: Set<TypeKind>;
+  inheritableClassesOnly: boolean;
+  instantiableClassesOnly: boolean;
+} {
   const header = source.slice(Math.max(0, source.lastIndexOf("{", offset - 1) + 1), offset);
   const inheritance = /\b(extends|implements)\b(?![\s\S]*\b(?:extends|implements)\b)/iu.exec(
     header,
   );
   if (inheritance?.[1]?.toLowerCase() === "implements") {
-    return { kinds: new Set(["interface"]), inheritableClassesOnly: false };
+    return {
+      kinds: new Set(["interface"]),
+      inheritableClassesOnly: false,
+      instantiableClassesOnly: false,
+    };
   }
   if (inheritance?.[1]?.toLowerCase() === "extends") {
     const declarations = [
@@ -98,12 +107,28 @@ function completionContext(
       ),
     ];
     return declarations.at(-1)?.[1]?.toLowerCase() === "interface"
-      ? { kinds: new Set(["interface"]), inheritableClassesOnly: false }
-      : { kinds: new Set(["class"]), inheritableClassesOnly: true };
+      ? {
+          kinds: new Set(["interface"]),
+          inheritableClassesOnly: false,
+          instantiableClassesOnly: false,
+        }
+      : {
+          kinds: new Set(["class"]),
+          inheritableClassesOnly: true,
+          instantiableClassesOnly: false,
+        };
+  }
+  if (/\bnew\s*$/iu.test(header)) {
+    return {
+      kinds: new Set(["class"]),
+      inheritableClassesOnly: false,
+      instantiableClassesOnly: true,
+    };
   }
   return {
     kinds: new Set(["class", "interface", "enum"]),
     inheritableClassesOnly: false,
+    instantiableClassesOnly: false,
   };
 }
 

@@ -10,6 +10,7 @@ const CATALOG: TypeCatalogEntry[] = [
   type("LocalContract", "App", "interface", "project"),
   type("Repository", "Vendor\\Contracts", "interface", "dependency"),
   type("Product", "Vendor\\Domain", "class", "dependency"),
+  type("AbstractProduct", "Vendor\\Domain", "class", "dependency", false, true),
 ];
 
 describe("type completion", () => {
@@ -48,6 +49,12 @@ describe("type completion", () => {
 
     expect(items.map(({ label }) => label)).toEqual(["FinalBase"]);
     expect(items[0]?.detail).toContain("Composer dependency");
+  });
+
+  it("offers only instantiable classes after new", () => {
+    expect(complete("<?php function make() { return new Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php function make() { return new Abs", CATALOG)).toEqual([]);
+    expect(complete("<?php function make() { return new Json", CATALOG)).toEqual([]);
   });
 
   it("does not offer type imports in ordinary expression positions", () => {
@@ -166,12 +173,14 @@ function type(
   kind: TypeCatalogEntry["kind"],
   origin: TypeCatalogEntry["origin"],
   final = false,
+  abstract = false,
 ): TypeCatalogEntry {
   return {
     name,
     namespace,
     fqn: namespace === "" ? name : `${namespace}\\${name}`,
     kind,
+    abstract,
     final,
     origin,
   };

@@ -3,7 +3,6 @@ package com.atatusoft.ppphp
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.intellij.codeInsight.completion.PlainPrefixMatcher
-import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -19,6 +18,7 @@ internal data class PpphpKnownType(
     val fqn: String,
     val kind: PpphpKnownTypeKind,
     val isFinal: Boolean = false,
+    val isAbstract: Boolean = false,
 ) {
     val shortName: String
         get() = fqn.substringAfterLast('\\')
@@ -74,7 +74,11 @@ internal object PpphpTypeCatalogResolver {
                 ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
                 ?.asBoolean
                 ?: return@mapNotNull null
-            PpphpKnownType(fqn, kind, isFinal)
+            val isAbstract = value.get("abstract")
+                ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+                ?.asBoolean
+                ?: false
+            PpphpKnownType(fqn, kind, isFinal, isAbstract)
         }
     }.getOrDefault(emptyList())
 
@@ -89,15 +93,12 @@ internal object PpphpTypeCatalogResolver {
                 projectRoot,
             )
         }.getOrNull() ?: return emptyList()
-        val output = runCatching {
-            CapturingProcessHandler(command).runProcess(REQUEST_TIMEOUT_MILLISECONDS, true)
-        }.getOrNull() ?: return emptyList()
-        if (
-            output.isTimeout || output.exitCode != 0 ||
-            output.stdout.length + output.stderr.length > MAXIMUM_OUTPUT_CHARACTERS
-        ) {
-            return emptyList()
-        }
+        val output = PpphpBoundedProcessRunner.run(
+            command,
+            REQUEST_TIMEOUT_MILLISECONDS,
+            MAXIMUM_OUTPUT_CHARACTERS,
+        ) ?: return emptyList()
+        if (output.exitCode != 0) return emptyList()
         val response = runCatching { JsonParser.parseString(output.stdout).asJsonObject }.getOrNull()
             ?: return emptyList()
         return decode(response)
@@ -116,6 +117,7 @@ internal object PpphpTypeCatalogResolver {
                         fqn.trimStart('\\'),
                         PpphpKnownTypeKind.CLASS,
                         declarations.any { it.isFinal },
+                        declarations.any { it.isAbstract },
                     )
                 }
                 val interfaces = index.getAllInterfacesFqns(matcher).map { fqn ->

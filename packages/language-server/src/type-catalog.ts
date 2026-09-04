@@ -15,6 +15,7 @@ export interface TypeCatalogEntry {
   namespace: string;
   fqn: string;
   kind: TypeKind;
+  abstract: boolean;
   final: boolean;
   origin: TypeOrigin;
 }
@@ -40,7 +41,7 @@ interface ComposerSourceRoot extends ComposerSourceFile {
 }
 
 interface InstalledPackage extends Record<string, unknown> {
-  "install-path"?: unknown;
+  install_path?: unknown;
   autoload?: unknown;
   "autoload-dev"?: unknown;
   extra?: unknown;
@@ -170,6 +171,7 @@ export function parseTypeDeclarations(
       namespace,
       fqn,
       kind: keyword,
+      abstract: keyword === "class" && modifiers.includes("abstract"),
       final: keyword === "class" && modifiers.includes("final"),
       origin,
     });
@@ -467,6 +469,7 @@ function isTypeCatalogEntry(value: unknown): value is TypeCatalogEntry {
     typeof value.fqn === "string" &&
     value.fqn !== "" &&
     isTypeKind(value.kind) &&
+    typeof value.abstract === "boolean" &&
     typeof value.final === "boolean" &&
     (value.origin === "project" || value.origin === "dependency" || value.origin === "php-runtime")
   );
@@ -564,6 +567,7 @@ foreach ($groups as $kind => $names) {
             'namespace' => $reflection->getNamespaceName(),
             'fqn' => ltrim($reflection->getName(), '\\'),
             'kind' => $actualKind,
+            'abstract' => $reflection->isAbstract(),
             'final' => $reflection->isFinal(),
             'origin' => 'php-runtime',
         ];

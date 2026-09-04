@@ -25,6 +25,7 @@ $nestedAttributedAnonymous = new #[Example([1, [2]])] #[Other(name: [Open::class
 $attributedReadonlyAnonymous = new #[Example([1, [2]])] readonly class extends Open {};
 $configured = configure(class: Missing::class);
 final readonly class Closed {}
+abstract class AbstractModel {}
 class Open {}
 interface Contract {}
 trait Shared {}
@@ -35,6 +36,7 @@ enum State {}
 
     expect(declarations).toEqual([
       entry("Closed", "class", true),
+      entry("AbstractModel", "class", false, true),
       entry("Open", "class"),
       entry("Contract", "interface"),
       entry("Shared", "trait"),
@@ -137,12 +139,18 @@ enum State {}
   });
 });
 
-function entry(name: string, kind: "class" | "interface" | "trait" | "enum", final = false) {
+function entry(
+  name: string,
+  kind: "class" | "interface" | "trait" | "enum",
+  final = false,
+  abstract = false,
+) {
   return {
     name,
     namespace: "App\\Domain",
     fqn: `App\\Domain\\${name}`,
     kind,
+    abstract,
     final,
     origin: "project",
   };

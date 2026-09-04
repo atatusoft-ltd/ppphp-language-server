@@ -84,6 +84,14 @@ describe("type import actions", () => {
     expect(actionsAt(relative, relative.indexOf("Repository"), [REPOSITORY])).toEqual([]);
   });
 
+  it("ignores qualified names in heredoc and nowdoc bodies", () => {
+    const heredoc = "<?php\n$value = <<<TEXT\nnew \\Vendor\\Contracts\\Repository\n    TEXT;\n";
+    const nowdoc = "<?php\n$value = <<<'TEXT'\nnew \\Vendor\\Contracts\\Repository\nTEXT;\n";
+
+    expect(actionsAt(heredoc, heredoc.indexOf("Repository"), [REPOSITORY])).toEqual([]);
+    expect(actionsAt(nowdoc, nowdoc.indexOf("Repository"), [REPOSITORY])).toEqual([]);
+  });
+
   it("offers imports only where a qualified name is a type reference", () => {
     const property =
       "<?php\nclass Service { private \\Vendor\\Contracts\\Repository $repository; }\n";
@@ -237,6 +245,7 @@ function type(name: string, namespace: string, kind: TypeCatalogEntry["kind"]): 
     namespace,
     fqn: namespace === "" ? name : `${namespace}\\${name}`,
     kind,
+    abstract: false,
     final: false,
     origin: "dependency",
   };

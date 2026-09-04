@@ -265,22 +265,26 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
                 """{
                     "version": 1,
                     "types": [
-                        {"fqn":"Exception","kind":"class","final":false},
-                        {"fqn":"Vendor\\Closed","kind":"class","final":true},
-                        {"fqn":"JsonSerializable","kind":"interface","final":false},
-                        {"fqn":"IgnoredTrait","kind":"trait","final":false}
+                        {"fqn":"Exception","kind":"class","abstract":false,"final":false},
+                        {"fqn":"Vendor\\AbstractBase","kind":"class","abstract":true,"final":false},
+                        {"fqn":"Vendor\\Closed","kind":"class","abstract":false,"final":true},
+                        {"fqn":"JsonSerializable","kind":"interface","abstract":false,"final":false},
+                        {"fqn":"IgnoredTrait","kind":"trait","abstract":false,"final":false}
                     ]
                 }""",
             ).asJsonObject,
         )
         val catalog = PpphpKnownTypeCatalog.from(decoded)
 
-        assertEquals(listOf("Exception"), catalog.classes.map(PpphpKnownType::fqn))
+        assertEquals(
+            listOf("Vendor\\AbstractBase", "Exception"),
+            catalog.classes.map(PpphpKnownType::fqn),
+        )
         assertEquals(
             listOf("JsonSerializable"),
             catalog.interfaces.map(PpphpKnownType::fqn),
         )
-        assertEquals("\\Exception", catalog.classes.single().reference)
+        assertEquals("\\Exception", catalog.classes.single { it.fqn == "Exception" }.reference)
     }
 
     private fun specification(
