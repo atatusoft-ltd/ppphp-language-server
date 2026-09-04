@@ -54,6 +54,10 @@ export async function classifySemanticTokens(
     buildSemanticTokensRequest(document, filePath),
   );
 
+  if (execution.failure) {
+    return { tokens: [], unavailableReason: execution.failure };
+  }
+
   if (execution.notFound) {
     return {
       tokens: [],

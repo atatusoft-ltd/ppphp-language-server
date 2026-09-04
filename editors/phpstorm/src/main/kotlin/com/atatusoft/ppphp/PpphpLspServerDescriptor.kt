@@ -118,7 +118,7 @@ internal object NodeExecutableResolver {
             .filterNotNull()
             .firstOrNull(Files::isRegularFile)
             ?: throw ExecutionException(
-                "Node.js 22 or newer is required for ++PHP tooling. " +
+                "Could not find a Node.js executable for ++PHP tooling; Node.js 22 or newer is required. " +
                     "Configure a local Node.js runtime in PhpStorm, set PPPHP_NODE_PATH, " +
                     "or set -Dppphp.language.server.node.path=/absolute/path/to/node.",
             )

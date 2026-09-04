@@ -63,6 +63,9 @@ export async function checkFile(
     workspaceRoot,
     settings.timeoutMilliseconds,
   );
+  if (execution.failure) {
+    return { diagnostics: [], unavailableReason: execution.failure };
+  }
   if (execution.notFound) {
     return {
       diagnostics: [],

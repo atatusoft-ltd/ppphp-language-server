@@ -34,6 +34,8 @@ The plugin uses the project's local Node.js runtime configured under **Settings 
 -Dppphp.language.server.node.path=/absolute/path/to/node
 ```
 
+On Windows, PHP must also be available as `php.exe` on the IDE's effective `PATH`. Set `PPPHP_PHP_PATH` to an absolute PHP executable path when using a desktop or version-manager installation that PhpStorm does not inherit. The language server runs Composer's PHP proxy directly and never constructs a shell command from project paths.
+
 After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
 
 ## Windows and WSL smoke test

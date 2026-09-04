@@ -81,6 +81,8 @@ VS Code exposes these workspace/resource settings:
 
 Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm plugin uses the project's local Node.js runtime configured in the IDE, then falls back to `PATH`. `PPPHP_NODE_PATH` or the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node` can explicitly override both.
 
+On Windows, the language server invokes Composer's argument-safe PHP proxy directly instead of executing `ppphp.bat` through a shell. PHP is resolved as `php.exe` on `PATH`; set `PPPHP_PHP_PATH` to an absolute PHP executable path when PhpStorm does not inherit that path.
+
 Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
 
 Class-family declarations and references use each editor's standard rename action: **Rename Symbol** in VS Code and **Refactor | Rename** in PhpStorm. Project-wide rename requires `ppphp.json` at the workspace root so the language server can honor its source, output, cache, and exclusion boundaries.

@@ -145,11 +145,7 @@ connection.onDefinition(async ({ textDocument, position }) => {
   const workspaceRoot = findWorkspaceRoot(filePath);
   const settings = await getSettings(document.uri);
   const result = await findDefinitionAt(document, position, filePath, workspaceRoot, settings);
-
-  if (result.unavailableReason && result.unavailableReason !== unavailableReason) {
-    unavailableReason = result.unavailableReason;
-    connection.console.warn(result.unavailableReason);
-  }
+  reportUnavailable(result.unavailableReason);
 
   return result.definition;
 });
@@ -200,10 +196,7 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
   const settings = await getSettings(document.uri);
   const result = await classifySemanticTokens(document, filePath, workspaceRoot, settings);
 
-  if (result.unavailableReason && result.unavailableReason !== unavailableReason) {
-    unavailableReason = result.unavailableReason;
-    connection.console.warn(result.unavailableReason);
-  }
+  reportUnavailable(result.unavailableReason);
 
   return semanticTokens(document, result.tokens);
 });
@@ -233,10 +226,7 @@ async function validate(document: TextDocument): Promise<void> {
   if (generation !== validationGenerations.get(document.uri)) return;
 
   connection.sendDiagnostics({ uri: document.uri, diagnostics: result.diagnostics });
-  if (result.unavailableReason && result.unavailableReason !== unavailableReason) {
-    unavailableReason = result.unavailableReason;
-    connection.console.warn(result.unavailableReason);
-  }
+  reportUnavailable(result.unavailableReason);
 }
 
 async function getSettings(scopeUri: string): Promise<ServerSettings> {
@@ -276,6 +266,7 @@ function reportUnavailable(reason: string | undefined): void {
   if (reason && reason !== unavailableReason) {
     unavailableReason = reason;
     connection.console.warn(reason);
+    void connection.window.showErrorMessage(`++PHP tooling unavailable: ${reason}`);
   }
 }
 
