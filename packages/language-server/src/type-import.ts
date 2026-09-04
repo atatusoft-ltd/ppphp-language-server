@@ -495,18 +495,9 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   }
   if (new RegExp(`\\bthrows\\s+${precedingTypes}$`, "iu").test(statement)) return true;
 
-  const openParenthesis = before.lastIndexOf("(");
-  if (openParenthesis > statementStart && before.lastIndexOf(")") < openParenthesis) {
-    const declaration = before.slice(statementStart + 1, openParenthesis);
-    const parameter =
-      before
-        .slice(openParenthesis + 1)
-        .split(",")
-        .at(-1) ?? "";
+  const parameter = currentDeclarationParameter(before);
+  if (parameter !== null) {
     if (
-      new RegExp(`\\b(?:function|fn)\\s*(?:&\\s*)?(?:${IDENTIFIER}\\s*)?$`, "iu").test(
-        declaration,
-      ) &&
       new RegExp(
         `^\\s*(?:(?:public|protected|private|readonly)\\s+)*${precedingTypes}$`,
         "iu",
@@ -529,6 +520,48 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   }
 
   return false;
+}
+
+function currentDeclarationParameter(source: string): string | null {
+  const declaration = new RegExp(
+    `\\b(?:function|fn)\\s*(?:&\\s*)?(?:${IDENTIFIER}\\s*)?(?:<[^(){};]*>\\s*)?\\(`,
+    "giu",
+  );
+  const openings = [...source.matchAll(declaration)].map(
+    (match) => (match.index ?? 0) + match[0].lastIndexOf("("),
+  );
+
+  for (const opening of openings.reverse()) {
+    const parameter = parameterAfterOpening(source, opening);
+    if (parameter !== null) return parameter;
+  }
+
+  return null;
+}
+
+function parameterAfterOpening(source: string, opening: number): string | null {
+  let start = opening + 1;
+  let parenthesisDepth = 1;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "(") parenthesisDepth += 1;
+    if (character === ")") {
+      parenthesisDepth -= 1;
+      if (parenthesisDepth === 0) return null;
+    }
+    if (character === "[") bracketDepth += 1;
+    if (character === "]") bracketDepth = Math.max(0, bracketDepth - 1);
+    if (character === "{") braceDepth += 1;
+    if (character === "}") braceDepth = Math.max(0, braceDepth - 1);
+    if (character === "," && parenthesisDepth === 1 && bracketDepth === 0 && braceDepth === 0) {
+      start = index + 1;
+    }
+  }
+
+  return source.slice(start);
 }
 
 function genericTypeEnd(source: string, typeEnd: number): number | null {

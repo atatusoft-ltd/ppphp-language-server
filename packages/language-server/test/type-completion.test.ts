@@ -65,6 +65,15 @@ describe("type completion", () => {
     expect(complete("<?php #[Example(1, Pro", CATALOG)).toEqual([]);
   });
 
+  it("does not treat commas inside parameter defaults as parameter separators", () => {
+    expect(complete("<?php function run($value = [1, Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php function run($value = nested(1, Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php function run($value = [1, 2], Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php function run($value = nested(1, 2), Pro", CATALOG)[0]?.label).toBe(
+      "Product",
+    );
+  });
+
   it("offers types in incomplete declarations and generic arguments", () => {
     expect(complete("<?php class Service { public Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(Pro", CATALOG)[0]?.label).toBe("Product");
