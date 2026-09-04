@@ -38,7 +38,8 @@ export type TypeImportPlanner = (entry: TypeCatalogEntry) => TypeImportPlan | nu
 
 const IDENTIFIER = "[A-Z_\\u0080-\\u{10ffff}][A-Z0-9_\\u0080-\\u{10ffff}]*";
 const QUALIFIED_NAME = new RegExp(`^${IDENTIFIER}(?:\\\\${IDENTIFIER})*$`, "iu");
-const FULLY_QUALIFIED_NAME = new RegExp(`\\\\(?:${IDENTIFIER}\\\\)+${IDENTIFIER}`, "giu");
+const QUALIFIED_NAME_PREFIX = new RegExp(`^(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "iu");
+const FULLY_QUALIFIED_NAME = new RegExp(`\\\\${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
 
 export function typeImportCodeActionsAt(
   document: TextDocument,
@@ -392,11 +393,7 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   if (/^\s*::/u.test(after)) return true;
 
   const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
-  const declaredVariable = new RegExp(
-    `^(?:\\s*[|&]\\s*\\??${typeName})*\\s+\\$${IDENTIFIER}`,
-    "iu",
-  );
-  if (declaredVariable.test(after)) return true;
+  if (isFollowedByDeclaredVariable(after)) return true;
   if (/\b(?:new|instanceof)\s*$/iu.test(before)) return true;
 
   const statementStart = Math.max(
@@ -414,13 +411,51 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
     if (catchPrefix.test(precedingTypes)) return true;
   }
 
-  const returnType = new RegExp(
-    `\\b(?:function|fn)\\b[^{};]*\\)\\s*:\\s*(?:\\??${typeName}\\s*[|&]\\s*)*$`,
-    "iu",
-  );
-  if (returnType.test(statement)) return true;
+  const returnColon = statement.lastIndexOf(":");
+  const returnHeader = returnColon >= 0 ? statement.slice(0, returnColon).trimEnd() : "";
+  if (
+    returnColon >= 0 &&
+    returnHeader.endsWith(")") &&
+    /\b(?:function|fn)\b/iu.test(returnHeader) &&
+    isTypeExpressionFragment(statement.slice(returnColon + 1))
+  ) {
+    return true;
+  }
 
   return isAttributeNamePosition(before);
+}
+
+function isFollowedByDeclaredVariable(source: string): boolean {
+  let offset = 0;
+  while (offset < source.length) {
+    while (/\s/u.test(source[offset] ?? "")) offset += 1;
+    if (source[offset] === "$") {
+      return new RegExp(`^\\$${IDENTIFIER}`, "iu").test(source.slice(offset));
+    }
+    if (/[|&)]/u.test(source[offset] ?? "")) {
+      offset += 1;
+      continue;
+    }
+    if (source[offset] === "?") offset += 1;
+    const name = QUALIFIED_NAME_PREFIX.exec(source.slice(offset))?.[0];
+    if (!name) return false;
+    offset += name.length;
+  }
+  return false;
+}
+
+function isTypeExpressionFragment(source: string): boolean {
+  let offset = 0;
+  while (offset < source.length) {
+    if (/\s/u.test(source[offset] ?? "") || /[?&|()]/u.test(source[offset] ?? "")) {
+      offset += 1;
+      continue;
+    }
+    const name = QUALIFIED_NAME_PREFIX.exec(source.slice(offset))?.[0];
+    if (!name) return false;
+    offset += name.length;
+  }
+  return true;
 }
 
 export function isAttributeNamePosition(source: string): boolean {
@@ -477,7 +512,7 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   );
   const statement = before.slice(statementStart + 1);
   const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
-  const precedingTypes = `(?:\\??${typeName}\\s*[|&]\\s*)*`;
+  const precedingTypes = `(?:\\??${typeName}|[?&|()\\s])*`;
 
   if (
     new RegExp(

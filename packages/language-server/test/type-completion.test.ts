@@ -80,6 +80,7 @@ describe("type completion", () => {
     expect(complete("<?php function run(Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(): Repository<Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php #[Rou", CATALOG)[0]?.label).toBe("Route");
+    expect(complete("<?php function consume((Pro", CATALOG)[0]?.label).toBe("Product");
   });
 
   it("offers only known attribute classes in attribute name positions", () => {

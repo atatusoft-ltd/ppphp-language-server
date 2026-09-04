@@ -1,9 +1,9 @@
 import { execFile } from "node:child_process";
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TextDocument } from "vscode-languageserver-textdocument";
-import { discoverProjectDocuments, pathIsWithin } from "./compiler-rename.js";
+import { pathIsWithin } from "./compiler-rename.js";
 import { compilerProcessEnvironment } from "./compiler-process.js";
 import { maskNonCode } from "./language-features.js";
 import { phpNamespaceDeclarations } from "./php-syntax.js";
@@ -54,6 +54,7 @@ const CATALOG_CACHE_MILLISECONDS = 30_000;
 const MAXIMUM_SOURCE_FILES = 50_000;
 const MAXIMUM_SOURCE_BYTES = 2_097_152;
 const SOURCE_EXTENSIONS = new Set([".php", ".inc", ".ppphp"]);
+const PROJECT_SOURCE_EXTENSIONS = new Set([".ppphp"]);
 const cache = new Map<string, CatalogCacheEntry>();
 let phpRuntimeTypes: Promise<TypeCatalogEntry[]> | undefined;
 
@@ -321,36 +322,71 @@ function tokenize(source: string): Array<{ text: string; offset: number }> {
 }
 
 async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCatalog> {
-  const [project, composerSources, builtins] = await Promise.all([
-    discoverProjectDocuments(workspaceRoot, []).catch(() => []),
+  const [projectSources, composerSources, builtins] = await Promise.all([
+    discoverProjectSourceFiles(workspaceRoot).catch(() => []),
     discoverComposerSourceFiles(workspaceRoot).catch(() => []),
     getPhpRuntimeTypes(),
   ]);
-  const projectPaths = new Set(project.map(({ filePath }) => normalizePath(filePath)));
+  const projectCatalogs = await readCatalogSources(projectSources);
+  const projectPaths = new Set(projectCatalogs.map(({ filePath }) => normalizePath(filePath)));
   const projectByFile = new Map(
-    project.map(({ filePath, document }) => [
-      normalizePath(filePath),
-      parseTypeDeclarations(document.getText(), "project"),
-    ]),
+    projectCatalogs.map(({ filePath, types }) => [normalizePath(filePath), types]),
   );
-  const composerTypes = await mapWithConcurrency(
+  const composerCatalogs = await readCatalogSources(
     composerSources.filter(({ filePath }) => !projectPaths.has(normalizePath(filePath))),
-    8,
-    async ({ filePath, origin }) => {
-      try {
-        const source = await readFile(filePath, "utf8");
-        if (Buffer.byteLength(source, "utf8") > MAXIMUM_SOURCE_BYTES) return [];
-        return parseTypeDeclarations(source, origin);
-      } catch {
-        return [];
-      }
-    },
   );
 
   return {
-    external: mergeTypeCatalog([...builtins, ...composerTypes.flat()]),
+    external: mergeTypeCatalog([...builtins, ...composerCatalogs.flatMap(({ types }) => types)]),
     projectByFile,
   };
+}
+
+async function readCatalogSources(
+  sources: readonly ComposerSourceFile[],
+): Promise<Array<{ filePath: string; types: TypeCatalogEntry[] }>> {
+  const catalogs = await mapWithConcurrency(sources, 8, async ({ filePath, origin }) => {
+    try {
+      const source = await readFile(filePath, "utf8");
+      if (Buffer.byteLength(source, "utf8") > MAXIMUM_SOURCE_BYTES) return null;
+      return { filePath, types: parseTypeDeclarations(source, origin) };
+    } catch {
+      return null;
+    }
+  });
+  return catalogs.filter(
+    (catalog): catalog is { filePath: string; types: TypeCatalogEntry[] } => catalog !== null,
+  );
+}
+
+async function discoverProjectSourceFiles(workspaceRoot: string): Promise<ComposerSourceFile[]> {
+  const root = path.resolve(workspaceRoot);
+  const configuration = await readJson(path.join(root, "ppphp.json"));
+  if (!isRecord(configuration)) return [];
+
+  const sourceRoots = stringValues(configuration.source)
+    .map((configured) => path.resolve(root, configured))
+    .filter((candidate) => pathIsWithin(root, candidate));
+  const excludedRoots = [
+    ...stringValues(configuration.exclude),
+    ...[configuration.output, configuration.cache].flatMap(stringValues),
+  ]
+    .map((configured) => path.resolve(root, configured))
+    .filter((candidate) => pathIsWithin(root, candidate));
+  const files = new Map<string, ComposerSourceFile>();
+  for (const sourceRoot of sourceRoots) {
+    await collectSourceFiles(
+      sourceRoot,
+      "project",
+      root,
+      [],
+      files,
+      PROJECT_SOURCE_EXTENSIONS,
+      excludedRoots,
+    );
+    if (files.size >= MAXIMUM_SOURCE_FILES) break;
+  }
+  return [...files.values()].sort((left, right) => left.filePath.localeCompare(right.filePath));
 }
 
 async function discoverComposerSourceFiles(workspaceRoot: string): Promise<ComposerSourceFile[]> {
@@ -366,8 +402,10 @@ async function discoverComposerSourceFiles(workspaceRoot: string): Promise<Compo
   const installed = await readJson(path.join(vendorDirectory, "composer", "installed.json"));
   for (const package_ of installedPackages(installed)) {
     if (typeof package_["install-path"] !== "string") continue;
-    const packageRoot = path.resolve(vendorDirectory, "composer", package_["install-path"]);
-    if (!pathIsWithin(vendorDirectory, packageRoot)) continue;
+    const installedPath = path.resolve(vendorDirectory, "composer", package_["install-path"]);
+    if (!pathIsWithin(vendorDirectory, installedPath)) continue;
+    const packageRoot = await realpath(installedPath).catch(() => null);
+    if (!packageRoot) continue;
     roots.push(...autoloadRoots(package_, packageRoot, "dependency"));
   }
 
@@ -390,10 +428,13 @@ function autoloadRoots(
   packageRoot: string,
   origin: Exclude<TypeOrigin, "php-runtime">,
 ): ComposerSourceRoot[] {
-  const sections = [manifest.autoload, manifest["autoload-dev"]];
+  const sections = [manifest.autoload];
   const extra = isRecord(manifest.extra) ? manifest.extra : undefined;
   const ppphp = extra && isRecord(extra.ppphp) ? extra.ppphp : undefined;
-  sections.push(ppphp?.["source-autoload"], ppphp?.["source-autoload-dev"]);
+  sections.push(ppphp?.["source-autoload"]);
+  if (origin === "project") {
+    sections.push(manifest["autoload-dev"], ppphp?.["source-autoload-dev"]);
+  }
 
   const roots: ComposerSourceRoot[] = [];
   for (const sectionValue of sections) {
@@ -423,8 +464,14 @@ async function collectSourceFiles(
   packageRoot: string,
   excluded: readonly RegExp[],
   files: Map<string, ComposerSourceFile>,
+  extensions: ReadonlySet<string> = SOURCE_EXTENSIONS,
+  excludedRoots: readonly string[] = [],
 ): Promise<void> {
-  if (files.size >= MAXIMUM_SOURCE_FILES || isComposerExcluded(candidate, packageRoot, excluded)) {
+  if (
+    files.size >= MAXIMUM_SOURCE_FILES ||
+    excludedRoots.some((root) => pathIsWithin(root, candidate)) ||
+    isComposerExcluded(candidate, packageRoot, excluded)
+  ) {
     return;
   }
   let metadata;
@@ -437,7 +484,7 @@ async function collectSourceFiles(
   if (metadata.isFile()) {
     if (
       metadata.size <= MAXIMUM_SOURCE_BYTES &&
-      SOURCE_EXTENSIONS.has(path.extname(candidate).toLowerCase())
+      extensions.has(path.extname(candidate).toLowerCase())
     ) {
       files.set(normalizePath(candidate), { filePath: path.resolve(candidate), origin });
     }
@@ -454,6 +501,8 @@ async function collectSourceFiles(
       packageRoot,
       excluded,
       files,
+      extensions,
+      excludedRoots,
     );
     if (files.size >= MAXIMUM_SOURCE_FILES) return;
   }

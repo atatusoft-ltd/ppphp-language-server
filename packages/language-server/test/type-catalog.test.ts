@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -113,6 +113,7 @@ use Attribute as AttributeMarker;
               "psr-4": { "Vendor\\Library\\": "src/" },
               "exclude-from-classmap": ["/src/Tests/"],
             },
+            "autoload-dev": { "psr-4": { "Vendor\\Library\\Tests\\": "src/Tests/" } },
           },
         ],
       }),
@@ -141,6 +142,67 @@ use Attribute as AttributeMarker;
     expect(catalog).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ fqn: "Vendor\\Library\\Tests\\FakeClock" }),
+      ]),
+    );
+  });
+
+  it("discovers more project files than the rename operation permits", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-large-types-"));
+    const sourceRoot = path.join(root, "src");
+    await mkdir(sourceRoot, { recursive: true });
+    await writeFile(
+      path.join(root, "ppphp.json"),
+      JSON.stringify({ source: ["src"], output: "build", cache: ".ppphp-cache" }),
+    );
+    await Promise.all(
+      Array.from({ length: 2_050 }, (_, index) =>
+        writeFile(
+          path.join(sourceRoot, `Type${index}.ppphp`),
+          `<?php namespace App; class Type${index} {}\n`,
+        ),
+      ),
+    );
+
+    const catalog = await getTypeCatalog(root);
+
+    expect(catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "App\\Type2049", origin: "project" }),
+      ]),
+    );
+  });
+
+  it("discovers Composer path repositories through their installed symlink", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-linked-types-"));
+    const packageRoot = path.join(root, "packages", "library");
+    const installedRoot = path.join(root, "vendor", "vendor-name", "library");
+    await mkdir(path.join(root, "vendor", "composer"), { recursive: true });
+    await mkdir(path.join(root, "vendor", "vendor-name"), { recursive: true });
+    await mkdir(path.join(packageRoot, "src"), { recursive: true });
+    await writeFile(path.join(root, "composer.json"), "{}");
+    await writeFile(
+      path.join(root, "vendor", "composer", "installed.json"),
+      JSON.stringify({
+        packages: [
+          {
+            name: "vendor-name/library",
+            "install-path": "../vendor-name/library",
+            autoload: { "psr-4": { "Vendor\\Library\\": "src/" } },
+          },
+        ],
+      }),
+    );
+    await writeFile(
+      path.join(packageRoot, "src", "LinkedType.php"),
+      "<?php namespace Vendor\\Library; class LinkedType {}\n",
+    );
+    await symlink(packageRoot, installedRoot, process.platform === "win32" ? "junction" : "dir");
+
+    const catalog = await getTypeCatalog(root);
+
+    expect(catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "Vendor\\Library\\LinkedType", origin: "dependency" }),
       ]),
     );
   });

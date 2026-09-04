@@ -72,6 +72,14 @@ describe("type import actions", () => {
     expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
   });
 
+  it("does not rebind a type reference inside a parenthesized DNF type", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private (Product&Serializable)|Other $value; private \\Vendor\\Product $other; }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
+  });
+
   it("does not treat an absolute type prefix as alias-sensitive", () => {
     const product = type("Product", "Vendor", "class");
     const source =
@@ -89,6 +97,15 @@ describe("type import actions", () => {
 
     expect(updated).toContain(
       "namespace App {\r\n\r\nuse Vendor\\Contracts\\Repository;\r\n\r\nclass Service implements Repository",
+    );
+  });
+
+  it("shortens a fully qualified global type", () => {
+    const dateTime = type("DateTime", "", "class");
+    const source = "<?php\nnamespace App;\n\nclass Event { private \\DateTime $at; }\n";
+
+    expect(applyFirstAction(source, source.indexOf("DateTime"), [dateTime])).toBe(
+      "<?php\nnamespace App;\n\nuse DateTime;\n\nclass Event { private DateTime $at; }\n",
     );
   });
 
@@ -153,11 +170,11 @@ describe("type import actions", () => {
 
   it("does not mistake a class namespace constant for a namespace declaration", () => {
     const source =
-      "<?php\nnamespace App;\n\nfunction repository($value) {\n    $class = Product::namespace;\n    return $value instanceof \\Vendor\\Contracts\\Repository;\n}\n";
+      "<?php\nnamespace App;\n\nfunction typeName() {\n    return Product::namespace;\n}\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
     const updated = applyFirstAction(source, source.lastIndexOf("Repository") + 2, [REPOSITORY]);
 
     expect(updated).toBe(
-      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\nfunction repository($value) {\n    $class = Product::namespace;\n    return $value instanceof Repository;\n}\n",
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\nfunction typeName() {\n    return Product::namespace;\n}\n\nclass Service implements Repository {}\n",
     );
   });
 
