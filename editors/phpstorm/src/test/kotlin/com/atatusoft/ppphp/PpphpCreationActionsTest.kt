@@ -265,11 +265,11 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
                 """{
                     "version": 1,
                     "types": [
-                        {"fqn":"Exception","kind":"class","abstract":false,"final":false},
-                        {"fqn":"Vendor\\AbstractBase","kind":"class","abstract":true,"final":false},
-                        {"fqn":"Vendor\\Closed","kind":"class","abstract":false,"final":true},
-                        {"fqn":"JsonSerializable","kind":"interface","abstract":false,"final":false},
-                        {"fqn":"IgnoredTrait","kind":"trait","abstract":false,"final":false}
+                        {"fqn":"Exception","kind":"class","abstract":false,"final":false,"instantiable":true},
+                        {"fqn":"Vendor\\AbstractBase","kind":"class","abstract":true,"final":false,"instantiable":false},
+                        {"fqn":"Vendor\\Closed","kind":"class","abstract":false,"final":true,"instantiable":true},
+                        {"fqn":"JsonSerializable","kind":"interface","abstract":false,"final":false,"instantiable":false},
+                        {"fqn":"IgnoredTrait","kind":"trait","abstract":false,"final":false,"instantiable":false}
                     ]
                 }""",
             ).asJsonObject,

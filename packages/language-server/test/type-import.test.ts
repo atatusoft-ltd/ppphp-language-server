@@ -247,6 +247,7 @@ function type(name: string, namespace: string, kind: TypeCatalogEntry["kind"]): 
     kind,
     abstract: false,
     final: false,
+    instantiable: kind === "class",
     origin: "dependency",
   };
 }

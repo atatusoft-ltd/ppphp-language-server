@@ -71,7 +71,7 @@ enum State {}
         packages: [
           {
             name: "vendor-name/library",
-            install_path: "../vendor-name/library",
+            "install-path": "../vendor-name/library",
             autoload: {
               "psr-4": { "Vendor\\Library\\": "src/" },
               "exclude-from-classmap": ["/src/Tests/"],
@@ -152,6 +152,7 @@ function entry(
     kind,
     abstract,
     final,
+    instantiable: kind === "class" && !abstract,
     origin: "project",
   };
 }

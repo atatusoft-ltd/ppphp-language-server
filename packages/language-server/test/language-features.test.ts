@@ -33,7 +33,8 @@ class Real {}
 'function hidden()'
 $heredoc = <<<TEXT
 class HeredocDecoy {}
-    TEXT;
+    TEXT . strtoupper('suffix');
+class AfterHeredoc {}
 $nowdoc = <<<'TEXT'
 interface NowdocDecoy {}
 TEXT;
@@ -46,6 +47,8 @@ TEXT;
     expect(masked).not.toContain("hidden");
     expect(masked).not.toContain("HeredocDecoy");
     expect(masked).not.toContain("NowdocDecoy");
+    expect(masked).toContain("strtoupper");
+    expect(masked).toContain("AfterHeredoc");
   });
 
   it("preserves UTF-16 offsets after astral characters", () => {

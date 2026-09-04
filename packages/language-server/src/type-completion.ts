@@ -37,7 +37,7 @@ export function typeCompletionsAt(
     .filter(
       (entry) =>
         context.kinds.has(entry.kind) &&
-        !(context.instantiableClassesOnly && entry.abstract) &&
+        !(context.instantiableClassesOnly && !entry.instantiable) &&
         !(context.inheritableClassesOnly && entry.kind === "class" && entry.final),
     )
     .map((entry) => {

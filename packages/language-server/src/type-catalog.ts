@@ -17,6 +17,7 @@ export interface TypeCatalogEntry {
   kind: TypeKind;
   abstract: boolean;
   final: boolean;
+  instantiable: boolean;
   origin: TypeOrigin;
 }
 
@@ -41,7 +42,7 @@ interface ComposerSourceRoot extends ComposerSourceFile {
 }
 
 interface InstalledPackage extends Record<string, unknown> {
-  install_path?: unknown;
+  "install-path"?: unknown;
   autoload?: unknown;
   "autoload-dev"?: unknown;
   extra?: unknown;
@@ -173,6 +174,7 @@ export function parseTypeDeclarations(
       kind: keyword,
       abstract: keyword === "class" && modifiers.includes("abstract"),
       final: keyword === "class" && modifiers.includes("final"),
+      instantiable: keyword === "class" && !modifiers.includes("abstract"),
       origin,
     });
   }
@@ -307,8 +309,8 @@ async function discoverComposerSourceFiles(workspaceRoot: string): Promise<Compo
   const roots: ComposerSourceRoot[] = autoloadRoots(manifest, root, "project");
   const installed = await readJson(path.join(vendorDirectory, "composer", "installed.json"));
   for (const package_ of installedPackages(installed)) {
-    if (typeof package_.install_path !== "string") continue;
-    const packageRoot = path.resolve(vendorDirectory, "composer", package_.install_path);
+    if (typeof package_["install-path"] !== "string") continue;
+    const packageRoot = path.resolve(vendorDirectory, "composer", package_["install-path"]);
     if (!pathIsWithin(vendorDirectory, packageRoot)) continue;
     roots.push(...autoloadRoots(package_, packageRoot, "dependency"));
   }
@@ -471,6 +473,7 @@ function isTypeCatalogEntry(value: unknown): value is TypeCatalogEntry {
     isTypeKind(value.kind) &&
     typeof value.abstract === "boolean" &&
     typeof value.final === "boolean" &&
+    typeof value.instantiable === "boolean" &&
     (value.origin === "project" || value.origin === "dependency" || value.origin === "php-runtime")
   );
 }
@@ -569,6 +572,7 @@ foreach ($groups as $kind => $names) {
             'kind' => $actualKind,
             'abstract' => $reflection->isAbstract(),
             'final' => $reflection->isFinal(),
+            'instantiable' => $reflection->isInstantiable(),
             'origin' => 'php-runtime',
         ];
     }
