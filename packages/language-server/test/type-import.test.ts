@@ -64,6 +64,40 @@ describe("type import actions", () => {
     expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
   });
 
+  it("does not rebind the first segment of a qualified relative type", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private Product\\Service $service; public function make(): \\Vendor\\Product {} }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
+  });
+
+  it("does not rebind a type reference inside a parenthesized DNF type", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private (Product&Serializable)|Other $value; private \\Vendor\\Product $other; }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
+  });
+
+  it("does not rebind an unqualified trait use", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { use Product; public function make(): \\Vendor\\Product {} }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
+  });
+
+  it("does not treat an absolute type prefix as alias-sensitive", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private \\Product\\Service $service; public function make(): \\Vendor\\Product {} }\n";
+
+    expect(applyFirstAction(source, source.lastIndexOf("Product"), [product])).toContain(
+      "use Vendor\\Product;",
+    );
+  });
+
   it("preserves CRLF and supports bracketed namespaces", () => {
     const source =
       "<?php\r\nnamespace App {\r\n\r\nclass Service implements \\Vendor\\Contracts\\Repository {}\r\n}\r\n";
@@ -71,6 +105,25 @@ describe("type import actions", () => {
 
     expect(updated).toContain(
       "namespace App {\r\n\r\nuse Vendor\\Contracts\\Repository;\r\n\r\nclass Service implements Repository",
+    );
+  });
+
+  it("shortens a fully qualified global type", () => {
+    const dateTime = type("DateTime", "", "class");
+    const source = "<?php\nnamespace App;\n\nclass Event { private \\DateTime $at; }\n";
+
+    expect(applyFirstAction(source, source.indexOf("DateTime"), [dateTime])).toBe(
+      "<?php\nnamespace App;\n\nuse DateTime;\n\nclass Event { private DateTime $at; }\n",
+    );
+  });
+
+  it("shortens a fully qualified variadic parameter type", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nfunction consume(\\Vendor\\Product ...$products): void {}\n";
+
+    expect(applyFirstAction(source, source.indexOf("Product"), [product])).toBe(
+      "<?php\nnamespace App;\n\nuse Vendor\\Product;\n\nfunction consume(Product ...$products): void {}\n",
     );
   });
 
@@ -130,6 +183,16 @@ describe("type import actions", () => {
 
     expect(updated).toBe(
       "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\n$callback = function () use ($value) {};\n\nclass Service implements Repository {}\n",
+    );
+  });
+
+  it("does not mistake a class namespace constant for a namespace declaration", () => {
+    const source =
+      "<?php\nnamespace App;\n\nfunction typeName() {\n    return Product::namespace;\n}\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
+    const updated = applyFirstAction(source, source.lastIndexOf("Repository") + 2, [REPOSITORY]);
+
+    expect(updated).toBe(
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\nfunction typeName() {\n    return Product::namespace;\n}\n\nclass Service implements Repository {}\n",
     );
   });
 
@@ -248,6 +311,7 @@ function type(name: string, namespace: string, kind: TypeCatalogEntry["kind"]): 
     abstract: false,
     final: false,
     instantiable: kind === "class",
+    attribute: false,
     origin: "dependency",
   };
 }

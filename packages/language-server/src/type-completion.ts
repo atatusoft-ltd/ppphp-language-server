@@ -7,7 +7,11 @@ import {
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
 import type { TypeCatalogEntry, TypeKind, TypeOrigin } from "./type-catalog.js";
-import { createTypeImportPlanner, isTypeCompletionAt } from "./type-import.js";
+import {
+  createTypeImportPlanner,
+  isAttributeNamePosition,
+  isTypeCompletionAt,
+} from "./type-import.js";
 import type { ImportSorting } from "./server-settings.js";
 
 const MAXIMUM_COMPLETIONS = 200;
@@ -37,6 +41,7 @@ export function typeCompletionsAt(
     .filter(
       (entry) =>
         context.kinds.has(entry.kind) &&
+        !(context.attributesOnly && !entry.attribute) &&
         !(context.instantiableClassesOnly && !entry.instantiable) &&
         !(context.inheritableClassesOnly && entry.kind === "class" && entry.final),
     )
@@ -61,7 +66,11 @@ export function typeCompletionsAt(
         label: importPlan?.reference ?? entry.name,
         kind: completionKind(entry.kind),
         detail: `${entry.fqn} — ${originLabel(entry.origin)}`,
-        filterText: typed.includes("\\") ? entry.fqn : (importPlan?.reference ?? entry.name),
+        filterText: typed.startsWith("\\")
+          ? `\\${entry.fqn}`
+          : typed.includes("\\")
+            ? entry.fqn
+            : (importPlan?.reference ?? entry.name),
         sortText: index.toString().padStart(3, "0"),
         textEdit: { range: replacement, newText: reference },
         additionalTextEdits: importPlan?.importEdit ? [importPlan.importEdit] : undefined,
@@ -88,7 +97,16 @@ function completionContext(
   kinds: Set<TypeKind>;
   inheritableClassesOnly: boolean;
   instantiableClassesOnly: boolean;
+  attributesOnly: boolean;
 } {
+  if (isAttributeNamePosition(source.slice(0, offset))) {
+    return {
+      kinds: new Set(["class"]),
+      inheritableClassesOnly: false,
+      instantiableClassesOnly: true,
+      attributesOnly: true,
+    };
+  }
   const header = source.slice(Math.max(0, source.lastIndexOf("{", offset - 1) + 1), offset);
   const inheritance = /\b(extends|implements)\b(?![\s\S]*\b(?:extends|implements)\b)/iu.exec(
     header,
@@ -98,6 +116,7 @@ function completionContext(
       kinds: new Set(["interface"]),
       inheritableClassesOnly: false,
       instantiableClassesOnly: false,
+      attributesOnly: false,
     };
   }
   if (inheritance?.[1]?.toLowerCase() === "extends") {
@@ -111,11 +130,13 @@ function completionContext(
           kinds: new Set(["interface"]),
           inheritableClassesOnly: false,
           instantiableClassesOnly: false,
+          attributesOnly: false,
         }
       : {
           kinds: new Set(["class"]),
           inheritableClassesOnly: true,
           instantiableClassesOnly: false,
+          attributesOnly: false,
         };
   }
   if (/\bnew\s*$/iu.test(header)) {
@@ -123,12 +144,14 @@ function completionContext(
       kinds: new Set(["class"]),
       inheritableClassesOnly: false,
       instantiableClassesOnly: true,
+      attributesOnly: false,
     };
   }
   return {
     kinds: new Set(["class", "interface", "enum"]),
     inheritableClassesOnly: false,
     instantiableClassesOnly: false,
+    attributesOnly: false,
   };
 }
 

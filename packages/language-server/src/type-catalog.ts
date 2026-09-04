@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TextDocument } from "vscode-languageserver-textdocument";
-import { discoverProjectDocuments, pathIsWithin } from "./compiler-rename.js";
+import { pathIsWithin } from "./compiler-rename.js";
 import { compilerProcessEnvironment } from "./compiler-process.js";
 import { maskNonCode } from "./language-features.js";
+import { phpNamespaceDeclarations } from "./php-syntax.js";
 
 export type TypeKind = "class" | "interface" | "trait" | "enum";
 export type TypeOrigin = "project" | "dependency" | "php-runtime";
@@ -18,6 +19,7 @@ export interface TypeCatalogEntry {
   abstract: boolean;
   final: boolean;
   instantiable: boolean;
+  attribute: boolean;
   origin: TypeOrigin;
 }
 
@@ -52,6 +54,7 @@ const CATALOG_CACHE_MILLISECONDS = 30_000;
 const MAXIMUM_SOURCE_FILES = 50_000;
 const MAXIMUM_SOURCE_BYTES = 2_097_152;
 const SOURCE_EXTENSIONS = new Set([".php", ".inc", ".ppphp"]);
+const PROJECT_SOURCE_EXTENSIONS = new Set([".ppphp"]);
 const cache = new Map<string, CatalogCacheEntry>();
 let phpRuntimeTypes: Promise<TypeCatalogEntry[]> | undefined;
 
@@ -95,6 +98,31 @@ export function invalidateTypeCatalog(workspaceRoot?: string): void {
   }
 }
 
+export function updateTypeCatalogDocument(
+  workspaceRoot: string,
+  filePath: string,
+  source: string,
+): void {
+  const root = path.resolve(workspaceRoot);
+  const normalizedFile = normalizePath(filePath);
+  const cached = cache.get(root);
+  if (
+    !cached ||
+    path.extname(normalizedFile).toLowerCase() !== ".ppphp" ||
+    !pathIsWithin(root, normalizedFile)
+  ) {
+    return;
+  }
+
+  cached.createdAt = Date.now();
+  cached.catalog = cached.catalog.then((saved) => {
+    if (!saved.projectByFile.has(normalizedFile)) return saved;
+    const projectByFile = new Map(saved.projectByFile);
+    projectByFile.set(normalizedFile, parseTypeDeclarations(source, "project"));
+    return { ...saved, projectByFile };
+  });
+}
+
 export async function runTypeCatalogCommand(workspaceRoot: string): Promise<{
   version: 1;
   types: TypeCatalogEntry[];
@@ -108,9 +136,14 @@ export function parseTypeDeclarations(
 ): TypeCatalogEntry[] {
   const searchable = maskNonCode(source);
   const tokens = tokenize(searchable);
+  const namespaces = new Map(
+    phpNamespaceDeclarations(searchable).map((declaration) => [declaration.start, declaration]),
+  );
   const declarations: TypeCatalogEntry[] = [];
-  const namespaceStack: Array<{ depth: number; namespace: string }> = [];
+  const namespaceStack: Array<{ depth: number; namespace: string; scopeStart: number }> = [];
   let namespace = "";
+  let namespaceScopeStart = searchable.indexOf("<?php") + 5;
+  if (namespaceScopeStart < 5) namespaceScopeStart = 0;
   let braceDepth = 0;
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -126,33 +159,36 @@ export function parseTypeDeclarations(
       const scope = namespaceStack.at(-1);
       if (scope?.depth === braceDepth) {
         namespace = scope.namespace;
+        namespaceScopeStart = scope.scopeStart;
         namespaceStack.pop();
       }
       continue;
     }
 
     const keyword = token.text.toLowerCase();
-    if (keyword === "namespace") {
-      const parsed = parseNamespace(tokens, index + 1);
-      if (parsed) {
-        if (parsed.delimiter === "{") {
-          namespaceStack.push({ depth: braceDepth, namespace });
-          namespace = parsed.namespace;
-        } else {
-          namespace = parsed.namespace;
-        }
-        index = parsed.delimiterIndex - 1;
+    const parsedNamespace = keyword === "namespace" ? namespaces.get(token.offset) : undefined;
+    if (parsedNamespace) {
+      if (parsedNamespace.delimiter === "{") {
+        namespaceStack.push({ depth: braceDepth, namespace, scopeStart: namespaceScopeStart });
+        namespace = parsedNamespace.namespace;
+        namespaceScopeStart = parsedNamespace.anchor;
+      } else {
+        namespace = parsedNamespace.namespace;
+        namespaceScopeStart = parsedNamespace.anchor;
       }
+      const delimiterIndex = tokens.findIndex(
+        (candidate, candidateIndex) =>
+          candidateIndex > index && candidate.offset === parsedNamespace.delimiterOffset,
+      );
+      if (delimiterIndex >= 0) index = delimiterIndex - 1;
       continue;
     }
 
-    const modifiers = declarationModifiers(tokens, index);
-    const previous = tokens[index - modifiers.length - 1]?.text.toLowerCase();
+    if (!isTypeKind(keyword)) continue;
+    const context = declarationContext(searchable, token.offset);
     if (
-      !isTypeKind(keyword) ||
-      previous === "::" ||
-      previous === "new" ||
-      (keyword === "class" && isAttributedAnonymousClass(searchable, token.offset))
+      /::\s*$/u.test(searchable.slice(0, context.start)) ||
+      (keyword === "class" && /\bnew\s*$/iu.test(searchable.slice(0, context.start)))
     ) {
       continue;
     }
@@ -172,9 +208,18 @@ export function parseTypeDeclarations(
       namespace,
       fqn,
       kind: keyword,
-      abstract: keyword === "class" && modifiers.includes("abstract"),
-      final: keyword === "class" && modifiers.includes("final"),
-      instantiable: keyword === "class" && !modifiers.includes("abstract"),
+      abstract: keyword === "class" && context.modifiers.includes("abstract"),
+      final: keyword === "class" && context.modifiers.includes("final"),
+      instantiable: keyword === "class" && !context.modifiers.includes("abstract"),
+      attribute:
+        keyword === "class" &&
+        declaresAttribute(
+          context.attributes,
+          searchable,
+          namespaceScopeStart,
+          token.offset,
+          namespace,
+        ),
       origin,
     });
   }
@@ -182,46 +227,114 @@ export function parseTypeDeclarations(
   return declarations;
 }
 
-function declarationModifiers(
-  tokens: readonly { text: string; offset: number }[],
-  declarationIndex: number,
-): string[] {
+function declarationContext(
+  source: string,
+  declarationOffset: number,
+): {
+  start: number;
+  modifiers: string[];
+  attributes: string[];
+} {
+  let offset = skipWhitespaceBackward(source, declarationOffset);
   const modifiers: string[] = [];
-  for (let index = declarationIndex - 1; index >= 0; index -= 1) {
-    const candidate = tokens[index]?.text.toLowerCase();
-    if (candidate !== "abstract" && candidate !== "final" && candidate !== "readonly") break;
-    modifiers.unshift(candidate);
-  }
-  return modifiers;
-}
-
-function isAttributedAnonymousClass(source: string, classOffset: number): boolean {
-  let offset = skipWhitespaceBackward(source, classOffset);
+  const attributes: string[] = [];
 
   while (offset > 0) {
-    const modifier = /\b(?:abstract|final|readonly)$/iu.exec(source.slice(0, offset));
+    const modifier = /\b(abstract|final|readonly)$/iu.exec(source.slice(0, offset));
     if (modifier?.index !== undefined) {
+      modifiers.unshift((modifier[1] ?? "").toLowerCase());
       offset = skipWhitespaceBackward(source, modifier.index);
       continue;
     }
     if (source[offset - 1] !== "]") break;
 
-    let attributeDepth = 1;
-    let cursor = offset - 2;
-    for (; cursor >= 0 && attributeDepth > 0; cursor -= 1) {
-      if (source[cursor] === "]") attributeDepth += 1;
-      if (source[cursor] === "[") attributeDepth -= 1;
-    }
-    if (attributeDepth !== 0 || cursor < 0 || source[cursor] !== "#") return false;
-    offset = skipWhitespaceBackward(source, cursor);
+    const start = attributeStart(source, offset);
+    if (start === null) break;
+    attributes.unshift(source.slice(start, offset));
+    offset = skipWhitespaceBackward(source, start);
   }
 
-  return /\bnew$/iu.test(source.slice(0, offset));
+  return { start: offset, modifiers, attributes };
 }
 
 function skipWhitespaceBackward(source: string, offset: number): number {
   while (offset > 0 && /\s/u.test(source[offset - 1] ?? "")) offset -= 1;
   return offset;
+}
+
+function attributeStart(source: string, end: number): number | null {
+  let depth = 1;
+  let cursor = end - 2;
+  for (; cursor >= 0 && depth > 0; cursor -= 1) {
+    if (source[cursor] === "]") depth += 1;
+    if (source[cursor] === "[") depth -= 1;
+  }
+  return depth === 0 && cursor >= 0 && source[cursor] === "#" ? cursor : null;
+}
+
+function declaresAttribute(
+  groups: readonly string[],
+  source: string,
+  scopeStart: number,
+  declarationOffset: number,
+  namespace: string,
+): boolean {
+  if (groups.length === 0) return false;
+  const aliases = importedAttributeAliases(source, scopeStart, declarationOffset);
+  for (const group of groups) {
+    for (const name of attributeNames(group)) {
+      if (name.toLowerCase() === "\\attribute") return true;
+      if (!name.includes("\\")) {
+        if (namespace === "" && name.toLowerCase() === "attribute") return true;
+        if (aliases.has(name.toLowerCase())) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function importedAttributeAliases(source: string, start: number, end: number): Set<string> {
+  const aliases = new Set<string>();
+  const body = source.slice(start, end);
+  const imports = body.matchAll(
+    /\buse\s+\\?Attribute(?:\s+as\s+([A-Z_\u0080-\u{10ffff}][A-Z0-9_\u0080-\u{10ffff}]*))?\s*;/giu,
+  );
+  let depth = 0;
+  let scannedThrough = 0;
+  for (const imported of imports) {
+    const offset = imported.index ?? 0;
+    for (let cursor = scannedThrough; cursor < offset; cursor += 1) {
+      if (body[cursor] === "{") depth += 1;
+      if (body[cursor] === "}") depth = Math.max(0, depth - 1);
+    }
+    scannedThrough = offset;
+    if (depth === 0) aliases.add((imported[1] ?? "Attribute").toLowerCase());
+  }
+  return aliases;
+}
+
+function attributeNames(group: string): string[] {
+  const body = group.slice(2, -1);
+  const names: string[] = [];
+  let parentheses = 0;
+  let brackets = 0;
+  let segmentStart = 0;
+  for (let offset = 0; offset <= body.length; offset += 1) {
+    const character = body[offset];
+    if (character === "(") parentheses += 1;
+    if (character === ")") parentheses = Math.max(0, parentheses - 1);
+    if (character === "[") brackets += 1;
+    if (character === "]") brackets = Math.max(0, brackets - 1);
+    if (offset < body.length && (character !== "," || parentheses !== 0 || brackets !== 0)) {
+      continue;
+    }
+    const name = /^\s*(\\?[A-Z_\u0080-\u{10ffff}][A-Z0-9_\\\u0080-\u{10ffff}]*)/iu.exec(
+      body.slice(segmentStart, offset),
+    )?.[1];
+    if (name) names.push(name);
+    segmentStart = offset + 1;
+  }
+  return names;
 }
 
 function tokenize(source: string): Array<{ text: string; offset: number }> {
@@ -233,68 +346,80 @@ function tokenize(source: string): Array<{ text: string; offset: number }> {
   return tokens;
 }
 
-function parseNamespace(
-  tokens: readonly { text: string; offset: number }[],
-  start: number,
-): { namespace: string; delimiter: "{" | ";"; delimiterIndex: number } | null {
-  const parts: string[] = [];
-  let expectsIdentifier = true;
-
-  for (let index = start; index < tokens.length; index += 1) {
-    const text = tokens[index]?.text;
-    if (text === ";" || text === "{") {
-      if (expectsIdentifier && parts.length > 0) return null;
-      return {
-        namespace: parts.join("\\"),
-        delimiter: text,
-        delimiterIndex: index,
-      };
-    }
-    if (expectsIdentifier && text && isIdentifier(text)) {
-      parts.push(text);
-      expectsIdentifier = false;
-      continue;
-    }
-    if (!expectsIdentifier && text === "\\") {
-      expectsIdentifier = true;
-      continue;
-    }
-    return null;
-  }
-  return null;
-}
-
 async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCatalog> {
-  const [project, composerSources, builtins] = await Promise.all([
-    discoverProjectDocuments(workspaceRoot, []).catch(() => []),
+  const [projectSources, composerSources, builtins] = await Promise.all([
+    discoverProjectSourceFiles(workspaceRoot).catch(() => []),
     discoverComposerSourceFiles(workspaceRoot).catch(() => []),
     getPhpRuntimeTypes(),
   ]);
-  const projectPaths = new Set(project.map(({ filePath }) => normalizePath(filePath)));
+  const projectCatalogs = await readCatalogSources(projectSources);
+  const projectPaths = new Set(projectCatalogs.map(({ filePath }) => normalizePath(filePath)));
   const projectByFile = new Map(
-    project.map(({ filePath, document }) => [
-      normalizePath(filePath),
-      parseTypeDeclarations(document.getText(), "project"),
-    ]),
+    projectCatalogs.map(({ filePath, types }) => [normalizePath(filePath), types]),
   );
-  const composerTypes = await mapWithConcurrency(
+  const composerCatalogs = await readCatalogSources(
     composerSources.filter(({ filePath }) => !projectPaths.has(normalizePath(filePath))),
-    8,
-    async ({ filePath, origin }) => {
-      try {
-        const source = await readFile(filePath, "utf8");
-        if (Buffer.byteLength(source, "utf8") > MAXIMUM_SOURCE_BYTES) return [];
-        return parseTypeDeclarations(source, origin);
-      } catch {
-        return [];
-      }
-    },
   );
+  for (const { filePath, origin, types } of composerCatalogs) {
+    if (origin === "project") projectByFile.set(normalizePath(filePath), types);
+  }
 
   return {
-    external: mergeTypeCatalog([...builtins, ...composerTypes.flat()]),
+    external: mergeTypeCatalog([
+      ...builtins,
+      ...composerCatalogs
+        .filter(({ origin }) => origin === "dependency")
+        .flatMap(({ types }) => types),
+    ]),
     projectByFile,
   };
+}
+
+async function readCatalogSources(
+  sources: readonly ComposerSourceFile[],
+): Promise<Array<ComposerSourceFile & { types: TypeCatalogEntry[] }>> {
+  const catalogs = await mapWithConcurrency(sources, 8, async ({ filePath, origin }) => {
+    try {
+      const source = await readFile(filePath, "utf8");
+      if (Buffer.byteLength(source, "utf8") > MAXIMUM_SOURCE_BYTES) return null;
+      return { filePath, origin, types: parseTypeDeclarations(source, origin) };
+    } catch {
+      return null;
+    }
+  });
+  return catalogs.filter(
+    (catalog): catalog is ComposerSourceFile & { types: TypeCatalogEntry[] } => catalog !== null,
+  );
+}
+
+async function discoverProjectSourceFiles(workspaceRoot: string): Promise<ComposerSourceFile[]> {
+  const root = path.resolve(workspaceRoot);
+  const configuration = await readJson(path.join(root, "ppphp.json"));
+  if (!isRecord(configuration)) return [];
+
+  const sourceRoots = stringValues(configuration.source)
+    .map((configured) => path.resolve(root, configured))
+    .filter((candidate) => pathIsWithin(root, candidate));
+  const excludedRoots = [
+    ...stringValues(configuration.exclude),
+    ...[configuration.output, configuration.cache].flatMap(stringValues),
+  ]
+    .map((configured) => path.resolve(root, configured))
+    .filter((candidate) => pathIsWithin(root, candidate));
+  const files = new Map<string, ComposerSourceFile>();
+  for (const sourceRoot of sourceRoots) {
+    await collectSourceFiles(
+      sourceRoot,
+      "project",
+      root,
+      [],
+      files,
+      PROJECT_SOURCE_EXTENSIONS,
+      excludedRoots,
+    );
+    if (files.size >= MAXIMUM_SOURCE_FILES) break;
+  }
+  return [...files.values()].sort((left, right) => left.filePath.localeCompare(right.filePath));
 }
 
 async function discoverComposerSourceFiles(workspaceRoot: string): Promise<ComposerSourceFile[]> {
@@ -310,8 +435,10 @@ async function discoverComposerSourceFiles(workspaceRoot: string): Promise<Compo
   const installed = await readJson(path.join(vendorDirectory, "composer", "installed.json"));
   for (const package_ of installedPackages(installed)) {
     if (typeof package_["install-path"] !== "string") continue;
-    const packageRoot = path.resolve(vendorDirectory, "composer", package_["install-path"]);
-    if (!pathIsWithin(vendorDirectory, packageRoot)) continue;
+    const installedPath = path.resolve(vendorDirectory, "composer", package_["install-path"]);
+    if (!pathIsWithin(vendorDirectory, installedPath)) continue;
+    const packageRoot = await realpath(installedPath).catch(() => null);
+    if (!packageRoot) continue;
     roots.push(...autoloadRoots(package_, packageRoot, "dependency"));
   }
 
@@ -334,10 +461,13 @@ function autoloadRoots(
   packageRoot: string,
   origin: Exclude<TypeOrigin, "php-runtime">,
 ): ComposerSourceRoot[] {
-  const sections = [manifest.autoload, manifest["autoload-dev"]];
+  const sections = [manifest.autoload];
   const extra = isRecord(manifest.extra) ? manifest.extra : undefined;
   const ppphp = extra && isRecord(extra.ppphp) ? extra.ppphp : undefined;
-  sections.push(ppphp?.["source-autoload"], ppphp?.["source-autoload-dev"]);
+  sections.push(ppphp?.["source-autoload"]);
+  if (origin === "project") {
+    sections.push(manifest["autoload-dev"], ppphp?.["source-autoload-dev"]);
+  }
 
   const roots: ComposerSourceRoot[] = [];
   for (const sectionValue of sections) {
@@ -367,8 +497,14 @@ async function collectSourceFiles(
   packageRoot: string,
   excluded: readonly RegExp[],
   files: Map<string, ComposerSourceFile>,
+  extensions: ReadonlySet<string> = SOURCE_EXTENSIONS,
+  excludedRoots: readonly string[] = [],
 ): Promise<void> {
-  if (files.size >= MAXIMUM_SOURCE_FILES || isComposerExcluded(candidate, packageRoot, excluded)) {
+  if (
+    files.size >= MAXIMUM_SOURCE_FILES ||
+    excludedRoots.some((root) => pathIsWithin(root, candidate)) ||
+    isComposerExcluded(candidate, packageRoot, excluded)
+  ) {
     return;
   }
   let metadata;
@@ -381,7 +517,7 @@ async function collectSourceFiles(
   if (metadata.isFile()) {
     if (
       metadata.size <= MAXIMUM_SOURCE_BYTES &&
-      SOURCE_EXTENSIONS.has(path.extname(candidate).toLowerCase())
+      extensions.has(path.extname(candidate).toLowerCase())
     ) {
       files.set(normalizePath(candidate), { filePath: path.resolve(candidate), origin });
     }
@@ -398,6 +534,8 @@ async function collectSourceFiles(
       packageRoot,
       excluded,
       files,
+      extensions,
+      excludedRoots,
     );
     if (files.size >= MAXIMUM_SOURCE_FILES) return;
   }
@@ -474,6 +612,7 @@ function isTypeCatalogEntry(value: unknown): value is TypeCatalogEntry {
     typeof value.abstract === "boolean" &&
     typeof value.final === "boolean" &&
     typeof value.instantiable === "boolean" &&
+    typeof value.attribute === "boolean" &&
     (value.origin === "project" || value.origin === "dependency" || value.origin === "php-runtime")
   );
 }
@@ -573,6 +712,7 @@ foreach ($groups as $kind => $names) {
             'abstract' => $reflection->isAbstract(),
             'final' => $reflection->isFinal(),
             'instantiable' => $reflection->isInstantiable(),
+            'attribute' => count($reflection->getAttributes(Attribute::class)) > 0,
             'origin' => 'php-runtime',
         ];
     }

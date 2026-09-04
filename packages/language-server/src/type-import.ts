@@ -6,6 +6,7 @@ import {
 } from "vscode-languageserver/node";
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
+import { phpNamespaceDeclarations } from "./php-syntax.js";
 import { parseTypeDeclarations, type TypeCatalogEntry } from "./type-catalog.js";
 import type { ImportSorting } from "./server-settings.js";
 
@@ -37,11 +38,8 @@ export type TypeImportPlanner = (entry: TypeCatalogEntry) => TypeImportPlan | nu
 
 const IDENTIFIER = "[A-Z_\\u0080-\\u{10ffff}][A-Z0-9_\\u0080-\\u{10ffff}]*";
 const QUALIFIED_NAME = new RegExp(`^${IDENTIFIER}(?:\\\\${IDENTIFIER})*$`, "iu");
-const FULLY_QUALIFIED_NAME = new RegExp(`\\\\(?:${IDENTIFIER}\\\\)+${IDENTIFIER}`, "giu");
-const NAMESPACE = new RegExp(
-  `\\bnamespace(?:\\s+(${IDENTIFIER}(?:\\\\${IDENTIFIER})*))?\\s*([;{])`,
-  "giu",
-);
+const QUALIFIED_NAME_PREFIX = new RegExp(`^(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "iu");
+const FULLY_QUALIFIED_NAME = new RegExp(`\\\\${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
 
 export function typeImportCodeActionsAt(
   document: TextDocument,
@@ -120,7 +118,7 @@ export function createTypeImportPlanner(
     return null;
   }
   const imported = statements.flatMap((statement) => statement.types);
-  const referencedLocalTypes = unqualifiedTypeReferences(masked, scope, offset);
+  const referencedLocalTypes = aliasSensitiveTypeReferences(masked, scope, offset);
   const localNames = new Set(
     parseTypeDeclarations(source, "project")
       .filter((type) => equalName(type.namespace, scope.namespace))
@@ -258,16 +256,13 @@ function compareImports(
 }
 
 function importScopeAt(source: string, offset: number): ImportScope | null {
-  const declarations = [...source.matchAll(NAMESPACE)].map((match) => {
-    const start = match.index ?? 0;
-    const delimiter = match[2] ?? ";";
-    const delimiterStart = start + match[0].lastIndexOf(delimiter);
+  const declarations = phpNamespaceDeclarations(source).map((declaration) => {
     return {
-      namespace: match[1] ?? "",
-      start,
-      anchor: delimiterStart + 1,
-      delimiter,
-      closing: delimiter === "{" ? matchingBrace(source, delimiterStart) : undefined,
+      ...declaration,
+      closing:
+        declaration.delimiter === "{"
+          ? matchingBrace(source, declaration.delimiterOffset)
+          : undefined,
     };
   });
 
@@ -398,12 +393,8 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   if (/^\s*::/u.test(after)) return true;
 
   const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
-  const declaredVariable = new RegExp(
-    `^(?:\\s*[|&]\\s*\\??${typeName})*\\s+\\$${IDENTIFIER}`,
-    "iu",
-  );
-  if (declaredVariable.test(after)) return true;
-  if (/\b(?:new|instanceof)\s*$/iu.test(before)) return true;
+  if (isFollowedByDeclaredVariable(after)) return true;
+  if (/\b(?:new|instanceof|insteadof)\s*$/iu.test(before)) return true;
 
   const statementStart = Math.max(
     before.lastIndexOf(";"),
@@ -412,6 +403,12 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   );
   const statement = before.slice(statementStart + 1);
   if (/\b(?:extends|implements)\b[^{};]*$/iu.test(statement)) return true;
+  if (
+    isDirectClassBodyAt(source, start) &&
+    new RegExp(`^\\s*use\\s+(?:${typeName}\\s*,\\s*)*$`, "iu").test(statement)
+  ) {
+    return true;
+  }
 
   const openParenthesis = before.lastIndexOf("(");
   if (openParenthesis >= 0 && /\bcatch\s*$/iu.test(before.slice(0, openParenthesis))) {
@@ -420,16 +417,84 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
     if (catchPrefix.test(precedingTypes)) return true;
   }
 
-  const returnType = new RegExp(
-    `\\b(?:function|fn)\\b[^{};]*\\)\\s*:\\s*(?:\\??${typeName}\\s*[|&]\\s*)*$`,
-    "iu",
-  );
-  if (returnType.test(statement)) return true;
+  const returnColon = statement.lastIndexOf(":");
+  const returnHeader = returnColon >= 0 ? statement.slice(0, returnColon).trimEnd() : "";
+  if (
+    returnColon >= 0 &&
+    returnHeader.endsWith(")") &&
+    /\b(?:function|fn)\b/iu.test(returnHeader) &&
+    isTypeExpressionFragment(statement.slice(returnColon + 1))
+  ) {
+    return true;
+  }
 
   return isAttributeNamePosition(before);
 }
 
-function isAttributeNamePosition(source: string): boolean {
+function isDirectClassBodyAt(source: string, offset: number): boolean {
+  let depth = 0;
+
+  for (let index = offset - 1; index >= 0; index -= 1) {
+    if (source[index] === "}") {
+      depth += 1;
+      continue;
+    }
+    if (source[index] !== "{") continue;
+    if (depth > 0) {
+      depth -= 1;
+      continue;
+    }
+
+    const headerStart = Math.max(
+      source.lastIndexOf(";", index - 1),
+      source.lastIndexOf("{", index - 1),
+      source.lastIndexOf("}", index - 1),
+    );
+    return /\b(?:class|trait|enum)\b[^{};]*$/iu.test(source.slice(headerStart + 1, index));
+  }
+
+  return false;
+}
+
+function isFollowedByDeclaredVariable(source: string): boolean {
+  let offset = 0;
+  while (offset < source.length) {
+    while (/\s/u.test(source[offset] ?? "")) offset += 1;
+    if (source[offset] === "$") {
+      return new RegExp(`^\\$${IDENTIFIER}`, "iu").test(source.slice(offset));
+    }
+    if (source.startsWith("...", offset)) {
+      offset += 3;
+      while (/\s/u.test(source[offset] ?? "")) offset += 1;
+      return new RegExp(`^\\$${IDENTIFIER}`, "iu").test(source.slice(offset));
+    }
+    if (/[|&)]/u.test(source[offset] ?? "")) {
+      offset += 1;
+      continue;
+    }
+    if (source[offset] === "?") offset += 1;
+    const name = QUALIFIED_NAME_PREFIX.exec(source.slice(offset))?.[0];
+    if (!name) return false;
+    offset += name.length;
+  }
+  return false;
+}
+
+function isTypeExpressionFragment(source: string): boolean {
+  let offset = 0;
+  while (offset < source.length) {
+    if (/\s/u.test(source[offset] ?? "") || /[?&|()]/u.test(source[offset] ?? "")) {
+      offset += 1;
+      continue;
+    }
+    const name = QUALIFIED_NAME_PREFIX.exec(source.slice(offset))?.[0];
+    if (!name) return false;
+    offset += name.length;
+  }
+  return true;
+}
+
+export function isAttributeNamePosition(source: string): boolean {
   let bracketDepth = 0;
   let parenthesisDepth = 0;
   let candidateStart = -1;
@@ -483,7 +548,7 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   );
   const statement = before.slice(statementStart + 1);
   const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
-  const precedingTypes = `(?:\\??${typeName}\\s*[|&]\\s*)*`;
+  const precedingTypes = `(?:\\??${typeName}|[?&|()\\s])*`;
 
   if (
     new RegExp(
@@ -495,18 +560,9 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   }
   if (new RegExp(`\\bthrows\\s+${precedingTypes}$`, "iu").test(statement)) return true;
 
-  const openParenthesis = before.lastIndexOf("(");
-  if (openParenthesis > statementStart && before.lastIndexOf(")") < openParenthesis) {
-    const declaration = before.slice(statementStart + 1, openParenthesis);
-    const parameter =
-      before
-        .slice(openParenthesis + 1)
-        .split(",")
-        .at(-1) ?? "";
+  const parameter = currentDeclarationParameter(before);
+  if (parameter !== null) {
     if (
-      new RegExp(`\\b(?:function|fn)\\s*(?:&\\s*)?(?:${IDENTIFIER}\\s*)?$`, "iu").test(
-        declaration,
-      ) &&
       new RegExp(
         `^\\s*(?:(?:public|protected|private|readonly)\\s+)*${precedingTypes}$`,
         "iu",
@@ -531,6 +587,48 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   return false;
 }
 
+function currentDeclarationParameter(source: string): string | null {
+  const declaration = new RegExp(
+    `\\b(?:function|fn)\\s*(?:&\\s*)?(?:${IDENTIFIER}\\s*)?(?:<[^(){};]*>\\s*)?\\(`,
+    "giu",
+  );
+  const openings = [...source.matchAll(declaration)].map(
+    (match) => (match.index ?? 0) + match[0].lastIndexOf("("),
+  );
+
+  for (const opening of openings.reverse()) {
+    const parameter = parameterAfterOpening(source, opening);
+    if (parameter !== null) return parameter;
+  }
+
+  return null;
+}
+
+function parameterAfterOpening(source: string, opening: number): string | null {
+  let start = opening + 1;
+  let parenthesisDepth = 1;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "(") parenthesisDepth += 1;
+    if (character === ")") {
+      parenthesisDepth -= 1;
+      if (parenthesisDepth === 0) return null;
+    }
+    if (character === "[") bracketDepth += 1;
+    if (character === "]") bracketDepth = Math.max(0, bracketDepth - 1);
+    if (character === "{") braceDepth += 1;
+    if (character === "}") braceDepth = Math.max(0, braceDepth - 1);
+    if (character === "," && parenthesisDepth === 1 && bracketDepth === 0 && braceDepth === 0) {
+      start = index + 1;
+    }
+  }
+
+  return source.slice(start);
+}
+
 function genericTypeEnd(source: string, typeEnd: number): number | null {
   let offset = typeEnd;
   while (/\s/u.test(source[offset] ?? "")) offset += 1;
@@ -547,19 +645,22 @@ function genericTypeEnd(source: string, typeEnd: number): number | null {
   return null;
 }
 
-function unqualifiedTypeReferences(
+function aliasSensitiveTypeReferences(
   source: string,
   scope: ImportScope,
   ignoredOffset: number,
 ): Set<string> {
   const references = new Set<string>();
-  const expression = new RegExp(IDENTIFIER, "giu");
+  const expression = new RegExp(`(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
   for (const match of source.slice(scope.start, scope.end).matchAll(expression)) {
     const start = scope.start + (match.index ?? 0);
     const end = start + match[0].length;
     if (start <= ignoredOffset && ignoredOffset <= end) continue;
-    if (source[start - 1] === "\\" || source[end] === "\\") continue;
-    if (isTypeCompletionAt(source, start, end)) references.add(match[0].toLowerCase());
+    if (match[0].startsWith("\\")) continue;
+    if (isTypeCompletionAt(source, start, end)) {
+      const prefix = match[0].split("\\", 1)[0];
+      if (prefix) references.add(prefix.toLowerCase());
+    }
   }
   return references;
 }

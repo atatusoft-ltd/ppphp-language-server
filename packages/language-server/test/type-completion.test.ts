@@ -12,6 +12,7 @@ const CATALOG: TypeCatalogEntry[] = [
   type("Product", "Vendor\\Domain", "class", "dependency"),
   type("AbstractProduct", "Vendor\\Domain", "class", "dependency", false, true),
   type("Closure", "", "class", "php-runtime", false, false, false),
+  type("Route", "Vendor\\Attributes", "class", "dependency", false, false, true, true),
 ];
 
 describe("type completion", () => {
@@ -59,17 +60,43 @@ describe("type completion", () => {
     expect(complete("<?php function make() { return new Clo", CATALOG)).toEqual([]);
   });
 
+  it("keeps the leading separator when filtering absolute completions", () => {
+    expect(complete("<?php function make(): \\Vendor\\Domain\\Pro", CATALOG)[0]).toMatchObject({
+      filterText: "\\Vendor\\Domain\\Product",
+      textEdit: { newText: "\\Vendor\\Domain\\Product" },
+    });
+  });
+
   it("does not offer type imports in ordinary expression positions", () => {
     expect(complete("<?php function run() { return Pro", CATALOG)).toEqual([]);
     expect(complete("<?php function run() { Pro", CATALOG)).toEqual([]);
     expect(complete("<?php #[Example(1, Pro", CATALOG)).toEqual([]);
   });
 
+  it("does not treat commas inside parameter defaults as parameter separators", () => {
+    expect(complete("<?php function run($value = [1, Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php function run($value = nested(1, Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php function run($value = [1, 2], Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php function run($value = nested(1, 2), Pro", CATALOG)[0]?.label).toBe(
+      "Product",
+    );
+  });
+
   it("offers types in incomplete declarations and generic arguments", () => {
     expect(complete("<?php class Service { public Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(): Repository<Pro", CATALOG)[0]?.label).toBe("Product");
-    expect(complete("<?php #[Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php #[Rou", CATALOG)[0]?.label).toBe("Route");
+    expect(complete("<?php function consume((Pro", CATALOG)[0]?.label).toBe("Product");
+  });
+
+  it("offers only known attribute classes in attribute name positions", () => {
+    expect(complete("<?php #[Json", CATALOG)).toEqual([]);
+    expect(complete("<?php #[Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php #[Rou", CATALOG)[0]).toMatchObject({
+      label: "Route",
+      textEdit: { newText: "Route" },
+    });
   });
 
   it("reuses existing imports and aliases instead of inserting qualified names", () => {
@@ -136,6 +163,19 @@ describe("type completion", () => {
     });
   });
 
+  it("keeps a qualified completion when a relative type uses the same first segment", () => {
+    const items = complete(
+      "<?php\nnamespace App;\n\nclass Service { private Product\\Service $current; public function make(): Pro",
+      CATALOG,
+    );
+
+    expect(items[0]).toMatchObject({
+      label: "Product",
+      textEdit: { newText: "\\Vendor\\Domain\\Product" },
+      additionalTextEdits: undefined,
+    });
+  });
+
   it("does not treat the completion target as a pre-existing short reference", () => {
     const item = complete("<?php namespace App; function make(): Product", CATALOG)[0];
 
@@ -177,6 +217,7 @@ function type(
   final = false,
   abstract = false,
   instantiable = kind === "class" && !abstract,
+  attribute = false,
 ): TypeCatalogEntry {
   return {
     name,
@@ -186,6 +227,7 @@ function type(
     abstract,
     final,
     instantiable,
+    attribute,
     origin,
   };
 }
