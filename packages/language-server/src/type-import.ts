@@ -6,6 +6,7 @@ import {
 } from "vscode-languageserver/node";
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import { maskNonCode } from "./language-features.js";
+import { phpNamespaceDeclarations } from "./php-syntax.js";
 import { parseTypeDeclarations, type TypeCatalogEntry } from "./type-catalog.js";
 import type { ImportSorting } from "./server-settings.js";
 
@@ -38,10 +39,6 @@ export type TypeImportPlanner = (entry: TypeCatalogEntry) => TypeImportPlan | nu
 const IDENTIFIER = "[A-Z_\\u0080-\\u{10ffff}][A-Z0-9_\\u0080-\\u{10ffff}]*";
 const QUALIFIED_NAME = new RegExp(`^${IDENTIFIER}(?:\\\\${IDENTIFIER})*$`, "iu");
 const FULLY_QUALIFIED_NAME = new RegExp(`\\\\(?:${IDENTIFIER}\\\\)+${IDENTIFIER}`, "giu");
-const NAMESPACE = new RegExp(
-  `\\bnamespace(?:\\s+(${IDENTIFIER}(?:\\\\${IDENTIFIER})*))?\\s*([;{])`,
-  "giu",
-);
 
 export function typeImportCodeActionsAt(
   document: TextDocument,
@@ -258,16 +255,13 @@ function compareImports(
 }
 
 function importScopeAt(source: string, offset: number): ImportScope | null {
-  const declarations = [...source.matchAll(NAMESPACE)].map((match) => {
-    const start = match.index ?? 0;
-    const delimiter = match[2] ?? ";";
-    const delimiterStart = start + match[0].lastIndexOf(delimiter);
+  const declarations = phpNamespaceDeclarations(source).map((declaration) => {
     return {
-      namespace: match[1] ?? "",
-      start,
-      anchor: delimiterStart + 1,
-      delimiter,
-      closing: delimiter === "{" ? matchingBrace(source, delimiterStart) : undefined,
+      ...declaration,
+      closing:
+        declaration.delimiter === "{"
+          ? matchingBrace(source, declaration.delimiterOffset)
+          : undefined,
     };
   });
 
@@ -429,7 +423,7 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   return isAttributeNamePosition(before);
 }
 
-function isAttributeNamePosition(source: string): boolean {
+export function isAttributeNamePosition(source: string): boolean {
   let bracketDepth = 0;
   let parenthesisDepth = 0;
   let candidateStart = -1;

@@ -151,6 +151,16 @@ describe("type import actions", () => {
     );
   });
 
+  it("does not mistake a class namespace constant for a namespace declaration", () => {
+    const source =
+      "<?php\nnamespace App;\n\n$value = Product::namespace;\n\nfunction repository(): \\Vendor\\Contracts\\Repository {}\n";
+    const updated = applyFirstAction(source, source.lastIndexOf("Repository") + 2, [REPOSITORY]);
+
+    expect(updated).toBe(
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\n$value = Product::namespace;\n\nfunction repository(): Repository {}\n",
+    );
+  });
+
   it("places generated imports alphabetically, by length, or after existing imports", () => {
     const alphabeticSource =
       "<?php\nnamespace App;\n\nuse Vendor\\Domain\\Product;\n\nclass Service implements \\Vendor\\Contracts\\Repository {}\n";
@@ -266,6 +276,7 @@ function type(name: string, namespace: string, kind: TypeCatalogEntry["kind"]): 
     abstract: false,
     final: false,
     instantiable: kind === "class",
+    attribute: false,
     origin: "dependency",
   };
 }

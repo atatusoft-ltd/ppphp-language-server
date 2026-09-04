@@ -24,6 +24,8 @@ $attributedAnonymous = new #[Example] class extends Open {};
 $nestedAttributedAnonymous = new #[Example([1, [2]])] #[Other(name: [Open::class])] class extends Open {};
 $attributedReadonlyAnonymous = new #[Example([1, [2]])] readonly class extends Open {};
 $configured = configure(class: Missing::class);
+#[Metadata\\Final] class AttributeNamedFinal {}
+#[Metadata\\Abstract] class AttributeNamedAbstract {}
 final readonly class Closed {}
 abstract class AbstractModel {}
 class Open {}
@@ -35,12 +37,47 @@ enum State {}
     );
 
     expect(declarations).toEqual([
+      entry("AttributeNamedFinal", "class"),
+      entry("AttributeNamedAbstract", "class"),
       entry("Closed", "class", true),
       entry("AbstractModel", "class", false, true),
       entry("Open", "class"),
       entry("Contract", "interface"),
       entry("Shared", "trait"),
       entry("State", "enum"),
+    ]);
+  });
+
+  it("recognizes only declaration namespaces and preserves their spelling", () => {
+    const declarations = parseTypeDeclarations(
+      `<?php
+namespace App\\Domain;
+$namespace = 'runtime';
+$constant = Product::namespace;
+class Product {}
+`,
+      "project",
+    );
+
+    expect(declarations).toEqual([entry("Product", "class")]);
+  });
+
+  it("identifies attribute classes through global and imported Attribute markers", () => {
+    const declarations = parseTypeDeclarations(
+      `<?php
+namespace App;
+use Attribute as AttributeMarker;
+#[AttributeMarker] class ImportedAttribute {}
+#[\\Attribute] class QualifiedAttribute {}
+#[Other(Attribute::class)] class OrdinaryClass {}
+`,
+      "project",
+    );
+
+    expect(declarations.map(({ fqn, attribute }) => ({ fqn, attribute }))).toEqual([
+      { fqn: "App\\ImportedAttribute", attribute: true },
+      { fqn: "App\\QualifiedAttribute", attribute: true },
+      { fqn: "App\\OrdinaryClass", attribute: false },
     ]);
   });
 
@@ -153,6 +190,7 @@ function entry(
     abstract,
     final,
     instantiable: kind === "class" && !abstract,
+    attribute: false,
     origin: "project",
   };
 }

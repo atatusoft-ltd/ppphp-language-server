@@ -12,6 +12,7 @@ const CATALOG: TypeCatalogEntry[] = [
   type("Product", "Vendor\\Domain", "class", "dependency"),
   type("AbstractProduct", "Vendor\\Domain", "class", "dependency", false, true),
   type("Closure", "", "class", "php-runtime", false, false, false),
+  type("Route", "Vendor\\Attributes", "class", "dependency", false, false, true, true),
 ];
 
 describe("type completion", () => {
@@ -78,7 +79,16 @@ describe("type completion", () => {
     expect(complete("<?php class Service { public Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(Pro", CATALOG)[0]?.label).toBe("Product");
     expect(complete("<?php function run(): Repository<Pro", CATALOG)[0]?.label).toBe("Product");
-    expect(complete("<?php #[Pro", CATALOG)[0]?.label).toBe("Product");
+    expect(complete("<?php #[Rou", CATALOG)[0]?.label).toBe("Route");
+  });
+
+  it("offers only known attribute classes in attribute name positions", () => {
+    expect(complete("<?php #[Json", CATALOG)).toEqual([]);
+    expect(complete("<?php #[Pro", CATALOG)).toEqual([]);
+    expect(complete("<?php #[Rou", CATALOG)[0]).toMatchObject({
+      label: "Route",
+      textEdit: { newText: "Route" },
+    });
   });
 
   it("reuses existing imports and aliases instead of inserting qualified names", () => {
@@ -199,6 +209,7 @@ function type(
   final = false,
   abstract = false,
   instantiable = kind === "class" && !abstract,
+  attribute = false,
 ): TypeCatalogEntry {
   return {
     name,
@@ -208,6 +219,7 @@ function type(
     abstract,
     final,
     instantiable,
+    attribute,
     origin,
   };
 }
