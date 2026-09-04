@@ -360,27 +360,35 @@ async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCa
   const composerCatalogs = await readCatalogSources(
     composerSources.filter(({ filePath }) => !projectPaths.has(normalizePath(filePath))),
   );
+  for (const { filePath, origin, types } of composerCatalogs) {
+    if (origin === "project") projectByFile.set(normalizePath(filePath), types);
+  }
 
   return {
-    external: mergeTypeCatalog([...builtins, ...composerCatalogs.flatMap(({ types }) => types)]),
+    external: mergeTypeCatalog([
+      ...builtins,
+      ...composerCatalogs
+        .filter(({ origin }) => origin === "dependency")
+        .flatMap(({ types }) => types),
+    ]),
     projectByFile,
   };
 }
 
 async function readCatalogSources(
   sources: readonly ComposerSourceFile[],
-): Promise<Array<{ filePath: string; types: TypeCatalogEntry[] }>> {
+): Promise<Array<ComposerSourceFile & { types: TypeCatalogEntry[] }>> {
   const catalogs = await mapWithConcurrency(sources, 8, async ({ filePath, origin }) => {
     try {
       const source = await readFile(filePath, "utf8");
       if (Buffer.byteLength(source, "utf8") > MAXIMUM_SOURCE_BYTES) return null;
-      return { filePath, types: parseTypeDeclarations(source, origin) };
+      return { filePath, origin, types: parseTypeDeclarations(source, origin) };
     } catch {
       return null;
     }
   });
   return catalogs.filter(
-    (catalog): catalog is { filePath: string; types: TypeCatalogEntry[] } => catalog !== null,
+    (catalog): catalog is ComposerSourceFile & { types: TypeCatalogEntry[] } => catalog !== null,
   );
 }
 

@@ -238,6 +238,28 @@ use Attribute as AttributeMarker;
     );
   });
 
+  it("replaces Composer-discovered project declarations with open documents", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-composer-open-types-"));
+    const sourcePath = path.join(root, "src", "Model.ppphp");
+    await mkdir(path.dirname(sourcePath), { recursive: true });
+    await writeFile(
+      path.join(root, "composer.json"),
+      JSON.stringify({ autoload: { "psr-4": { "App\\": "src/" } } }),
+    );
+    await writeFile(sourcePath, "<?php namespace App; class OldModel {}\n");
+    const openDocument = TextDocument.create(
+      pathToFileURL(sourcePath).href,
+      "ppphp",
+      2,
+      "<?php namespace App; class NewModel {}\n",
+    );
+
+    const catalog = await getTypeCatalog(root, [openDocument]);
+
+    expect(catalog.some(({ fqn }) => fqn === "App\\NewModel")).toBe(true);
+    expect(catalog.some(({ fqn }) => fqn === "App\\OldModel")).toBe(false);
+  });
+
   it("updates a saved project file without rebuilding the workspace catalog", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-saved-types-"));
     const sourcePath = path.join(root, "src", "Model.ppphp");
