@@ -41,7 +41,36 @@ describe("compiler diagnostic mapping", () => {
       },
       source: "++PHP",
     });
+    expect(diagnostics[0]?.message).toBe(
+      "Something needs attention.\nCategory: Example warning\nHelp: Try another declaration.",
+    );
     expect(diagnostics[0]?.message).toContain("Try another declaration");
+  });
+
+  it("puts the actionable analyzer message on the first line", () => {
+    const [diagnostic] = parseCompilerOutput(
+      JSON.stringify({
+        version: 1,
+        diagnostics: [
+          {
+            code: "P2099",
+            severity: "error",
+            title: "Static Analysis Error",
+            message: "Property Example::$value is never read, only written.",
+            location: { file: "src/example.ppphp" },
+            help: "Correct the reported type or symbol error.",
+          },
+        ],
+      }),
+      "/workspace/src/example.ppphp",
+      "/workspace",
+    );
+
+    expect(diagnostic?.message).toBe(
+      "Property Example::$value is never read, only written.\n" +
+        "Category: Static Analysis Error\n" +
+        "Help: Correct the reported type or symbol error.",
+    );
   });
 
   it("rejects unknown diagnostic envelope versions", () => {

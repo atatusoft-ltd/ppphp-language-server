@@ -12,7 +12,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
-import { checkFile, filePathFromUri, type CompilerSettings } from "./compiler-diagnostics.js";
+import { checkFile, filePathFromUri } from "./compiler-diagnostics.js";
 import { prepareTypeRenameAt, renameTypeAt, type RenameClientSupport } from "./compiler-rename.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
 import {
@@ -21,7 +21,18 @@ import {
 } from "./composer-namespace.js";
 import { COMPLETIONS, documentSymbols, hoverAt } from "./language-features.js";
 import { SEMANTIC_TOKEN_LEGEND, semanticTokens } from "./semantic-tokens.js";
-import { compilerSettingsFromConfiguration, DEFAULT_SETTINGS } from "./server-settings.js";
+import {
+  compilerSettingsFromConfiguration,
+  DEFAULT_SETTINGS,
+  type ServerSettings,
+} from "./server-settings.js";
+import {
+  getTypeCatalog,
+  invalidateTypeCatalog,
+  updateTypeCatalogDocument,
+} from "./type-catalog.js";
+import { typeCompletionsAt } from "./type-completion.js";
+import { typeImportCodeActionsAt } from "./type-import.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -58,6 +69,7 @@ connection.onInitialize((params: InitializeParams) => {
       version: packageMetadata.ppphpToolchainVersion,
     },
     capabilities: {
+      codeActionProvider: true,
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       definitionProvider: true,
       documentSymbolProvider: true,
@@ -81,13 +93,38 @@ connection.onInitialized(() => {
   if (supportsConfiguration) {
     void connection.client.register(DidChangeConfigurationNotification.type);
   }
+  for (const workspaceRoot of workspaceFolders) {
+    void getTypeCatalog(workspaceRoot).catch(() => undefined);
+  }
 });
 
 connection.onDidChangeConfiguration(() => {
+  invalidateTypeCatalog();
   for (const document of documents.all()) void validate(document);
 });
+connection.onDidChangeWatchedFiles(() => invalidateTypeCatalog());
 
-connection.onCompletion(() => [...COMPLETIONS]);
+connection.onCompletion(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+  if (!document || !filePath) return [...COMPLETIONS];
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const catalog = await getTypeCatalog(workspaceRoot, documents.all());
+  const settings = await getSettings(document.uri);
+  const types = typeCompletionsAt(document, position, catalog, settings.importSorting);
+  return types.length > 0 ? [...types, ...COMPLETIONS] : [...COMPLETIONS];
+});
+connection.onCodeAction(async ({ textDocument, range }) => {
+  const document = documents.get(textDocument.uri);
+  const filePath = filePathFromUri(textDocument.uri);
+  if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return [];
+
+  const workspaceRoot = findWorkspaceRoot(filePath);
+  const catalog = await getTypeCatalog(workspaceRoot, documents.all());
+  const settings = await getSettings(document.uri);
+  return typeImportCodeActionsAt(document, range, catalog, settings.importSorting);
+});
 connection.onExecuteCommand(({ command, arguments: arguments_ }) =>
   command === INFER_COMPOSER_NAMESPACE_COMMAND ? handleComposerNamespaceCommand(arguments_) : null,
 );
@@ -172,7 +209,13 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
 });
 
 documents.onDidOpen(({ document }) => void validate(document));
-documents.onDidSave(({ document }) => void validate(document));
+documents.onDidSave(({ document }) => {
+  const filePath = filePathFromUri(document.uri);
+  if (filePath) {
+    updateTypeCatalogDocument(findWorkspaceRoot(filePath), filePath, document.getText());
+  }
+  void validate(document);
+});
 documents.onDidClose(({ document }) => {
   validationGenerations.delete(document.uri);
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
@@ -196,7 +239,7 @@ async function validate(document: TextDocument): Promise<void> {
   }
 }
 
-async function getSettings(scopeUri: string): Promise<CompilerSettings> {
+async function getSettings(scopeUri: string): Promise<ServerSettings> {
   if (!supportsConfiguration) return DEFAULT_SETTINGS;
 
   try {

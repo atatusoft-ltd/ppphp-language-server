@@ -27,12 +27,28 @@ function identity<T>(T $value): T { return $value; }
   });
 
   it("preserves line endings while masking non-code regions", () => {
-    const source = "class Real {}\n/* class Fake {} */\n'function hidden()'\n";
+    const source = `#[Example]
+class Real {}
+# class Fake {}
+'function hidden()'
+$heredoc = <<<TEXT
+class HeredocDecoy {}
+    TEXT . strtoupper('suffix');
+class AfterHeredoc {}
+$nowdoc = <<<'TEXT'
+interface NowdocDecoy {}
+TEXT;
+`;
     const masked = maskNonCode(source);
     expect(masked.split("\n")).toHaveLength(source.split("\n").length);
+    expect(masked).toContain("#[Example]");
     expect(masked).toContain("class Real");
     expect(masked).not.toContain("Fake");
     expect(masked).not.toContain("hidden");
+    expect(masked).not.toContain("HeredocDecoy");
+    expect(masked).not.toContain("NowdocDecoy");
+    expect(masked).toContain("strtoupper");
+    expect(masked).toContain("AfterHeredoc");
   });
 
   it("preserves UTF-16 offsets after astral characters", () => {

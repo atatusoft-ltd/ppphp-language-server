@@ -2,7 +2,6 @@ package com.atatusoft.ppphp
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 
@@ -17,18 +16,12 @@ internal object PpphpComposerNamespaceResolver {
             "--infer-composer-namespace",
             directory.url,
         )
-        val output = try {
-            CapturingProcessHandler(command).runProcess(REQUEST_TIMEOUT_MILLISECONDS, true)
-        } catch (_: Exception) {
-            return Resolution.NONE
-        }
-
-        if (
-            output.isTimeout || output.exitCode != 0 ||
-            output.stdout.length + output.stderr.length > MAXIMUM_OUTPUT_CHARACTERS
-        ) {
-            return Resolution.NONE
-        }
+        val output = PpphpBoundedProcessRunner.run(
+            command,
+            REQUEST_TIMEOUT_MILLISECONDS,
+            MAXIMUM_OUTPUT_CHARACTERS,
+        ) ?: return Resolution.NONE
+        if (output.exitCode != 0) return Resolution.NONE
 
         val response = runCatching { JsonParser.parseString(output.stdout).asJsonObject }.getOrNull()
             ?: return Resolution.NONE

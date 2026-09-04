@@ -121,7 +121,11 @@ function toLspDiagnostic(diagnostic: CompilerDiagnostic, workspaceRoot: string):
     severity: toSeverity(asString(diagnostic.severity)),
     code: asString(diagnostic.code) || undefined,
     source: "++PHP",
-    message: [title && title !== message ? title : "", message, help ? `Help: ${help}` : ""]
+    message: [
+      message,
+      title && title !== message ? `Category: ${title}` : "",
+      help ? `Help: ${help}` : "",
+    ]
       .filter(Boolean)
       .join("\n"),
     relatedInformation: relatedInformation.length > 0 ? relatedInformation : undefined,

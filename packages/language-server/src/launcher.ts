@@ -1,5 +1,6 @@
 import { handleComposerNamespaceCommand } from "./composer-namespace.js";
 import { runRenameCommand } from "./rename-command.js";
+import { runTypeCatalogCommand } from "./type-catalog.js";
 
 if (process.argv[2] === "--infer-composer-namespace") {
   void handleComposerNamespaceCommand([{ directoryUri: process.argv[3] }])
@@ -9,6 +10,12 @@ if (process.argv[2] === "--infer-composer-namespace") {
     });
 } else if (process.argv[2] === "--rename") {
   void runRenameCommand().then((response) => process.stdout.write(`${JSON.stringify(response)}\n`));
+} else if (process.argv[2] === "--type-catalog") {
+  void runTypeCatalogCommand(process.argv[3] ?? process.cwd())
+    .then((response) => process.stdout.write(`${JSON.stringify(response)}\n`))
+    .catch(() => {
+      process.exitCode = 1;
+    });
 } else {
   void import("./node.js");
 }

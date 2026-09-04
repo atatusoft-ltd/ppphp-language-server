@@ -9,12 +9,12 @@ try {
     $canonicalVersion = trim(read_text($repositoryRoot, 'VERSION'));
     if (
         preg_match(
-            '/^\d{4}\.[1-4]\.[1-9]\d*(?:-(?:canary|alpha|beta|rc)(?:\.[1-9]\d*)?)?$/D',
+            '/^(?:dev-\d{4}\.[1-4]\.[1-9]\d*|\d{4}\.[1-4]\.[1-9]\d*(?:-rc-[1-9]\d*)?)$/D',
             $canonicalVersion,
         ) !== 1
     ) {
         fail(
-            'VERSION must use canonical ++PHP CalVer YYYY.Q.patch[-channel], received '
+            'VERSION must use canonical ++PHP CalVer YYYY.Q.R[-channel[-N]], received '
                 . json_encode($canonicalVersion, JSON_THROW_ON_ERROR),
         );
     }

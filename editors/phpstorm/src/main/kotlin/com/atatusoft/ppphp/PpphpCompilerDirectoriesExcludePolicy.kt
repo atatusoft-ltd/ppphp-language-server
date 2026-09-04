@@ -31,6 +31,7 @@ class PpphpProjectActivity : ProjectActivity {
         val projectRoot = configurationPath.parent
         val normalizedConfigurationPath = normalize(configurationPath.toString())
         val normalizedProjectRoot = normalize(projectRoot.toString())
+        var watchedCompilerPaths = watchedCompilerPaths(project)
         var knownExcludedUrls = PpphpProjectConfiguration.excludedUrls(project)
 
         project.messageBus.connect().subscribe(
@@ -39,10 +40,11 @@ class PpphpProjectActivity : ProjectActivity {
                 override fun after(events: List<VFileEvent>) {
                     if (
                         events.none { event ->
-                            canAffectConfiguration(
+                            canAffectIndexRoots(
                                 normalize(event.path),
                                 normalizedConfigurationPath,
                                 normalizedProjectRoot,
+                                watchedCompilerPaths,
                             )
                         }
                     ) {
@@ -50,6 +52,7 @@ class PpphpProjectActivity : ProjectActivity {
                     }
 
                     val currentExcludedUrls = PpphpProjectConfiguration.excludedUrls(project)
+                    watchedCompilerPaths = watchedCompilerPaths(project)
                     if (currentExcludedUrls == knownExcludedUrls) return
                     knownExcludedUrls = currentExcludedUrls
                     refreshProjectRoots(project)
@@ -58,12 +61,29 @@ class PpphpProjectActivity : ProjectActivity {
         )
     }
 
-    private fun canAffectConfiguration(
+    private fun watchedCompilerPaths(project: Project): Set<String> {
+        val output = PpphpProjectConfiguration.load(project)?.output ?: return emptySet()
+        return setOf(
+            normalize(output.toString()),
+            normalize(output.resolve(".ppphp").toString()),
+        )
+    }
+
+    internal fun canAffectIndexRoots(
         eventPath: String,
         configurationPath: String,
         projectRoot: String,
+        watchedCompilerPaths: Set<String>,
     ): Boolean {
-        if (eventPath == configurationPath) return true
+        if (
+            eventPath == configurationPath
+            || eventPath in watchedCompilerPaths
+            || watchedCompilerPaths.any { path ->
+                path.endsWith("/.ppphp") && eventPath.startsWith("$path/")
+            }
+        ) {
+            return true
+        }
         val projectPrefix = "$projectRoot/"
         if (!eventPath.startsWith(projectPrefix)) return false
         return !eventPath.removePrefix(projectPrefix).contains('/')

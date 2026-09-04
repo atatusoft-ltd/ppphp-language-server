@@ -1,5 +1,6 @@
 package com.atatusoft.ppphp
 
+import com.google.gson.JsonParser
 import com.intellij.application.options.CodeStyle
 import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.openapi.actionSystem.ActionManager
@@ -256,6 +257,34 @@ class PpphpCreationActionsTest : BasePlatformTestCase() {
 
         performArrowAction(action, nameField, KeyEvent.VK_UP)
         assertEquals(PpphpDeclarationTemplate.CLASS, selector.selectedItem)
+    }
+
+    fun testTypeCatalogSeparatesInheritableClassesFromInterfaces() {
+        val decoded = PpphpTypeCatalogResolver.decode(
+            JsonParser.parseString(
+                """{
+                    "version": 1,
+                    "types": [
+                        {"fqn":"Exception","kind":"class","abstract":false,"final":false,"instantiable":true},
+                        {"fqn":"Vendor\\AbstractBase","kind":"class","abstract":true,"final":false,"instantiable":false},
+                        {"fqn":"Vendor\\Closed","kind":"class","abstract":false,"final":true,"instantiable":true},
+                        {"fqn":"JsonSerializable","kind":"interface","abstract":false,"final":false,"instantiable":false},
+                        {"fqn":"IgnoredTrait","kind":"trait","abstract":false,"final":false,"instantiable":false}
+                    ]
+                }""",
+            ).asJsonObject,
+        )
+        val catalog = PpphpKnownTypeCatalog.from(decoded)
+
+        assertEquals(
+            listOf("Vendor\\AbstractBase", "Exception"),
+            catalog.classes.map(PpphpKnownType::fqn),
+        )
+        assertEquals(
+            listOf("JsonSerializable"),
+            catalog.interfaces.map(PpphpKnownType::fqn),
+        )
+        assertEquals("\\Exception", catalog.classes.single { it.fqn == "Exception" }.reference)
     }
 
     private fun specification(

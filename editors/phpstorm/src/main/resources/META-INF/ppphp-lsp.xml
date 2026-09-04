@@ -1,5 +1,9 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
         <platform.lsp.serverSupportProvider implementation="com.atatusoft.ppphp.PpphpLspServerSupportProvider" />
+        <intentionAction>
+            <className>com.atatusoft.ppphp.PpphpImportIntention</className>
+            <category>++PHP</category>
+        </intentionAction>
     </extensions>
 </idea-plugin>

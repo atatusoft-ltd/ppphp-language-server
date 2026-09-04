@@ -48,14 +48,37 @@ internal object PpphpProjectConfiguration {
     internal fun excludedUrls(projectRoot: VirtualFile): List<String> {
         val root = projectRoot(projectRoot) ?: return emptyList()
         val directories = load(root.path) ?: return emptyList()
-        return safePathOperation {
-            directories.paths.map { path -> exclusionUrl(root, path) ?: return@safePathOperation emptyList() }
-        } ?: emptyList()
+        val outputUrl = exclusionUrl(root, directories.output) ?: return emptyList()
+        val cacheUrl = exclusionUrl(root, directories.cache) ?: return emptyList()
+        val generatedLibrary = outputDirectory(root.file)?.let(PpphpGeneratedPhpLibrary::resolve)
+
+        return if (generatedLibrary == null) {
+            listOf(outputUrl, cacheUrl)
+        } else {
+            generatedLibrary.excludedUrls.sorted() + cacheUrl
+        }
     }
 
     fun load(project: Project): PpphpCompilerOwnedDirectories? {
         val projectRoot = projectFile(project) ?: return null
         return load(projectRoot)
+    }
+
+    fun outputDirectory(project: Project): VirtualFile? {
+        val projectRoot = projectFile(project) ?: return null
+        return outputDirectory(projectRoot)
+    }
+
+    internal fun outputDirectory(projectRoot: VirtualFile): VirtualFile? {
+        val root = projectRoot(projectRoot) ?: return null
+        val output = load(root.path)?.output ?: return null
+        val relativePath = safePathOperation {
+            FileUtil.toSystemIndependentName(root.path.relativize(output).toString())
+        } ?: return null
+        return relativePath
+            .takeIf(String::isNotEmpty)
+            ?.let(root.file::findFileByRelativePath)
+            ?.takeIf { file -> file.isValid && file.isDirectory }
     }
 
     internal fun load(projectRoot: VirtualFile): PpphpCompilerOwnedDirectories? =

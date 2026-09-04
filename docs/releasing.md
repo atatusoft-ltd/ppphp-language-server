@@ -2,18 +2,19 @@
 
 ## Version policy
 
-Language-server and editor releases track the compatible ++PHP toolchain using quarterly CalVer. The current target is `2026.3.1`.
+Language-server and editor releases track the compatible ++PHP toolchain using quarterly CalVer. The current target is `2026.3.1-rc-2`.
 
-The canonical, user-facing form is `YYYY.Q.patch[-channel]`:
+The canonical, user-facing forms are `YYYY.Q.R`, `YYYY.Q.R-rc-N`, and `dev-YYYY.Q.R`:
 
 - `YYYY` is the four-digit release year.
 - `Q` is the calendar quarter (`1` through `4`).
-- `patch` starts at `1` for a quarter's first release and increments for another release in that quarter.
-- Development releases carry a channel such as `-canary`; omit it for a stable release.
+- `R` starts at `1` for a quarter's first release and increments for another release in that quarter.
+- `N` starts at `1` for a release core's first candidate and increments for subsequent candidates.
+- Development, Release Candidate, and Stable are separate channels; Stable has no suffix.
 
 Every package manifest, editor manifest, lockfile entry, and `ppphpToolchainVersion` field uses this exact version. There is no separate padded or ecosystem-specific form.
 
-`VERSION` is the repository source of truth. Run `php scripts/check_release_version.php` after any version change; it rejects drift between `VERSION`, npm manifests and lockfile, editor metadata, and documentation. The `npm run check:version` alias remains available for npm workflows. Release tags use the version prefixed with `v`, such as `v2026.3.1`.
+`VERSION` is the repository source of truth. Run `php scripts/check_release_version.php` after any version change; it rejects drift between `VERSION`, npm manifests and lockfile, editor metadata, and documentation. The `npm run check:version` alias remains available for npm workflows. Release tags use the version prefixed with `v`, such as `v2026.3.1-rc-2`.
 
 ## Release checklist
 

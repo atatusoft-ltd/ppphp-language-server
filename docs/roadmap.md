@@ -10,6 +10,7 @@
 - Compiler-backed semantic tokens layered over each editor's complete PHP lexical highlighting
 - PhpStorm actions for creating `.ppphp` files, classes, interfaces, traits, and enums
 - Reproducible editor packages and CI
+- PhpStorm token-safe formatting and live indentation using the independent ++PHP code-style scheme
 
 ## Next: compiler/editor protocol
 
@@ -29,7 +30,7 @@ Once the compiler protocol exists:
 
 ## Later
 
-- Canonical formatter or format-preserving edit protocol
+- Editor-neutral canonical formatter or format-preserving edit protocol for VS Code parity
 - Integration tests against real VS Code and PhpStorm sandboxes
 - Signed Marketplace and JetBrains Plugin Repository releases
 - Reproducible release provenance and software bill of materials

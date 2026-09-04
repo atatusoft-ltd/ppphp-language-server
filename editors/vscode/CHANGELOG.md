@@ -2,9 +2,12 @@
 
 ## Unreleased
 
-- Align all unreleased packages and editor plugins on version `2026.3.1`.
+- Align all unreleased packages and editor plugins on version `2026.3.1-rc-2`.
 - Add compiler-verified project-wide rename for ++PHP class-family declarations and references.
 - Preserve native PHP highlighting for `$this` and PHP superglobals.
+- Add deterministic project, Composer dependency, and PHP runtime type completion.
+- Reuse existing imports during completion, add safely ordered imports for external types, and offer a `Use import` Quick Fix for fully qualified types.
+- Show the specific compiler diagnostic first in the Problems panel.
 
 ## 0.1.1
 

@@ -24,7 +24,12 @@ export function activate(context: ExtensionContext): void {
     documentSelector: [{ language: "ppphp", scheme: "file" }],
     synchronize: {
       configurationSection: "ppphp",
-      fileEvents: workspace.createFileSystemWatcher("**/*.ppphp"),
+      fileEvents: [
+        workspace.createFileSystemWatcher("**/*.ppphp"),
+        workspace.createFileSystemWatcher("**/ppphp.json"),
+        workspace.createFileSystemWatcher("**/composer.json"),
+        workspace.createFileSystemWatcher("**/vendor/composer/installed.json"),
+      ],
     },
   };
 

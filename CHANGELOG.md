@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+The changes below are prepared for `2026.3.1-rc-2`.
+
 ### Added
 
-- Coordinated `YYYY.Q.patch[-channel]` toolchain versioning with automated cross-package consistency checks.
+- Coordinated `YYYY.Q.R[-channel[-N]]` toolchain versioning with automated cross-package consistency checks.
 - Canonical ++PHP emblem branding for extension listings and `.ppphp` file icons.
 - Editor-neutral Language Server Protocol foundation.
 - Compiler-backed go to definition in VS Code and PhpStorm for project types, functions, local and parameter bindings, inherited members, and typed access chains, including unsaved current-document contents.
@@ -16,10 +18,17 @@ All notable changes to this project will be documented in this file. The format 
 - VS Code extension with diagnostics, completions, hover help, and document symbols.
 - PhpStorm 2025.2-or-newer plugin using native JetBrains LSP and a dedicated ++PHP presentation language.
 - PhpStorm `++PHP File` and `++PHP Class` actions with PHP-shaped `.ppphp` templates, Composer-aware namespace suggestions, and class, interface, trait, and enum creation.
+- Deterministic class and interface completion from ++PHP project sources, Composer dependencies, and PHP runtime types in both editors and PhpStorm's class-creation parent controls.
+- Shared `Use import` actions for fully qualified types in VS Code and PhpStorm.
+- Token-safe PhpStorm formatting and live indentation driven by the independent ++PHP code-style scheme.
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
 
+- Compiler diagnostics now lead with their specific message so editor problem lists do not hide it behind a generic category.
+- Type completion now reuses existing imports and aliases, adds a safe import for an unambiguous external type, and retains a fully qualified reference when a short name would collide.
+- Completion-generated imports now follow PhpStorm's ++PHP import-sorting setting and the equivalent VS Code setting.
+- PhpStorm Reformat Code and Enter indentation now honor ++PHP indentation, spacing, brace, and blank-line settings while preserving strings and ++PHP-only syntax.
 - Unmodified variable semantic tokens no longer override precise host PHP scopes, preserving native highlighting for `$this` and PHP superglobals in VS Code and PhpStorm.
 - Fixed a PhpStorm startup and indexing failure when ++PHP projects are accessed through WSL or another non-default filesystem provider.
 - Language-server and editor builds now verify workspace links, detect missing or wrong-platform npm dependencies, and restore the complete locked tree automatically with bounded subprocess execution, including on native Windows and WSL.
@@ -29,6 +38,7 @@ All notable changes to this project will be documented in this file. The format 
 - `.ppphp` is the exclusive source extension across editor manifests, file watchers, language-server validation, fixtures, and documentation.
 - PhpStorm uses its native PHP lexical highlighter for complete PHP-token and color-scheme parity, then layers compiler-owned language-server semantic tokens for PHP symbol roles and ++PHP extensions, without routing `.ppphp` files through PHP parser inspections.
 - PHP tokenizer keywords, contextual keywords, native types, predefined constants, declarations, and references now share one compiler-backed semantic classification path instead of editor-specific word patches.
-- PhpStorm automatically excludes the compiler-owned `output` and `cache` directories configured by `ppphp.json`, preventing generated PHP from producing duplicate-declaration warnings.
+- PhpStorm excludes the compiler cache, metadata, stale output, and copied PHP build artifacts while retaining compiled ++PHP declarations for native indexing.
+- Mixed PhpStorm projects now resolve ++PHP-authored declarations from ordinary PHP code through compiler-manifest-filtered generated PHP, without indexing copied PHP outputs or requiring hand-written shadow stubs.
 - PhpStorm resolves its bundled language server through the plugin descriptor, including when plugin classes have no protection-domain code source.
 - PhpStorm installation and updates request the restart needed to refresh the `.ppphp` language association.

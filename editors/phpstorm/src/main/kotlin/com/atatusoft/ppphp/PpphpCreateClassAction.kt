@@ -1,6 +1,9 @@
 package com.atatusoft.ppphp
 
 import com.intellij.application.options.CodeStyle
+import com.intellij.codeInsight.completion.InsertionContext
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.ide.IdeView
 import com.intellij.ide.actions.CreateFileFromTemplateAction
@@ -13,6 +16,7 @@ import com.intellij.openapi.actionSystem.LangDataKeys
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
@@ -21,6 +25,8 @@ import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.TextFieldWithAutoCompletion
+import com.intellij.ui.TextFieldWithAutoCompletionListProvider
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
@@ -71,10 +77,13 @@ class PpphpCreateClassAction : DumbAwareAction(
             val composer = runCatching {
                 PpphpComposerNamespaceResolver.resolve(project, directory.virtualFile)
             }.getOrDefault(PpphpComposerNamespaceResolver.Resolution.NONE)
+            val typeCatalog = runCatching {
+                PpphpTypeCatalogResolver.resolve(project)
+            }.getOrDefault(PpphpKnownTypeCatalog.EMPTY)
 
             ApplicationManager.getApplication().invokeLater {
                 if (!project.isDisposed && directory.isValid) {
-                    showDialog(project, view, directory, composer)
+                    showDialog(project, view, directory, composer, typeCatalog)
                 }
             }
         }
@@ -85,8 +94,9 @@ class PpphpCreateClassAction : DumbAwareAction(
         view: IdeView,
         directory: PsiDirectory,
         composer: PpphpComposerNamespaceResolver.Resolution,
+        typeCatalog: PpphpKnownTypeCatalog,
     ) {
-        val dialog = PpphpCreateClassDialog(project, directory, composer)
+        val dialog = PpphpCreateClassDialog(project, directory, composer, typeCatalog)
         if (!dialog.showAndGet()) return
 
         try {
@@ -278,6 +288,7 @@ private class PpphpCreateClassDialog(
     private val project: Project,
     private val directory: PsiDirectory,
     composer: PpphpComposerNamespaceResolver.Resolution,
+    private val typeCatalog: PpphpKnownTypeCatalog,
 ) : DialogWrapper(project, true) {
     private val typeNameField = JBTextField(42)
     private val namespaceSuggestions = PpphpNamespaceSuggestions.suggest(directory, composer)
@@ -289,7 +300,7 @@ private class PpphpCreateClassDialog(
     private val directoryField = JBTextField(directory.virtualFile.presentableUrl, 42)
     private val templateSelector = JComboBox(PpphpDeclarationTemplate.entries.toTypedArray())
     private val templateUpDownHint = JBLabel()
-    private val parentClassField = JBTextField(42)
+    private val parentClassField = PpphpTypeCompletionField(project, typeCatalog.classes)
     private val relatedTypesLabel = JBLabel("Implements:")
     private val relatedTypesModel = DefaultListModel<String>()
     private val relatedTypesList = JBList(relatedTypesModel)
@@ -333,7 +344,7 @@ private class PpphpCreateClassDialog(
         namespaceField.toolTipText =
             "Namespace inferred from ++PHP source PSR-4 mappings and PhpStorm's PHP project model"
         fileNameField.emptyText.text = "TypeName.ppphp"
-        parentClassField.emptyText.text = "Optional parent class"
+        parentClassField.setPlaceholder("Optional parent class")
         relatedTypesList.emptyText.text = "Choose interfaces to implement"
         relatedTypesList.selectionMode = ListSelectionModel.SINGLE_SELECTION
         relatedTypesList.addListSelectionListener {
@@ -456,17 +467,14 @@ private class PpphpCreateClassDialog(
 
     private fun addRelatedType() {
         val label = if (template.relatedTypesKeyword == "extends") "Parent interface" else "Interface"
-        val relatedType = Messages.showInputDialog(
-            project,
-            "$label name:",
-            "Add PHP Type",
-            PpphpIcons.FILE,
-        )?.trim() ?: return
-        if (!PpphpPhpNames.isValidQualifiedType(relatedType)) {
-            Messages.showErrorDialog(project, "Enter a valid PHP type name.", "Invalid Type")
-            return
-        }
-        if (relatedTypes().contains(relatedType)) {
+        val dialog = PpphpRelatedTypeDialog(project, label, typeCatalog.interfaces)
+        if (!dialog.showAndGet()) return
+        val relatedType = dialog.value
+        if (
+            relatedTypes().any {
+                it.trimStart('\\').equals(relatedType.trimStart('\\'), ignoreCase = true)
+            }
+        ) {
             Messages.showErrorDialog(project, "$relatedType is already selected.", "Duplicate Type")
             return
         }
@@ -534,4 +542,77 @@ private class PpphpCreateClassDialog(
             },
         )
     }
+}
+
+private class PpphpTypeCompletionField(
+    project: Project,
+    types: List<PpphpKnownType>,
+) : TextFieldWithAutoCompletion<PpphpKnownType>(
+    project,
+    PpphpTypeCompletionProvider(types),
+    true,
+    true,
+    "",
+)
+
+private class PpphpTypeCompletionProvider(
+    types: List<PpphpKnownType>,
+) : TextFieldWithAutoCompletionListProvider<PpphpKnownType>(types), DumbAware {
+    override fun getLookupString(value: PpphpKnownType): String = value.shortName
+
+    override fun getTailText(value: PpphpKnownType): String = "  \\${value.fqn}"
+
+    override fun compare(left: PpphpKnownType, right: PpphpKnownType): Int =
+        compareValuesBy(left, right, PpphpKnownType::shortName, PpphpKnownType::fqn)
+
+    override fun createLookupBuilder(value: PpphpKnownType): LookupElementBuilder =
+        LookupElementBuilder.create(value, value.shortName)
+            .withLookupString(value.fqn)
+            .withLookupString(value.reference)
+            .withTailText(getTailText(value), true)
+            .withCaseSensitivity(false)
+            .withInsertHandler(::insertQualifiedReference)
+
+    private fun insertQualifiedReference(
+        context: InsertionContext,
+        lookup: LookupElement,
+    ) {
+        val value = lookup.`object` as? PpphpKnownType ?: return
+        context.document.replaceString(0, context.document.textLength, value.reference)
+        context.tailOffset = value.reference.length
+    }
+}
+
+private class PpphpRelatedTypeDialog(
+    project: Project,
+    private val label: String,
+    suggestions: List<PpphpKnownType>,
+) : DialogWrapper(project, true) {
+    private val typeField = PpphpTypeCompletionField(project, suggestions).apply {
+        setPlaceholder("Type an interface name")
+        setPreferredWidth(480)
+    }
+
+    val value: String
+        get() = typeField.text.trim()
+
+    init {
+        title = "Add PHP Type"
+        setOKButtonText("Add")
+        init()
+    }
+
+    override fun createCenterPanel(): JComponent = JPanel(BorderLayout(0, 8)).apply {
+        add(JBLabel("$label name:"), BorderLayout.NORTH)
+        add(typeField, BorderLayout.CENTER)
+    }
+
+    override fun getPreferredFocusedComponent(): JComponent = typeField
+
+    override fun doValidate(): ValidationInfo? =
+        if (PpphpPhpNames.isValidQualifiedType(value)) {
+            null
+        } else {
+            ValidationInfo("Enter one valid PHP interface name.", typeField)
+        }
 }

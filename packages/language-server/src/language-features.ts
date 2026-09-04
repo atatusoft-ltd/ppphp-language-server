@@ -181,7 +181,7 @@ export function maskNonCode(source: string): string {
       index = end === -1 ? source.length : end;
       continue;
     }
-    if (source[index] === "#") {
+    if (source[index] === "#" && next !== "[") {
       const end = source.indexOf("\n", index + 1);
       mask(index, end === -1 ? source.length : end);
       index = end === -1 ? source.length : end;
@@ -215,11 +215,13 @@ export function maskNonCode(source: string): string {
     if (source.startsWith("<<<", index)) {
       const opening = source
         .slice(index)
-        .match(/^<<<[\t ]*['"]?([A-Za-z_][A-Za-z0-9_]*)['"]?[\t ]*\r?\n/);
-      const identifier = opening?.[1];
+        .match(
+          /^<<<[\t ]*(?:'([A-Za-z_][A-Za-z0-9_]*)'|"([A-Za-z_][A-Za-z0-9_]*)"|([A-Za-z_][A-Za-z0-9_]*))[\t ]*\r?\n/,
+        );
+      const identifier = opening?.[1] ?? opening?.[2] ?? opening?.[3];
       if (opening && identifier) {
         const bodyStart = index + opening[0].length;
-        const closingPattern = new RegExp(`^${identifier};?[\\t ]*$`, "m");
+        const closingPattern = new RegExp(`^[\\t ]*${identifier}(?![A-Za-z0-9_])`, "m");
         const closing = closingPattern.exec(source.slice(bodyStart));
         const end = closing ? bodyStart + (closing.index ?? 0) + closing[0].length : source.length;
         mask(index, end);

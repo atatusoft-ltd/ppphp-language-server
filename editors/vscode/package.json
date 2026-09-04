@@ -2,8 +2,8 @@
   "name": "ppphp-vscode",
   "displayName": "++PHP",
   "description": "Syntax highlighting and language intelligence for ++PHP.",
-  "version": "2026.3.1",
-  "ppphpToolchainVersion": "2026.3.1",
+  "version": "2026.3.1-rc-2",
+  "ppphpToolchainVersion": "2026.3.1-rc-2",
   "private": true,
   "publisher": "atatusoft",
   "license": "Apache-2.0",
@@ -70,6 +70,22 @@
           "default": "",
           "scope": "resource",
           "description": "Absolute path to the ppphp compiler. When empty, workspace vendor/bin/ppphp and then PATH are searched."
+        },
+        "ppphp.completion.importSorting": {
+          "type": "string",
+          "enum": [
+            "alphabetic",
+            "length",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Place generated type imports alphabetically by fully qualified name.",
+            "Place generated type imports by fully qualified name length, then alphabetically.",
+            "Append generated type imports after existing imports."
+          ],
+          "default": "alphabetic",
+          "scope": "resource",
+          "description": "Ordering used when type completion adds a missing use statement. Existing imports are preserved."
         },
         "ppphp.diagnostics.compiler.enabled": {
           "type": "boolean",
