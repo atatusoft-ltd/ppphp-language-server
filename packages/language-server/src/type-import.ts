@@ -394,7 +394,7 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
 
   const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
   if (isFollowedByDeclaredVariable(after)) return true;
-  if (/\b(?:new|instanceof)\s*$/iu.test(before)) return true;
+  if (/\b(?:new|instanceof|insteadof)\s*$/iu.test(before)) return true;
 
   const statementStart = Math.max(
     before.lastIndexOf(";"),
@@ -403,6 +403,12 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   );
   const statement = before.slice(statementStart + 1);
   if (/\b(?:extends|implements)\b[^{};]*$/iu.test(statement)) return true;
+  if (
+    isDirectClassBodyAt(source, start) &&
+    new RegExp(`^\\s*use\\s+(?:${typeName}\\s*,\\s*)*$`, "iu").test(statement)
+  ) {
+    return true;
+  }
 
   const openParenthesis = before.lastIndexOf("(");
   if (openParenthesis >= 0 && /\bcatch\s*$/iu.test(before.slice(0, openParenthesis))) {
@@ -423,6 +429,31 @@ function isTypeReferenceAt(source: string, start: number, end: number): boolean 
   }
 
   return isAttributeNamePosition(before);
+}
+
+function isDirectClassBodyAt(source: string, offset: number): boolean {
+  let depth = 0;
+
+  for (let index = offset - 1; index >= 0; index -= 1) {
+    if (source[index] === "}") {
+      depth += 1;
+      continue;
+    }
+    if (source[index] !== "{") continue;
+    if (depth > 0) {
+      depth -= 1;
+      continue;
+    }
+
+    const headerStart = Math.max(
+      source.lastIndexOf(";", index - 1),
+      source.lastIndexOf("{", index - 1),
+      source.lastIndexOf("}", index - 1),
+    );
+    return /\b(?:class|trait|enum)\b[^{};]*$/iu.test(source.slice(headerStart + 1, index));
+  }
+
+  return false;
 }
 
 function isFollowedByDeclaredVariable(source: string): boolean {
