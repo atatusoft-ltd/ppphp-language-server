@@ -8,6 +8,7 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>JavaScript</depends>
     <depends>com.jetbrains.php</depends>
     <depends optional="true" config-file="ppphp-lsp.xml">com.intellij.modules.lsp</depends>
 

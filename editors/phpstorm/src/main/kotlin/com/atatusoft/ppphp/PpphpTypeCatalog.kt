@@ -87,6 +87,7 @@ internal object PpphpTypeCatalogResolver {
         val pluginRoot = PpphpLanguageServerRuntime.findPluginRoot(javaClass) ?: return emptyList()
         val command = runCatching {
             PpphpLanguageServerRuntime.createCommandLine(
+                project,
                 pluginRoot,
                 projectRoot,
                 "--type-catalog",

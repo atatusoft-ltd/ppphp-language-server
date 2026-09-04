@@ -28,7 +28,7 @@ Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The curr
 - Node.js 22 or newer
 - The `ppphp` compiler in the project at `vendor/bin/ppphp`, on `PATH`, or configured through `PPPHP_COMPILER_PATH`
 
-PhpStorm started from the desktop may not inherit your shell's Node.js path. Set `PPPHP_NODE_PATH` before starting PhpStorm, or add this line under **Help → Edit Custom VM Options**:
+The plugin uses the project's local Node.js runtime configured under **Settings → Languages & Frameworks → JavaScript Runtime**. This also works when PhpStorm is started from the desktop and does not inherit the path used by nvm, fnm, or another shell version manager. `PPPHP_NODE_PATH` and the following custom VM option remain available as explicit overrides:
 
 ```text
 -Dppphp.language.server.node.path=/absolute/path/to/node
