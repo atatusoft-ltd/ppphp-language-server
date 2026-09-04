@@ -64,6 +64,24 @@ describe("type import actions", () => {
     expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
   });
 
+  it("does not rebind the first segment of a qualified relative type", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private Product\\Service $service; public function make(): \\Vendor\\Product {} }\n";
+
+    expect(actionsAt(source, source.lastIndexOf("Product"), [product])).toEqual([]);
+  });
+
+  it("does not treat an absolute type prefix as alias-sensitive", () => {
+    const product = type("Product", "Vendor", "class");
+    const source =
+      "<?php\nnamespace App;\n\nclass Service { private \\Product\\Service $service; public function make(): \\Vendor\\Product {} }\n";
+
+    expect(applyFirstAction(source, source.lastIndexOf("Product"), [product])).toContain(
+      "use Vendor\\Product;",
+    );
+  });
+
   it("preserves CRLF and supports bracketed namespaces", () => {
     const source =
       "<?php\r\nnamespace App {\r\n\r\nclass Service implements \\Vendor\\Contracts\\Repository {}\r\n}\r\n";

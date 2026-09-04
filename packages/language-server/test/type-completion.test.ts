@@ -145,6 +145,19 @@ describe("type completion", () => {
     });
   });
 
+  it("keeps a qualified completion when a relative type uses the same first segment", () => {
+    const items = complete(
+      "<?php\nnamespace App;\n\nclass Service { private Product\\Service $current; public function make(): Pro",
+      CATALOG,
+    );
+
+    expect(items[0]).toMatchObject({
+      label: "Product",
+      textEdit: { newText: "\\Vendor\\Domain\\Product" },
+      additionalTextEdits: undefined,
+    });
+  });
+
   it("does not treat the completion target as a pre-existing short reference", () => {
     const item = complete("<?php namespace App; function make(): Product", CATALOG)[0];
 

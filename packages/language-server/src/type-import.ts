@@ -120,7 +120,7 @@ export function createTypeImportPlanner(
     return null;
   }
   const imported = statements.flatMap((statement) => statement.types);
-  const referencedLocalTypes = unqualifiedTypeReferences(masked, scope, offset);
+  const referencedLocalTypes = aliasSensitiveTypeReferences(masked, scope, offset);
   const localNames = new Set(
     parseTypeDeclarations(source, "project")
       .filter((type) => equalName(type.namespace, scope.namespace))
@@ -580,19 +580,22 @@ function genericTypeEnd(source: string, typeEnd: number): number | null {
   return null;
 }
 
-function unqualifiedTypeReferences(
+function aliasSensitiveTypeReferences(
   source: string,
   scope: ImportScope,
   ignoredOffset: number,
 ): Set<string> {
   const references = new Set<string>();
-  const expression = new RegExp(IDENTIFIER, "giu");
+  const expression = new RegExp(`(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
   for (const match of source.slice(scope.start, scope.end).matchAll(expression)) {
     const start = scope.start + (match.index ?? 0);
     const end = start + match[0].length;
     if (start <= ignoredOffset && ignoredOffset <= end) continue;
-    if (source[start - 1] === "\\" || source[end] === "\\") continue;
-    if (isTypeCompletionAt(source, start, end)) references.add(match[0].toLowerCase());
+    if (match[0].startsWith("\\")) continue;
+    if (isTypeCompletionAt(source, start, end)) {
+      const prefix = match[0].split("\\", 1)[0];
+      if (prefix) references.add(prefix.toLowerCase());
+    }
   }
   return references;
 }
