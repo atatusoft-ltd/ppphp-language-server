@@ -153,11 +153,11 @@ describe("type import actions", () => {
 
   it("does not mistake a class namespace constant for a namespace declaration", () => {
     const source =
-      "<?php\nnamespace App;\n\n$value = Product::namespace;\n\nfunction repository(): \\Vendor\\Contracts\\Repository {}\n";
+      "<?php\nnamespace App;\n\nfunction repository($value) {\n    $class = Product::namespace;\n    return $value instanceof \\Vendor\\Contracts\\Repository;\n}\n";
     const updated = applyFirstAction(source, source.lastIndexOf("Repository") + 2, [REPOSITORY]);
 
     expect(updated).toBe(
-      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\n$value = Product::namespace;\n\nfunction repository(): Repository {}\n",
+      "<?php\nnamespace App;\n\nuse Vendor\\Contracts\\Repository;\n\nfunction repository($value) {\n    $class = Product::namespace;\n    return $value instanceof Repository;\n}\n",
     );
   });
 
