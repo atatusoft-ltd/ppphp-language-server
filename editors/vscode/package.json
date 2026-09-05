@@ -91,7 +91,7 @@
           "type": "boolean",
           "default": true,
           "scope": "resource",
-          "description": "Run ppphp check when a .ppphp document is opened or saved."
+          "description": "Run compiler-core diagnostics on unsaved .ppphp buffers after edits (300ms debounce). Requires editor:diagnostics compiler support; supplemental PHPStan checks remain in ppphp check."
         },
         "ppphp.diagnostics.compiler.timeoutMilliseconds": {
           "type": "number",

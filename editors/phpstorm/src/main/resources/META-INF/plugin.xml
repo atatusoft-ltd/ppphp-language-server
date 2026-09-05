@@ -16,6 +16,8 @@
         <fileType name="++PHP" implementationClass="com.atatusoft.ppphp.PpphpFileType" fieldName="INSTANCE" language="++PHP" extensions="ppphp" />
         <lang.syntaxHighlighterFactory language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpSyntaxHighlighterFactory" />
         <lang.parserDefinition language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpParserDefinition" />
+        <lang.commenter language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpCommenter" />
+        <enterHandlerDelegate implementation="com.atatusoft.ppphp.PpphpDocumentationEnterHandler" />
         <langCodeStyleSettingsProvider
             implementation="com.atatusoft.ppphp.PpphpLanguageCodeStyleSettingsProvider" />
         <lang.formatter

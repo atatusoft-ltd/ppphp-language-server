@@ -21,7 +21,12 @@ class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
 
     override val lspCustomization: LspCustomization = object : LspCustomization() {
         override val semanticTokensCustomizer = PpphpSemanticTokensSupport()
+        override val codeActionsCustomizer = PpphpCodeActionsSupport()
     }
+
+    override fun createInitializationOptions(): Any = mapOf(
+        "typeActions" to mapOf("groupedImports" to true, "classCreation" to true),
+    )
 
     override fun isSupportedFile(file: VirtualFile): Boolean =
         file.extension.equals("ppphp", ignoreCase = true)

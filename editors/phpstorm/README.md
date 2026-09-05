@@ -12,6 +12,12 @@ Type completion reuses existing `use` imports and aliases, adding a safe import 
 
 ## Creating source files
 
+Alt+Enter on a fully qualified type offers **Use import**. On an unresolved short type name it offers **Import class**, with a keyboard-navigable **Class to import** popup showing the matching fully qualified names, and **Create class**, which opens the existing ++PHP declaration dialog with the name and namespace prefilled. Imports reuse aliases, respect sorting, and refuse conflicting bindings. Candidate discovery includes mixed PHP/++PHP sources, Composer dependencies, configured PHP stubs, and runtime built-ins. Compiler resolution excludes scoped symbols such as generic parameters. Actions are collected by native LSP support rather than a separate 350ms availability request, and edits from stale document versions are refused.
+
+Typing `/**` and pressing Enter creates an indented PHPDoc block with a closing `*/`; Enter inside it continues the `*` prefix through PhpStorm's native comment handling. This is comment scaffolding, not signature-derived `@param`/`@return` tag generation.
+
+Compiler-core diagnostics refresh from unsaved buffers after a 300ms typing pause (immediately on save). Update the configured compiler to one supporting `editor:diagnostics` version 1; supplemental PHPStan checks remain available through `ppphp check`. A PHPStan `Cannot run program` notification from the IDE is a separate quality-tool/interpreter configuration failure: check that its PHP executable still exists, particularly after Homebrew upgrades.
+
 The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Both actions always create `.ppphp` files and use the ++PHP emblem.
 
 The class action follows PhpStorm's PHP creation workflow: choose a class, interface, trait, or enum; accept or edit the Composer/PSR namespace suggestion; optionally choose its PHP parent types; and choose `string` or `int` for a backed enum. The parent controls offer deterministic completion from ++PHP project sources, Composer dependencies, the active PHP runtime, and PhpStorm's PHP index; class and interface candidates are kept distinct, and final classes are excluded from `extends`. While the Name editor is focused, Up and Down cycle through declaration templates using PhpStorm's native template-cycling behavior. Generated declarations deliberately mirror PhpStorm's bundled PHP templates, including the configured PHP file header. The plugin does not insert inactive ++PHP syntax.

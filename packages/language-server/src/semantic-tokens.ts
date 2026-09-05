@@ -91,6 +91,10 @@ const nonTypeNames = new Set([
   "void",
 ]);
 
+export function isNonClassTypeName(name: string): boolean {
+  return nonTypeNames.has(name.toLowerCase());
+}
+
 /**
  * Merge compiler-owned PHP/++PHP semantic roles with the small grammar-derived
  * fallback. Compiler tokens win; the fallback keeps extension coloring useful

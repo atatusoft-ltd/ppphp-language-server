@@ -277,8 +277,8 @@ require_source_contains(
     'Use import for ${entry.fqn}',
 );
 require_source_contains(
-    $root . '/editors/phpstorm/src/main/resources/META-INF/ppphp-lsp.xml',
-    'com.atatusoft.ppphp.PpphpImportIntention',
+    $root . '/editors/phpstorm/src/main/kotlin/com/atatusoft/ppphp/PpphpLspServerDescriptor.kt',
+    'override val codeActionsCustomizer = PpphpCodeActionsSupport()',
 );
 require_source_contains(
     $root . '/packages/language-server/src/compiler-rename.ts',
