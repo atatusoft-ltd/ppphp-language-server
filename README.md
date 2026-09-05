@@ -70,6 +70,8 @@ Language-server and editor releases track the ++PHP toolchain using quarterly Ca
 
 See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
 
+See [docs/editor-support.md](docs/editor-support.md) for the editors and IDEs ++PHP intends to support and where each integration stands.
+
 ## Configuration
 
 VS Code exposes these workspace/resource settings:
@@ -99,7 +101,7 @@ res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
 editors/phpstorm/          JetBrains LSP, TextMate, and ++PHP PSI integration
-docs/                      Architecture and roadmap decisions
+docs/                      Architecture, roadmap, and editor-support tracking
 scripts/                   PHP build orchestration and repository guardrails
 ```
 

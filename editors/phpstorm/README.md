@@ -38,6 +38,10 @@ On Windows, PHP must also be available as `php.exe` on the IDE's effective `PATH
 
 After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
 
+## Troubleshooting blank code-style previews
+
+If code-style previews are blank, check **Help → Show Log in Finder/Explorer** for errors before changing formatting settings. An `IElementType.TooManyElementTypesException` (shown in logs as `IElementType$TooManyElementTypesException`) means the IDE-wide element-type registry is exhausted; it can break indexing and newly created previews across languages. Fully restart PhpStorm, not just the ++PHP language server. If it recurs, inspect the first registry-exhaustion entry for the language registering excessive element types and report it to that plugin's maintainer. Reinstalling ++PHP or changing indentation preferences does not repair an exhausted registry in a running IDE.
+
 ## Windows and WSL smoke test
 
 Before release, install the built plugin in a supported PhpStorm version on Windows and open the same ++PHP project through WSL. Confirm that:

@@ -25,6 +25,7 @@ The changes below are prepared for `2026.3.1-rc-2`.
 
 ### Fixed
 
+- PhpStorm's ++PHP code-style adapter now preserves PHP's option labels and grouping, including function/closure terminology and array-initializer parentheses.
 - Compiler diagnostics now lead with their specific message so editor problem lists do not hide it behind a generic category.
 - Type completion now reuses existing imports and aliases, adds a safe import for an unambiguous external type, and retains a fully qualified reference when a short name would collide.
 - Completion-generated imports now follow PhpStorm's ++PHP import-sorting setting and the equivalent VS Code setting.
