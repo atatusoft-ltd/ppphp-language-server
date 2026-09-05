@@ -54,7 +54,7 @@ const CATALOG_CACHE_MILLISECONDS = 30_000;
 const MAXIMUM_SOURCE_FILES = 50_000;
 const MAXIMUM_SOURCE_BYTES = 2_097_152;
 const SOURCE_EXTENSIONS = new Set([".php", ".inc", ".ppphp"]);
-const PROJECT_SOURCE_EXTENSIONS = new Set([".ppphp"]);
+const PROJECT_SOURCE_EXTENSIONS = new Set([".ppphp", ".php"]);
 const cache = new Map<string, CatalogCacheEntry>();
 let phpRuntimeTypes: Promise<TypeCatalogEntry[]> | undefined;
 
@@ -347,9 +347,10 @@ function tokenize(source: string): Array<{ text: string; offset: number }> {
 }
 
 async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCatalog> {
-  const [projectSources, composerSources, builtins] = await Promise.all([
+  const [projectSources, composerSources, stubSources, builtins] = await Promise.all([
     discoverProjectSourceFiles(workspaceRoot).catch(() => []),
     discoverComposerSourceFiles(workspaceRoot).catch(() => []),
+    discoverStubSourceFiles(workspaceRoot).catch(() => []),
     getPhpRuntimeTypes(),
   ]);
   const projectCatalogs = await readCatalogSources(projectSources);
@@ -358,7 +359,9 @@ async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCa
     projectCatalogs.map(({ filePath, types }) => [normalizePath(filePath), types]),
   );
   const composerCatalogs = await readCatalogSources(
-    composerSources.filter(({ filePath }) => !projectPaths.has(normalizePath(filePath))),
+    [...composerSources, ...stubSources].filter(
+      ({ filePath }) => !projectPaths.has(normalizePath(filePath)),
+    ),
   );
   for (const { filePath, origin, types } of composerCatalogs) {
     if (origin === "project") projectByFile.set(normalizePath(filePath), types);
@@ -373,6 +376,20 @@ async function buildSavedTypeCatalog(workspaceRoot: string): Promise<SavedTypeCa
     ]),
     projectByFile,
   };
+}
+
+async function discoverStubSourceFiles(workspaceRoot: string): Promise<ComposerSourceFile[]> {
+  const root = path.resolve(workspaceRoot);
+  const configuration = await readJson(path.join(root, "ppphp.json"));
+  if (!isRecord(configuration)) return [];
+  const files = new Map<string, ComposerSourceFile>();
+  for (const configured of stringValues(configuration.stubs)) {
+    const candidate = path.resolve(root, configured);
+    if (pathIsWithin(root, candidate)) {
+      await collectSourceFiles(candidate, "dependency", root, [], files, new Set([".php"]));
+    }
+  }
+  return [...files.values()];
 }
 
 async function readCatalogSources(

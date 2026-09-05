@@ -4,20 +4,20 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 ## Current capabilities
 
-| Capability                | VS Code | PhpStorm | Notes                                               |
-| ------------------------- | ------- | -------- | --------------------------------------------------- |
-| `.ppphp` file recognition | Yes     | Yes      | Exclusive extension and shared emblem icon          |
-| Syntax highlighting       | Yes     | Yes      | PHP lexical baseline plus compiler semantic roles   |
-| Compiler diagnostics      | Yes     | Yes      | Runs `ppphp check` on open and save                 |
-| Deterministic completions | Yes     | Yes      | Known project, Composer, PHP, and ++PHP constructs  |
-| Keyword hover help        | Yes     | Yes      | Documents ++PHP extensions                          |
-| Document symbols          | Yes     | Yes      | Safe lexical outline                                |
-| Go to definition          | Yes     | Yes      | Compiler-owned project symbols and member types     |
-| File/declaration creation | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions     |
-| Code-style settings       | No      | Yes      | PHP formatter controls with ++PHP-owned values      |
-| Class-family rename       | Yes     | Yes      | Compiler-verified project edits and file rename     |
-| Use import                | Yes     | Yes      | Safe type imports from the shared symbol catalog    |
-| Formatting                | Not yet | Yes      | Token-safe PhpStorm formatting and live indentation |
+| Capability                | VS Code | PhpStorm | Notes                                                                                            |
+| ------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `.ppphp` file recognition | Yes     | Yes      | Exclusive extension and shared emblem icon                                                       |
+| Syntax highlighting       | Yes     | Yes      | PHP lexical baseline plus compiler semantic roles                                                |
+| Compiler diagnostics      | Yes     | Yes      | Debounced compiler-core analysis of unsaved buffers; supplemental checks remain in `ppphp check` |
+| Deterministic completions | Yes     | Yes      | Known project, Composer, PHP, and ++PHP constructs                                               |
+| Keyword hover help        | Yes     | Yes      | Documents ++PHP extensions                                                                       |
+| Document symbols          | Yes     | Yes      | Safe lexical outline                                                                             |
+| Go to definition          | Yes     | Yes      | Compiler-owned project symbols and member types                                                  |
+| File/declaration creation | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions                                                  |
+| Code-style settings       | No      | Yes      | PHP formatter controls with ++PHP-owned values                                                   |
+| Class-family rename       | Yes     | Yes      | Compiler-verified project edits and file rename                                                  |
+| Use import                | Yes     | Yes      | Safe type imports from the shared symbol catalog                                                 |
+| Formatting                | Not yet | Yes      | Token-safe PhpStorm formatting and live indentation                                              |
 
 Go to definition uses compiler-owned symbol identity across scopes and files. Rename uses the same identity to verify every candidate class, interface, trait, or enum reference before returning project-wide edits. Comments, strings, unrelated same-spelling symbols, generated output, cache directories, and non-`.ppphp` files are not edited. A matching source filename is renamed with its declaration, and collisions or incomplete editor support are refused instead of producing a partial refactor. Function, method, property, variable, and parameter rename remain unavailable until their dynamic and scope-specific safety contracts are complete.
 

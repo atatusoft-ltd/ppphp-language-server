@@ -12,7 +12,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
-import { checkFile, filePathFromUri } from "./compiler-diagnostics.js";
+import { checkDocument, filePathFromUri } from "./compiler-diagnostics.js";
+import { DiagnosticScheduler } from "./diagnostic-scheduler.js";
 import { prepareTypeRenameAt, renameTypeAt, type RenameClientSupport } from "./compiler-rename.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
 import {
@@ -32,20 +33,29 @@ import {
   updateTypeCatalogDocument,
 } from "./type-catalog.js";
 import { typeCompletionsAt } from "./type-completion.js";
-import { typeImportCodeActionsAt } from "./type-import.js";
+import { typeCodeActionsAt, type TypeActionCapabilities } from "./type-actions.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 let supportsConfiguration = false;
 let workspaceFolders: string[] = [];
+let typeActionCapabilities: TypeActionCapabilities = {};
 let renameClientSupport: RenameClientSupport = {
   documentChanges: false,
   renameFileOperations: false,
 };
-const validationGenerations = new Map<string, number>();
+const diagnosticScheduler = new DiagnosticScheduler(validateOpenDocuments, (error) => {
+  reportUnavailable(error instanceof Error ? error.message : String(error));
+});
+let reportedCoverageNote: string | undefined;
 let unavailableReason: string | undefined;
 
 connection.onInitialize((params: InitializeParams) => {
+  const options = params.initializationOptions as { typeActions?: TypeActionCapabilities } | null;
+  typeActionCapabilities = {
+    groupedImports: options?.typeActions?.groupedImports === true,
+    classCreation: options?.typeActions?.classCreation === true,
+  };
   supportsConfiguration = Boolean(params.capabilities.workspace?.configuration);
   const workspaceEdit = params.capabilities.workspace?.workspaceEdit;
   renameClientSupport = {
@@ -100,9 +110,13 @@ connection.onInitialized(() => {
 
 connection.onDidChangeConfiguration(() => {
   invalidateTypeCatalog();
-  for (const document of documents.all()) void validate(document);
+  diagnosticScheduler.schedule(0);
 });
-connection.onDidChangeWatchedFiles(() => invalidateTypeCatalog());
+connection.onDidChangeWatchedFiles(() => {
+  invalidateTypeCatalog();
+  diagnosticScheduler.schedule();
+});
+connection.onShutdown(() => diagnosticScheduler.dispose());
 
 connection.onCompletion(async ({ textDocument, position }) => {
   const document = documents.get(textDocument.uri);
@@ -116,14 +130,26 @@ connection.onCompletion(async ({ textDocument, position }) => {
   return types.length > 0 ? [...types, ...COMPLETIONS] : [...COMPLETIONS];
 });
 connection.onCodeAction(async ({ textDocument, range }) => {
-  const document = documents.get(textDocument.uri);
+  const current = documents.get(textDocument.uri);
+  const document =
+    current &&
+    TextDocument.create(current.uri, current.languageId, current.version, current.getText());
   const filePath = filePathFromUri(textDocument.uri);
   if (!document || !filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return [];
 
   const workspaceRoot = findWorkspaceRoot(filePath);
   const catalog = await getTypeCatalog(workspaceRoot, documents.all());
   const settings = await getSettings(document.uri);
-  return typeImportCodeActionsAt(document, range, catalog, settings.importSorting);
+  const actions = await typeCodeActionsAt(
+    document,
+    range,
+    catalog,
+    filePath,
+    workspaceRoot,
+    settings,
+    typeActionCapabilities,
+  );
+  return documents.get(document.uri)?.version === document.version ? actions : [];
 });
 connection.onExecuteCommand(({ command, arguments: arguments_ }) =>
   command === INFER_COMPOSER_NAMESPACE_COMMAND ? handleComposerNamespaceCommand(arguments_) : null,
@@ -201,32 +227,56 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
   return semanticTokens(document, result.tokens);
 });
 
-documents.onDidOpen(({ document }) => void validate(document));
+// TextDocuments emits this for both initial open and every incremental buffer change.
+documents.onDidChangeContent(() => {
+  diagnosticScheduler.schedule();
+});
 documents.onDidSave(({ document }) => {
   const filePath = filePathFromUri(document.uri);
   if (filePath) {
     updateTypeCatalogDocument(findWorkspaceRoot(filePath), filePath, document.getText());
   }
-  void validate(document);
+  diagnosticScheduler.schedule(0);
 });
 documents.onDidClose(({ document }) => {
-  validationGenerations.delete(document.uri);
+  diagnosticScheduler.schedule();
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
 });
 
-async function validate(document: TextDocument): Promise<void> {
-  const generation = (validationGenerations.get(document.uri) ?? 0) + 1;
-  validationGenerations.set(document.uri, generation);
-  const filePath = filePathFromUri(document.uri);
-  if (!filePath || path.extname(filePath).toLowerCase() !== ".ppphp") return;
-
-  const workspaceRoot = findWorkspaceRoot(filePath);
-  const settings = await getSettings(document.uri);
-  const result = await checkFile(filePath, workspaceRoot, settings);
-  if (generation !== validationGenerations.get(document.uri)) return;
-
-  connection.sendDiagnostics({ uri: document.uri, diagnostics: result.diagnostics });
-  reportUnavailable(result.unavailableReason);
+async function validateOpenDocuments(isCurrent: () => boolean): Promise<void> {
+  const snapshot = documents
+    .all()
+    .map((document) =>
+      TextDocument.create(document.uri, document.languageId, document.version, document.getText()),
+    );
+  for (const document of snapshot) {
+    if (!isCurrent()) return;
+    const filePath = filePathFromUri(document.uri);
+    if (!filePath || path.extname(filePath).toLowerCase() !== ".ppphp") continue;
+    const workspaceRoot = findWorkspaceRoot(filePath);
+    const settings = await getSettings(document.uri);
+    if (!isCurrent()) return;
+    const overlays = snapshot.filter((other) => {
+      const otherPath = filePathFromUri(other.uri);
+      return (
+        otherPath &&
+        [".php", ".ppphp"].includes(path.extname(otherPath).toLowerCase()) &&
+        findWorkspaceRoot(otherPath) === workspaceRoot
+      );
+    });
+    const result = await checkDocument(document, filePath, workspaceRoot, settings, overlays);
+    if (!isCurrent()) return;
+    connection.sendDiagnostics({
+      uri: document.uri,
+      version: document.version,
+      diagnostics: result.diagnostics,
+    });
+    reportUnavailable(result.unavailableReason);
+    if (result.coverageNote && result.coverageNote !== reportedCoverageNote) {
+      reportedCoverageNote = result.coverageNote;
+      connection.console.warn(result.coverageNote);
+    }
+  }
 }
 
 async function getSettings(scopeUri: string): Promise<ServerSettings> {

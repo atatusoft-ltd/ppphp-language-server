@@ -25,6 +25,10 @@ The changes below are prepared for `2026.3.1-rc-2`.
 
 ### Fixed
 
+- Import intentions use native PhpStorm LSP collection rather than timeout-based polling. Unresolved short names offer namespace choices and a prefilled Create class dialog; VS Code receives the same individual import candidates. Catalog discovery includes configured PHP stubs and mixed-project PHP sources.
+- Type-context scanning avoids exponential regular-expression backtracking on long declaration headers, preventing completion and import actions from stalling on ordinary source files.
+- PhpStorm recognizes PHPDoc as comments and uses native Enter handling to create/continue correctly indented comment blocks without swallowing subsequent code.
+- Shared live diagnostics now send unsaved buffers and open-document overlays to `editor:diagnostics`, debounce typing, and discard stale results. Compiler-core coverage is explicitly distinguished from supplemental saved-project PHPStan checks.
 - PhpStorm formatting now uses PHP's distinct settings for `declare`, array/closure arrows, member access, and array-initializer parentheses. Return/assignment continuations and closures nested inside calls receive the appropriate indentation; single-quoted strings remain opaque during formatting.
 - PhpStorm's ++PHP code-style adapter now preserves PHP's option labels and grouping, including function/closure terminology and array-initializer parentheses.
 - Compiler diagnostics now lead with their specific message so editor problem lists do not hide it behind a generic category.

@@ -9,6 +9,7 @@ import com.intellij.formatting.FormattingModelProvider
 import com.intellij.formatting.Indent
 import com.intellij.formatting.Spacing
 import com.intellij.lang.ASTNode
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.TokenType
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.psi.formatter.common.AbstractBlock
@@ -37,6 +38,17 @@ private class PpphpFormattingBlock(
     private val indentOptions: CommonCodeStyleSettings.IndentOptions,
 ) : AbstractBlock(node, null, null) {
     override fun buildChildren(): List<Block> {
+        if (myNode.elementType == PpphpTokenTypes.DOC_COMMENT) {
+            var offset = myNode.startOffset
+            return myNode.text.split('\n').mapIndexedNotNull { index, line ->
+                val start = offset + line.length - line.trimStart().length
+                offset += line.length + 1
+                if (line.isBlank()) null else PpphpCommentLineBlock(
+                    TextRange(start, offset - 1),
+                    if (index == 0) Indent.getNoneIndent() else Indent.getSpaceIndent(1),
+                )
+            }
+        }
         if (isOpaque()) return emptyList()
         val children = mutableListOf<Block>()
         collectLeaves(myNode, children)
@@ -60,12 +72,18 @@ private class PpphpFormattingBlock(
     override fun getIndent(): Indent = absoluteIndent(ownDelimiter = isDelimiter())
 
     override fun getSpacing(child1: Block?, child2: Block): Spacing? {
+        if (myNode.elementType == PpphpTokenTypes.DOC_COMMENT) {
+            return Spacing.createSpacing(0, 0, 1, true, common.KEEP_BLANK_LINES_IN_CODE)
+        }
         val left = child1 as? PpphpFormattingBlock ?: return null
         val right = child2 as? PpphpFormattingBlock ?: return null
         return PpphpSpacing.create(left, right, common, php)
     }
 
     override fun getChildAttributes(newChildIndex: Int): ChildAttributes {
+        if (myNode.elementType == PpphpTokenTypes.DOC_COMMENT) {
+            return ChildAttributes(Indent.getSpaceIndent(1), null)
+        }
         val next = subBlocks.getOrNull(newChildIndex) as? PpphpFormattingBlock
         val previous = subBlocks.getOrNull(newChildIndex - 1) as? PpphpFormattingBlock
         if (previous?.lastType() === PhpTokenTypes.kwRETURN || previous?.lastType() in PhpTokenTypes.tsASGN_OPS) {
@@ -92,7 +110,8 @@ private class PpphpFormattingBlock(
         return ChildAttributes(spaceIndent(columns), null)
     }
 
-    override fun isLeaf(): Boolean = myNode.firstChildNode == null || isOpaque()
+    override fun isLeaf(): Boolean = myNode.elementType != PpphpTokenTypes.DOC_COMMENT &&
+        (myNode.firstChildNode == null || isOpaque())
 
     fun firstText(): String = generateSequence(myNode) { it.firstChildNode }.last().text
 
@@ -237,6 +256,21 @@ private class PpphpFormattingBlock(
             PpphpElementTypes.HEREDOC,
         )
     }
+}
+
+private class PpphpCommentLineBlock(
+    private val range: TextRange,
+    private val lineIndent: Indent,
+) : Block {
+    override fun getTextRange() = range
+    override fun getSubBlocks() = emptyList<Block>()
+    override fun getWrap() = null
+    override fun getIndent() = lineIndent
+    override fun getAlignment() = null
+    override fun getSpacing(child1: Block?, child2: Block) = null
+    override fun getChildAttributes(newChildIndex: Int) = ChildAttributes(Indent.getNoneIndent(), null)
+    override fun isIncomplete() = false
+    override fun isLeaf() = true
 }
 
 private object PpphpSpacing {
