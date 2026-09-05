@@ -68,6 +68,12 @@ private class PpphpFormattingBlock(
     override fun getChildAttributes(newChildIndex: Int): ChildAttributes {
         val next = subBlocks.getOrNull(newChildIndex) as? PpphpFormattingBlock
         val previous = subBlocks.getOrNull(newChildIndex - 1) as? PpphpFormattingBlock
+        if (previous?.lastType() === PhpTokenTypes.kwRETURN || previous?.lastType() in PhpTokenTypes.tsASGN_OPS) {
+            return ChildAttributes(
+                spaceIndent(previous!!.absoluteIndentColumns(ownDelimiter = false) + indentOptions.CONTINUATION_INDENT_SIZE),
+                null,
+            )
+        }
         val columns = when (next?.firstText()) {
             "}" -> next.absoluteIndentColumns(ownDelimiter = true) + indentOptions.INDENT_SIZE
             ")", "]" ->
@@ -121,6 +127,57 @@ private class PpphpFormattingBlock(
 
     fun parentElementType() = myNode.treeParent?.elementType
 
+    private fun ASTNode.previousCodeSibling(): ASTNode? =
+        generateSequence(treePrev) { it.treePrev }.firstOrNull {
+            it.elementType !== TokenType.WHITE_SPACE &&
+                PpphpTokenTypes.unwrap(it.elementType) !in PhpTokenTypes.COMMENTS
+        }
+
+    private fun ASTNode.isMemberName(): Boolean = previousCodeSibling()?.text in setOf("->", "?->", "::")
+
+    fun isMemberName(): Boolean = myNode.isMemberName()
+
+    fun enclosingParenthesisKeyword() =
+        myNode.treeParent?.takeIf { it.elementType == PpphpElementTypes.PARENTHESIZED }
+            ?.previousCodeSibling()?.takeUnless { it.isMemberName() }
+            ?.let { PpphpTokenTypes.unwrap(it.elementType) }
+
+    fun isNullsafeQuestion(): Boolean = firstText() == "?" && myNode.treeNext?.text == "->"
+
+    fun isClosureArrow(): Boolean {
+        var sibling = myNode.previousCodeSibling()
+        while (sibling != null && sibling.text !in setOf(";", ",", "=>", "{", "}")) {
+            if (PpphpTokenTypes.unwrap(sibling.elementType) === PhpTokenTypes.kwFN && !sibling.isMemberName()) return true
+            sibling = sibling.previousCodeSibling()
+        }
+        return false
+    }
+
+    // Delimiter nesting alone misses return values and assignment expression continuations.
+    // Inspect sibling nodes, not raw text, so punctuation in strings/comments is not a boundary.
+    private fun statementContinuation(): Int {
+        if (firstText() in setOf("{", "}") || firstType() in PhpTokenTypes.COMMENTS) return 0
+        var anchor = myNode
+        while (anchor.treeParent?.elementType in setOf(PpphpElementTypes.PARENTHESIZED, PpphpElementTypes.BRACKETED)) {
+            anchor = anchor.treeParent
+        }
+        var start = anchor
+        var previous = start.previousCodeSibling()
+        while (previous != null && previous.text !in setOf(";", "{", "}", "<?php", "<?") &&
+            previous.elementType != PpphpElementTypes.BLOCK) {
+            start = previous
+            previous = start.previousCodeSibling()
+        }
+        val expressionContinuation = PpphpTokenTypes.unwrap(start.elementType) === PhpTokenTypes.kwRETURN ||
+            generateSequence(start) { it.treeNext }.takeWhile { it !== anchor }.any {
+                PpphpTokenTypes.unwrap(it.elementType) in PhpTokenTypes.tsASGN_OPS
+            }
+        if (!expressionContinuation) return 0
+        val parent = anchor.treeParent ?: return 0
+        val prefix = parent.text.substring(start.startOffset - parent.startOffset, anchor.startOffset - parent.startOffset)
+        return if ('\n' in prefix) 1 else 0
+    }
+
     private fun isOpaque(): Boolean = myNode.elementType in OPAQUE_ELEMENTS
 
     private fun absoluteIndent(ownDelimiter: Boolean): Indent =
@@ -148,7 +205,7 @@ private class PpphpFormattingBlock(
                 }
                 PpphpElementTypes.PARENTHESIZED,
                 PpphpElementTypes.BRACKETED,
-                -> continuations++
+                -> if (blocks == 0) continuations++
             }
             ancestor = ancestor.treeParent
         }
@@ -159,7 +216,7 @@ private class PpphpFormattingBlock(
             }
         }
         return (blocks.coerceAtLeast(0) + shiftedBlocks) * indentOptions.INDENT_SIZE +
-            continuations.coerceAtLeast(0) * indentOptions.CONTINUATION_INDENT_SIZE
+            (continuations.coerceAtLeast(0) + statementContinuation()) * indentOptions.CONTINUATION_INDENT_SIZE
     }
 
     private fun blockBraceStyle(block: ASTNode): Int {
@@ -194,7 +251,7 @@ private object PpphpSpacing {
     private val incrementOperators = setOf("++", "--")
     private val multiplicativeOperators = setOf("*", "/", "%", "**")
     private val shiftOperators = setOf("<<", ">>", "<<=", ">>=")
-    private val tightOperators = setOf("\\", "->", "?->", "::", "...")
+    private val tightOperators = setOf("\\", "::", "...")
 
     fun create(
         left: PpphpFormattingBlock,
@@ -254,6 +311,11 @@ private object PpphpSpacing {
             }
         }
 
+        if (left.isNullsafeQuestion() && rightText == "->") return spaces(0)
+        if (right.isNullsafeQuestion()) return spaces(if (php.SPACES_AROUND_ARROW) 1 else 0)
+        if (leftText in setOf("->", "?->") || rightText in setOf("->", "?->")) {
+            return spaces(if (php.SPACES_AROUND_ARROW) 1 else 0)
+        }
         if (leftText in tightOperators || rightText in tightOperators) return spaces(0)
         if (leftText == "#[" || rightText == "]" && left.groupPrefix().trimEnd().endsWith("#[")) {
             return spaces(0)
@@ -271,7 +333,14 @@ private object PpphpSpacing {
 
         if (rightText == ":") return spaces(if (spaceBeforeColon(right, php)) 1 else 0)
         if (leftText == ":") return spaces(if (spaceAfterColon(left, php)) 1 else 0)
-        if (leftText == "=>" || rightText == "=>") return spaces(if (php.SPACES_AROUND_ARROW) 1 else 0)
+        if (leftText == "=>" || rightText == "=>") {
+            val arrow = if (leftText == "=>") left else right
+            return spaces(if (arrow.isClosureArrow() || common.SPACE_AROUND_ASSIGNMENT_OPERATORS) 1 else 0)
+        }
+        if ((leftText == "=" || rightText == "=") &&
+            left.enclosingParenthesisKeyword() === PhpTokenTypes.kwDECLARE) {
+            return spaces(if (php.SPACE_AROUND_ASSIGNMENT_IN_DECLARE) 1 else 0)
+        }
         if (leftText in setOf("??", "??=") || rightText in setOf("??", "??=")) {
             return spaces(if (php.SPACES_AROUND_NULL_COALESCE_OPERATOR) 1 else 0)
         }
@@ -447,8 +516,9 @@ private object PpphpSpacing {
         common: CommonCodeStyleSettings,
         php: PpphpCodeStyleSettings,
     ): Boolean {
-        val keyword = left.lastText().lowercase()
+        val keyword = if (left.isMemberName()) "" else left.lastText().lowercase()
         return when (keyword) {
+            "array" -> common.SPACE_BEFORE_ARRAY_INITIALIZER_LBRACE
             "if", "elseif", "when" -> common.SPACE_BEFORE_IF_PARENTHESES
             "while" -> common.SPACE_BEFORE_WHILE_PARENTHESES
             "for", "foreach" -> common.SPACE_BEFORE_FOR_PARENTHESES

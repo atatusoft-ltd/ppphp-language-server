@@ -22,19 +22,29 @@ The filename defaults to the declaration name but can be changed independently. 
 
 Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The current target is `2026.3.1-rc-2`.
 
+## Formatting coverage
+
+The code-style controls mirror PHP, but formatter behavior does not yet have complete PHP parity. Known gaps include switch/case indentation, casts, some ternary/operator contexts, and mixed PHP/HTML layout; see the [formatting architecture notes](../../docs/architecture.md). The previews use the actual ++PHP formatter, so these differences are not hidden behind PHP-rendered examples.
+
 ## Local requirements
 
 - PhpStorm 2025.2 or newer
 - Node.js 22 or newer
 - The `ppphp` compiler in the project at `vendor/bin/ppphp`, on `PATH`, or configured through `PPPHP_COMPILER_PATH`
 
-PhpStorm started from the desktop may not inherit your shell's Node.js path. Set `PPPHP_NODE_PATH` before starting PhpStorm, or add this line under **Help → Edit Custom VM Options**:
+The plugin uses the project's local Node.js runtime configured under **Settings → Languages & Frameworks → JavaScript Runtime**. This also works when PhpStorm is started from the desktop and does not inherit the path used by nvm, fnm, or another shell version manager. `PPPHP_NODE_PATH` and the following custom VM option remain available as explicit overrides:
 
 ```text
 -Dppphp.language.server.node.path=/absolute/path/to/node
 ```
 
+On Windows, PHP must also be available as `php.exe` on the IDE's effective `PATH`. Set `PPPHP_PHP_PATH` to an absolute PHP executable path when using a desktop or version-manager installation that PhpStorm does not inherit. The language server runs Composer's PHP proxy directly and never constructs a shell command from project paths.
+
 After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
+
+## Troubleshooting blank code-style previews
+
+If code-style previews are blank, check **Help → Show Log in Finder/Explorer** for errors before changing formatting settings. An `IElementType.TooManyElementTypesException` (shown in logs as `IElementType$TooManyElementTypesException`) means the IDE-wide element-type registry is exhausted; it can break indexing and newly created previews across languages. Fully restart PhpStorm, not just the ++PHP language server. If it recurs, inspect the first registry-exhaustion entry for the language registering excessive element types and report it to that plugin's maintainer. Reinstalling ++PHP or changing indentation preferences does not repair an exhausted registry in a running IDE.
 
 ## Windows and WSL smoke test
 

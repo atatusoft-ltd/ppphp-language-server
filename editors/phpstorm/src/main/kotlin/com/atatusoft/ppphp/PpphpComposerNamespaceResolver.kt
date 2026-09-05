@@ -11,6 +11,7 @@ internal object PpphpComposerNamespaceResolver {
         val pluginRoot = PpphpLanguageServerRuntime.findPluginRoot(javaClass)
             ?: return Resolution.NONE
         val command = PpphpLanguageServerRuntime.createCommandLine(
+            project,
             pluginRoot,
             project.basePath,
             "--infer-composer-namespace",

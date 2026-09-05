@@ -81,6 +81,7 @@ class PpphpRenameHandler internal constructor(
                         identifier.start,
                     )
                     response = PpphpRenameSupport.requestRename(
+                        project,
                         pluginRoot,
                         projectRoot,
                         request,
@@ -163,6 +164,7 @@ internal object PpphpRenameSupport {
         val pluginRoot = PpphpLanguageServerRuntime.findPluginRoot(PpphpRenameHandler::class.java)
             ?: return false
         val available = requestPrepareRename(
+            project,
             pluginRoot,
             projectRoot,
             buildRequest(projectRoot, file, editor.document, positionOffset),
@@ -215,22 +217,27 @@ internal object PpphpRenameSupport {
     }
 
     fun requestRename(
+        project: Project,
         pluginRoot: Path,
         projectRoot: VirtualFile,
         request: JsonObject,
         newName: String,
     ): PpphpNativeRename {
         request.addProperty("newName", newName)
-        return parseResponse(runNativeCommand(pluginRoot, projectRoot, request, "--rename"), projectRoot)
+        return parseResponse(
+            runNativeCommand(project, pluginRoot, projectRoot, request, "--rename"),
+            projectRoot,
+        )
     }
 
     fun requestPrepareRename(
+        project: Project,
         pluginRoot: Path,
         projectRoot: VirtualFile,
         request: JsonObject,
     ): Boolean {
         val response = JsonParser.parseString(
-            runNativeCommand(pluginRoot, projectRoot, request, "--rename"),
+            runNativeCommand(project, pluginRoot, projectRoot, request, "--rename"),
         ).asJsonObject
         if (response.get("version")?.asInt != 1 || response.get("error")?.isJsonObject == true) {
             return false
@@ -357,12 +364,14 @@ internal object PpphpRenameSupport {
         }
 
     private fun runNativeCommand(
+        project: Project,
         pluginRoot: Path,
         projectRoot: VirtualFile,
         request: JsonObject,
         command: String,
     ): String {
         val commandLine = PpphpLanguageServerRuntime.createCommandLine(
+            project,
             pluginRoot,
             projectRoot.toNioPath().toAbsolutePath().normalize().toString(),
             command,
