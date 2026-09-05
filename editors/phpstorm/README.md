@@ -22,6 +22,10 @@ The filename defaults to the declaration name but can be changed independently. 
 
 Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The current target is `2026.3.1-rc-2`.
 
+## Formatting coverage
+
+The code-style controls mirror PHP, but formatter behavior does not yet have complete PHP parity. Known gaps include switch/case indentation, casts, some ternary/operator contexts, and mixed PHP/HTML layout; see the [formatting architecture notes](../../docs/architecture.md). The previews use the actual ++PHP formatter, so these differences are not hidden behind PHP-rendered examples.
+
 ## Local requirements
 
 - PhpStorm 2025.2 or newer

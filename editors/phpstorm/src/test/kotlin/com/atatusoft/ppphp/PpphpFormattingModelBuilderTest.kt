@@ -4,9 +4,101 @@ import com.intellij.application.options.CodeStyle
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
+import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider.SettingsType
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.jetbrains.php.config.PhpLanguageLevel
+import com.jetbrains.php.config.PhpProjectSharedConfiguration
+import com.jetbrains.php.lang.PhpLanguage
+import com.jetbrains.php.lang.formatter.PhpCodeStyleSettings
+import com.jetbrains.php.lang.formatter.ui.PhpLanguageCodeStyleSettingsProvider
 
 class PpphpFormattingModelBuilderTest : BasePlatformTestCase() {
+    fun testIndentPreviewMatchesPhp() {
+        val source = PhpLanguageCodeStyleSettingsProvider().getCodeSample(SettingsType.INDENT_SETTINGS)!!
+        assertMatchesPhp(source)
+        configureIndent(indentSize = 2, continuationIndentSize = 6, useTabs = false)
+        assertMatchesPhp(source)
+        configureIndent(indentSize = 4, continuationIndentSize = 4, useTabs = true)
+        assertMatchesPhp(source)
+    }
+
+    fun testOperatorSettingsMatchPhpForBothValues() {
+        val settings = CodeStyle.getSettings(project)
+        val common = settings.getCommonSettings(PpphpLanguage.INSTANCE)
+        val php = settings.getCustomSettings(PpphpCodeStyleSettings::class.java)
+        for (enabled in listOf(false, true)) {
+            common.SPACE_AROUND_ASSIGNMENT_OPERATORS = enabled
+            common.SPACE_BEFORE_ARRAY_INITIALIZER_LBRACE = enabled
+            php.SPACE_AROUND_ASSIGNMENT_IN_DECLARE = !enabled
+            php.SPACES_AROUND_ARROW = !enabled
+            assertMatchesPhp("<?php\ndeclare(strict_types=1);\n\$a=array(0=>1);\n\$f=fn()=>0;\n\$a->foo();")
+            assertMatchesPhp("<?php\n\$a->array(0);\n\$a->declare(\$x=1);")
+        }
+        assertMatchesPhp("<?php\nA::array(0);")
+    }
+
+    fun testMemberSpacingDoesNotSplitNullsafeOperator() {
+        val php = CodeStyle.getSettings(project).getCustomSettings(PpphpCodeStyleSettings::class.java)
+        for (enabled in listOf(false, true)) {
+            php.SPACES_AROUND_ARROW = enabled
+            val space = if (enabled) " " else ""
+            // The baseline PHP formatter splits ?-> when member-arrow spacing is enabled.
+            // Source integrity takes precedence over reproducing that native formatter bug.
+            assertFormatted("<?php\n\$a?->foo();", "<?php\n\$a${space}?->${space}foo();")
+        }
+    }
+
+    fun testClosureInsideCallDoesNotInheritArgumentContinuationIndent() {
+        assertMatchesPhp("<?php\nfunction run() {\ncall_func(function() {\nreturn 0;\n});\n}")
+    }
+
+    fun testEnterAfterReturnOrAssignmentUsesContinuationIndent() {
+        configureIndent(indentSize = 2, continuationIndentSize = 6, useTabs = false)
+        for (statement in listOf("return", "\$value =")) {
+            val file = myFixture.configureByText(
+                PpphpFileType.INSTANCE,
+                "<?php\nfunction run()\n{\n  $statement\n\n}\n",
+            )
+            val offset = file.text.indexOf("\n\n") + 1
+            WriteCommandAction.runWriteCommandAction(project) {
+                CodeStyleManager.getInstance(project).adjustLineIndent(file, offset)
+            }
+            assertTrue(myFixture.editor.document.text.contains("$statement\n        \n}"))
+        }
+    }
+
+    fun testSingleQuotedStringsAreOpaqueIncludingEscapesAndNewlines() {
+        for (literal in listOf("'a=b; { text }'", "'it\\'s \\\\ literal'", "'first\nsecond'", "''")) {
+            assertFormatted("<?php\n\$value=$literal;", "<?php\n\$value = $literal;")
+        }
+    }
+
+    fun testReturnContinuationMatchesPhp() = assertMatchesPhp("<?php\nfunction run() {\nreturn\n'value';\n}")
+
+    fun testThrowContinuationMatchesPhp() = assertMatchesPhp("<?php\nfunction run() {\nthrow\nnew Exception();\n}")
+
+    fun testAssignmentContinuationMatchesPhp() = assertMatchesPhp("<?php\nfunction run() {\n\$a =\n1 +\n2;\n}")
+
+    fun testEchoContinuationMatchesPhp() = assertMatchesPhp("<?php\nfunction run() {\necho\n'value';\n}")
+
+    private fun assertMatchesPhp(source: String) {
+        project.getService(PhpProjectSharedConfiguration::class.java).state!!.languageLevel = PhpLanguageLevel.PHP840
+        val settings = CodeStyle.getSettings(project)
+        val common = settings.getCommonSettings(PpphpLanguage.INSTANCE)
+        val native = settings.getCommonSettings(PhpLanguage.INSTANCE)
+        native.copyFrom(common)
+        native.indentOptions!!.copyFrom(settings.getLanguageIndentOptions(PpphpLanguage.INSTANCE))
+        PpphpPhpSettingsFields.copy(
+            settings.getCustomSettings(PpphpCodeStyleSettings::class.java),
+            settings.getCustomSettings(PhpCodeStyleSettings::class.java),
+        )
+        val file = myFixture.configureByText("reference.php", source)
+        WriteCommandAction.runWriteCommandAction(project) { CodeStyleManager.getInstance(project).reformat(file) }
+        val expected = myFixture.editor.document.text
+        assertFormatted(source, expected)
+        assertFormatted(expected, expected)
+    }
+
     fun testIndentSpacingAndBraceSettingsDriveReformatting() {
         val settings = CodeStyle.getSettings(project)
         val common = settings.getCommonSettings(PpphpLanguage.INSTANCE)
