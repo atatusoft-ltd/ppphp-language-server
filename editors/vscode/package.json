@@ -5,7 +5,7 @@
   "version": "2026.3.1-rc-2",
   "ppphpToolchainVersion": "2026.3.1-rc-2",
   "private": true,
-  "publisher": "atatusoft",
+  "publisher": "Atatusoft",
   "license": "Apache-2.0",
   "icon": "images/ppphp-emblem-128.png",
   "engines": {

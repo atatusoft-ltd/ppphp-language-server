@@ -16,7 +16,7 @@ Alt+Enter on a fully qualified type offers **Use import**. On an unresolved shor
 
 Typing `/**` and pressing Enter creates an indented PHPDoc block with a closing `*/`; Enter inside it continues the `*` prefix through PhpStorm's native comment handling. This is comment scaffolding, not signature-derived `@param`/`@return` tag generation.
 
-Compiler-core diagnostics refresh from unsaved buffers after a 300ms typing pause (immediately on save). Update the configured compiler to one supporting `editor:diagnostics` version 1; supplemental PHPStan checks remain available through `ppphp check`. A PHPStan `Cannot run program` notification from the IDE is a separate quality-tool/interpreter configuration failure: check that its PHP executable still exists, particularly after Homebrew upgrades.
+Compiler diagnostics refresh from unsaved buffers after a short typing pause (immediately on save). Keep the configured compiler up to date for unsaved-buffer analysis; supplemental PHPStan checks remain available through `ppphp check`. A PHPStan `Cannot run program` notification from the IDE is a separate quality-tool/interpreter configuration failure: check that its PHP executable still exists, particularly after Homebrew upgrades.
 
 The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Both actions always create `.ppphp` files and use the ++PHP emblem.
 
@@ -26,16 +26,14 @@ The plugin also adds **Editor | Code Style | ++PHP**. Its formatter, PHPDoc, cod
 
 The filename defaults to the declaration name but can be changed independently. Namespace suggestions first use the nearest Composer manifest's canonical ++PHP source mappings (`extra.ppphp.source-autoload` and `extra.ppphp.source-autoload-dev`). When no source mapping applies, they fall back to PhpStorm's PHP project model. This keeps creation correct after `ppphp composer:configure` moves Composer's runtime mappings to generated PHP while requiring no editor-only namespace configuration.
 
-Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The current target is `2026.3.1-rc-2`.
-
 ## Formatting coverage
 
 The code-style controls mirror PHP, but formatter behavior does not yet have complete PHP parity. Known gaps include switch/case indentation, casts, some ternary/operator contexts, and mixed PHP/HTML layout; see the [formatting architecture notes](../../docs/architecture.md). The previews use the actual ++PHP formatter, so these differences are not hidden behind PHP-rendered examples.
 
 ## Local requirements
 
-- PhpStorm 2025.2 or newer
-- Node.js 22 or newer
+- PhpStorm compatible with the plugin's Marketplace compatibility range
+- Node.js compatible with the [language-server manifest](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/packages/language-server/package.json)
 - The `ppphp` compiler in the project at `vendor/bin/ppphp`, on `PATH`, or configured through `PPPHP_COMPILER_PATH`
 
 The plugin uses the project's local Node.js runtime configured under **Settings → Languages & Frameworks → JavaScript Runtime**. This also works when PhpStorm is started from the desktop and does not inherit the path used by nvm, fnm, or another shell version manager. `PPPHP_NODE_PATH` and the following custom VM option remain available as explicit overrides:

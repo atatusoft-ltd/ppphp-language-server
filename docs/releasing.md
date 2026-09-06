@@ -2,7 +2,7 @@
 
 ## Version policy
 
-Language-server and editor releases track the compatible ++PHP toolchain using quarterly CalVer. The current target is `2026.3.1-rc-2`.
+Language-server and editor releases track the compatible ++PHP toolchain using quarterly CalVer. Read `VERSION` to identify the release being prepared.
 
 The canonical, user-facing forms are `YYYY.Q.R`, `YYYY.Q.R-rc-N`, and `dev-YYYY.Q.R`:
 
@@ -14,12 +14,14 @@ The canonical, user-facing forms are `YYYY.Q.R`, `YYYY.Q.R-rc-N`, and `dev-YYYY.
 
 Every package manifest, editor manifest, lockfile entry, and `ppphpToolchainVersion` field uses this exact version. There is no separate padded or ecosystem-specific form.
 
-`VERSION` is the repository source of truth. Run `php scripts/check_release_version.php` after any version change; it rejects drift between `VERSION`, npm manifests and lockfile, editor metadata, and documentation. The `npm run check:version` alias remains available for npm workflows. Release tags use the version prefixed with `v`, such as `v2026.3.1-rc-2`.
+`VERSION` is the repository source of truth. Run `php scripts/check_release_version.php` after any version change; it rejects drift between `VERSION`, npm manifests and lockfile, and editor metadata. The `npm run check:version` alias remains available for npm workflows. Release tags use the value of `VERSION` prefixed with `v`.
+
+Do not insert the release value into evergreen documentation or product descriptions. Compatibility belongs in package constraints, editor engines, and plugin build metadata. Runtime prerequisites have one installation reference; other pages link to it. Dated release notes and changelogs carry release-specific facts. Follow the [public-copy policy](../CONTRIBUTING.md#public-facing-copy) for install commands and explicit release-candidate instructions.
 
 ## Release checklist
 
 1. Confirm the compatible ++PHP compiler version and diagnostic protocol.
-2. Update `VERSION`, every package and editor manifest, the lockfile, all changelogs, and compatibility notes to the same value.
+2. Update `VERSION`, package and editor version fields, the lockfile, and dated release notes/changelogs. Change compatibility constraints only when requirements actually change; do not rewrite evergreen copy.
 3. Run `npm install --package-lock-only --ignore-scripts` to refresh the lockfile.
 4. Run `npm run check`.
 5. Run `php scripts/build.php vscode`, then smoke-test highlighting and language-server startup.

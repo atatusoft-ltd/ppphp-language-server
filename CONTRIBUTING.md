@@ -2,7 +2,7 @@
 
 ## Development setup
 
-Install PHP 8.4, Node.js 22, and Java 21 or newer, then run:
+Install the tools described in the [requirements](README.md#requirements), then run:
 
 ```shell
 npm ci
@@ -42,6 +42,12 @@ Each pull request should explain the user-visible behavior, list verification pe
 ```shell
 php scripts/sync_language_resources.php
 ```
+
+## Public-facing copy
+
+Product descriptions, headings, introductions, examples, component labels, and editor READMEs describe ++PHP without release numbers or channel labels. Keep compatibility in machine-readable manifests and installation prerequisites; link to those sources instead of duplicating their constraints. Exact releases belong in dated release notes and changelogs, not evergreen product copy.
+
+The default public install command is `composer require --dev atatusoft-ltd/ppphp-src`. Pinned prerelease commands belong only under an explicit **Installing a release candidate** section or in that release's notes. A release bump must not require rewriting product descriptions or READMEs. The release consistency check validates metadata, not marketing prose.
 
 ## Adding LSP capabilities
 
