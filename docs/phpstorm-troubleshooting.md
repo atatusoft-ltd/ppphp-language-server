@@ -1,6 +1,6 @@
 # PhpStorm troubleshooting
 
-Start with the [plugin setup and common checks](../editors/phpstorm/README.md#troubleshooting). For detailed errors, open **Help → Show Log in Finder/Explorer**. Remove private paths and source before sharing logs.
+Start with the [plugin setup and common checks](phpstorm.md#troubleshooting). For detailed errors, open **Help → Show Log in Finder/Explorer**. Remove private paths and source before sharing logs.
 
 ## Selecting Node.js explicitly
 

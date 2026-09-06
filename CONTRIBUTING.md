@@ -53,6 +53,8 @@ Product descriptions, headings, introductions, examples, component labels, and e
 
 The default public install command is `composer require --dev atatusoft-ltd/ppphp-src`. Pinned prerelease commands belong only under an explicit **Installing a release candidate** section or in that release's notes. A release bump must not require rewriting product descriptions or READMEs. The release consistency check validates metadata, not marketing prose.
 
+Adapt copy to its host. The JetBrains plugin is named **++PHP**; supported IDEs belong in compatibility metadata, not the product title. Its Marketplace overview comes from the HTML plugin description, not the VS Code README. Keep setup details in the user guide and maintain gallery/contact fields separately; see the [JetBrains listing handoff](docs/jetbrains-marketplace.md).
+
 ## Adding LSP capabilities
 
 Capabilities are a compatibility promise. Add one only when both editor clients can use it safely and automated tests cover its important failure modes. Cross-file rename, references, and refactoring must use compiler-provided symbol identity rather than textual matching.

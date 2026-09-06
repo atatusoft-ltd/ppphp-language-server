@@ -31,6 +31,8 @@ Do not insert the release value into evergreen documentation or product descript
 
 Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or binary remains an explicit maintainer action.
 
+For JetBrains publication, complete the [listing and media checklist](jetbrains-marketplace.md). A README update alone does not prepare the Marketplace gallery or configure its contact fields.
+
 ## PhpStorm Windows and WSL smoke test
 
 Install the built plugin in a supported PhpStorm version on Windows and open the same ++PHP project through WSL. Confirm that:
