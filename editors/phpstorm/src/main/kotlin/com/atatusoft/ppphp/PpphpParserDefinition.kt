@@ -57,6 +57,13 @@ class PpphpParserDefinition : ParserDefinition {
                     (closingType == null || PpphpTokenTypes.unwrap(builder.tokenType) !== closingType)
             ) {
                 when (PpphpTokenTypes.unwrap(builder.tokenType)) {
+                    PhpTokenTypes.chLSINGLE_QUOTE ->
+                        parseOpaque(
+                            builder,
+                            PhpTokenTypes.chRSINGLE_QUOTE,
+                            PpphpElementTypes.INTERPOLATED_STRING,
+                        )
+
                     PhpTokenTypes.chLDOUBLE_QUOTE ->
                         parseOpaque(
                             builder,

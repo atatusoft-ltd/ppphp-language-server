@@ -1,6 +1,11 @@
 package com.atatusoft.ppphp
 
 import com.intellij.application.options.CodeStyle
+import com.intellij.application.options.CodeStyleAbstractConfigurable
+import com.intellij.application.options.CodeStyleAbstractPanel
+import com.intellij.application.options.TabbedLanguageCodeStylePanel
+import com.intellij.openapi.editor.Editor
+import com.intellij.psi.codeStyle.CodeStyleSettingsCustomizable
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
@@ -9,6 +14,7 @@ import com.jetbrains.php.lang.PhpLanguage
 import com.jetbrains.php.lang.formatter.PhpCodeStyleSettings
 import com.jetbrains.php.lang.formatter.ui.PhpLanguageCodeStyleSettingsProvider
 import java.lang.reflect.Modifier
+import java.lang.reflect.Proxy
 
 class PpphpCodeStyleSettingsTest : BasePlatformTestCase() {
     fun testCodeStyleProviderIsRegisteredForPpphp() {
@@ -45,6 +51,61 @@ class PpphpCodeStyleSettingsTest : BasePlatformTestCase() {
 
         try {
             assertNotNull(configurable.createComponent())
+        } finally {
+            configurable.disposeUIResources()
+        }
+    }
+
+    fun testAllPhpOptionCustomizationsReachThePanels() {
+        fun calls(
+            provider: LanguageCodeStyleSettingsProvider,
+            type: LanguageCodeStyleSettingsProvider.SettingsType,
+        ): List<String> {
+            val calls = mutableListOf<String>()
+            val consumer = Proxy.newProxyInstance(
+                CodeStyleSettingsCustomizable::class.java.classLoader,
+                arrayOf(CodeStyleSettingsCustomizable::class.java),
+            ) { _, method, args ->
+                val arguments = (args ?: emptyArray()).contentDeepToString()
+                    .replace(PpphpCodeStyleSettings::class.java.name, PhpCodeStyleSettings::class.java.name)
+                calls.add(method.name + arguments)
+                null
+            } as CodeStyleSettingsCustomizable
+            provider.customizeSettings(consumer, type)
+            return calls
+        }
+        for (type in LanguageCodeStyleSettingsProvider.SettingsType.entries) {
+            assertEquals(
+                "Every PHP customization must be forwarded for $type",
+                calls(PhpLanguageCodeStyleSettingsProvider(), type),
+                calls(PpphpLanguageCodeStyleSettingsProvider(), type),
+            )
+        }
+    }
+
+    fun testEveryPreviewContainsSource() {
+        val settings = clonedProjectSettings()
+        val configurable = PpphpLanguageCodeStyleSettingsProvider()
+            .createConfigurable(settings, clonedProjectSettings()) as CodeStyleAbstractConfigurable
+        try {
+            configurable.createComponent()
+            configurable.reset()
+            val tabsField = TabbedLanguageCodeStylePanel::class.java.getDeclaredField("tabs")
+                .apply { isAccessible = true }
+            val tabs = tabsField.get(configurable.panel) as List<*>
+            val update = CodeStyleAbstractPanel::class.java
+                .getDeclaredMethod("updatePreview", Boolean::class.javaPrimitiveType)
+                .apply { isAccessible = true }
+            val getEditor = CodeStyleAbstractPanel::class.java.getDeclaredMethod("getEditor")
+                .apply { isAccessible = true }
+            var previewCount = 0
+            for (tab in tabs) {
+                update.invoke(tab, true)
+                val editor = getEditor.invoke(tab) as? Editor ?: continue
+                previewCount++
+                assertTrue("Empty preview in ${tab!!.javaClass.name}", editor.document.text.contains("<?php"))
+            }
+            assertTrue("The standard formatting tabs must have previews", previewCount >= 4)
         } finally {
             configurable.disposeUIResources()
         }

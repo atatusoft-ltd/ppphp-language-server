@@ -147,6 +147,29 @@ use Attribute as AttributeMarker;
     );
   });
 
+  it("includes mixed PHP source and explicitly configured PHP stubs, but not generated output", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-mixed-catalog-"));
+    for (const directory of ["app", "stubs", "build"]) await mkdir(path.join(root, directory));
+    await writeFile(
+      path.join(root, "ppphp.json"),
+      JSON.stringify({ source: ["app"], stubs: ["stubs"], output: "build" }),
+    );
+    await writeFile(path.join(root, "app", "Legacy.php"), "<?php namespace App; class Legacy {}");
+    await writeFile(
+      path.join(root, "stubs", "Other.stub.php"),
+      "<?php namespace Other; class Legacy {}",
+    );
+    await writeFile(path.join(root, "build", "Generated.php"), "<?php class Generated {}");
+    const catalog = await getTypeCatalog(root);
+    expect(catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fqn: "App\\Legacy", origin: "project" }),
+        expect.objectContaining({ fqn: "Other\\Legacy", origin: "dependency" }),
+      ]),
+    );
+    expect(catalog.some((entry) => entry.fqn === "Generated")).toBe(false);
+  });
+
   it("discovers more project files than the rename operation permits", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ppphp-large-types-"));
     const sourceRoot = path.join(root, "src");

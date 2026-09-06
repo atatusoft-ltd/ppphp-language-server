@@ -11,6 +11,15 @@ export interface CompilerExecutionResult {
   stdout: string;
   stderr: string;
   notFound: boolean;
+  failure?: string;
+}
+
+export interface CompilerInvocation {
+  command: string;
+  arguments: string[];
+  compiler: string;
+  usesPhpRuntime: boolean;
+  unavailableReason?: string;
 }
 
 export function resolveCompiler(configuredPath: string | undefined, workspaceRoot: string): string {
@@ -35,31 +44,121 @@ export function executeCompiler(
   input?: string,
 ): Promise<CompilerExecutionResult> {
   return new Promise((resolve) => {
-    const child = execFile(
-      command,
-      args,
-      {
-        cwd,
-        encoding: "utf8",
-        env: compilerProcessEnvironment(),
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: timeoutMilliseconds,
-      },
-      (error, stdout, stderr) => {
-        const code = error && "code" in error ? error.code : undefined;
-        resolve({
-          stdout,
-          stderr,
-          notFound: code === "ENOENT",
-        });
-      },
-    );
+    const environment = compilerProcessEnvironment();
+    const invocation = resolveCompilerInvocation(command, args, process.platform, environment);
+    if (invocation.unavailableReason) {
+      resolve({
+        stdout: "",
+        stderr: "",
+        notFound: false,
+        failure: invocation.unavailableReason,
+      });
+      return;
+    }
+
+    let child;
+    try {
+      child = execFile(
+        invocation.command,
+        invocation.arguments,
+        {
+          cwd,
+          encoding: "utf8",
+          env: environment,
+          maxBuffer: 10 * 1024 * 1024,
+          timeout: timeoutMilliseconds,
+          windowsHide: true,
+        },
+        (error, stdout, stderr) => {
+          const code = error && "code" in error ? error.code : undefined;
+          const notFound = code === "ENOENT";
+          resolve({
+            stdout,
+            stderr,
+            notFound,
+            failure: describeCompilerFailure(error, invocation, timeoutMilliseconds),
+          });
+        },
+      );
+    } catch (error) {
+      resolve({
+        stdout: "",
+        stderr: "",
+        notFound: false,
+        failure: describeCompilerFailure(error, invocation, timeoutMilliseconds),
+      });
+      return;
+    }
 
     if (input !== undefined) {
       child.stdin?.on("error", () => undefined);
       child.stdin?.end(input);
     }
   });
+}
+
+export function resolveCompilerInvocation(
+  compiler: string,
+  args: readonly string[],
+  platform: NodeJS.Platform = process.platform,
+  environment: NodeJS.ProcessEnv = process.env,
+  fileExists: (candidate: string) => boolean = existsSync,
+): CompilerInvocation {
+  const extension = path.extname(compiler).toLowerCase();
+  const isWindowsScript = platform === "win32" && (extension === ".bat" || extension === ".cmd");
+  const isPhpScript = extension === ".php" || extension === ".phar";
+
+  if (!isWindowsScript && !isPhpScript) {
+    return {
+      command: compiler,
+      arguments: [...args],
+      compiler,
+      usesPhpRuntime: false,
+    };
+  }
+
+  const script = isWindowsScript ? compiler.slice(0, -extension.length) : compiler;
+  if (!fileExists(script)) {
+    return {
+      command: compiler,
+      arguments: [...args],
+      compiler,
+      usesPhpRuntime: isPhpScript,
+      unavailableReason: isWindowsScript
+        ? `The ++PHP batch wrapper has no argument-safe Composer proxy at ${script}. Reinstall the project's Composer dependencies.`
+        : `The configured ++PHP compiler does not exist: ${script}`,
+    };
+  }
+
+  const configuredPhp = environment.PPPHP_PHP_PATH?.trim();
+  return {
+    command: configuredPhp || (platform === "win32" ? "php.exe" : "php"),
+    arguments: [script, ...args],
+    compiler,
+    usesPhpRuntime: true,
+  };
+}
+
+export function describeCompilerFailure(
+  error: unknown,
+  invocation: CompilerInvocation,
+  timeoutMilliseconds: number,
+): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  const code = "code" in error ? error.code : undefined;
+  if ("killed" in error && error.killed === true) {
+    return `The ++PHP compiler exceeded the ${timeoutMilliseconds}ms editor timeout.`;
+  }
+  if (typeof code === "number") return undefined;
+  if (code === "ENOENT") {
+    return invocation.usesPhpRuntime
+      ? `Could not find the PHP runtime at ${invocation.command}. Set PPPHP_PHP_PATH to an absolute PHP executable path.`
+      : `Could not find the ++PHP compiler at ${invocation.compiler}. Configure ppphp.compiler.path or add ppphp to PATH.`;
+  }
+
+  const suffix = typeof code === "string" && code !== "" ? ` (${code})` : "";
+  return `The ++PHP compiler process could not be started${suffix}.`;
 }
 
 export function compilerProcessEnvironment(
