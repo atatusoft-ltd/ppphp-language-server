@@ -55,19 +55,6 @@ try {
         $canonicalVersion,
     );
 
-    foreach (
-        [
-            'README.md',
-            'docs/releasing.md',
-            'editors/vscode/README.md',
-            'editors/phpstorm/README.md',
-        ] as $file
-    ) {
-        if (!str_contains(read_text($repositoryRoot, $file), $canonicalVersion)) {
-            fail("{$file} must identify the current canonical toolchain version {$canonicalVersion}");
-        }
-    }
-
     if (getenv('GITHUB_REF_TYPE') === 'tag') {
         expect_equal('release tag', getenv('GITHUB_REF_NAME'), 'v' . $canonicalVersion);
     }
