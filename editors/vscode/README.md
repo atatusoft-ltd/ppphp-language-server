@@ -36,6 +36,10 @@ For PHP and Composer prerequisites and the complete build workflow, see the [get
 
 The project-local compiler at `vendor/bin/ppphp` is discovered automatically. You can also use a compiler on `PATH` or configure an absolute path with `ppphp.compiler.path`. On Windows, PHP must be available to VS Code; `PPPHP_PHP_PATH` can identify the PHP executable when it is not on `PATH`.
 
+### Installing a release candidate
+
+The quick-start command selects stable packages. If you intentionally install a prerelease extension, use the matching compiler command in its [release-candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Check the installed extension's version in the Extensions view and choose its release entry, not simply the newest candidate. A stable compiler may not implement the editor protocol required by a prerelease extension.
+
 ## Using the extension
 
 Use VS Code's standard **Go to Definition**, **Rename Symbol**, and **Quick Fix…** actions from the editor's context menu. Import actions appear without requiring a diagnostic on the selected fully qualified type. If several types share an unresolved short name, choose the qualified name you intend to import.

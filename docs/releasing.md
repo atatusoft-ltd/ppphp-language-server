@@ -20,7 +20,7 @@ Do not insert the release value into evergreen documentation or product descript
 
 ## Release checklist
 
-1. Confirm the compatible ++PHP compiler version and diagnostic protocol.
+1. Confirm the compatible ++PHP compiler version and diagnostic protocol. For a release candidate, include its exact compiler installation command in that release's notes and keep the editor READMEs' release-candidate links pointing to those instructions.
 2. Update `VERSION`, package and editor version fields, the lockfile, and dated release notes/changelogs. Change compatibility constraints only when requirements actually change; do not rewrite evergreen copy.
 3. Run `npm install --package-lock-only --ignore-scripts` to refresh the lockfile.
 4. Run `npm run check`.
