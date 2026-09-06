@@ -2,6 +2,10 @@
 
 ## Development setup
 
+Keep TypeScript and typescript-eslint within the linter's published peer dependency range. TypeScript remains pinned to 6.0.3 because typescript-eslint 8.69.0 supports `>=4.8.4 <6.1.0`, not TypeScript 7. Revisit the compiler upgrade when the lint toolchain supports it; do not bypass peer checks with `--force` or `--legacy-peer-deps`. See the [upstream compatibility policy](https://typescript-eslint.io/users/dependency-versions/).
+
+Dependabot groups routine minor/patch npm updates, while major updates remain separate PRs so an incompatible major cannot block compatible maintenance updates. Validate each proposed dependency set with a clean `npm ci` and `npm run check`, including both editor builds in CI.
+
 Install PHP 8.4, Node.js 22, and Java 21 or newer, then run:
 
 ```shell
