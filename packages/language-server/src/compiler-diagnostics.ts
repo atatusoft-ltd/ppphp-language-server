@@ -48,6 +48,7 @@ interface CompilerEnvelope {
 
 export interface CompilerRunResult {
   diagnostics: Diagnostic[];
+  projectIssues?: Array<{ severity: DiagnosticSeverity; message: string }>;
   unavailableReason?: string;
   coverageNote?: string;
 }
@@ -135,7 +136,7 @@ export function parseEditorDiagnostics(
   )
     throw new Error("Unsupported live analysis coverage contract.");
   return {
-    diagnostics: parseCompilerOutput(output, filePath, workspaceRoot, document.getText()),
+    ...parseCompilerResult(output, filePath, workspaceRoot, document.getText()),
     coverageNote:
       "Live diagnostics use compiler-core analysis without supplemental PHPStan checks. Run ppphp check for the complete saved-project check." +
       (envelope.analysis.fullParity ? "" : " Required compiler capability coverage is incomplete."),
@@ -174,7 +175,7 @@ export async function checkFile(
   }
 
   try {
-    return { diagnostics: parseCompilerOutput(execution.stdout, filePath, workspaceRoot) };
+    return parseCompilerResult(execution.stdout, filePath, workspaceRoot);
   } catch (error) {
     return {
       diagnostics: [],
@@ -189,14 +190,32 @@ export function parseCompilerOutput(
   workspaceRoot: string,
   documentText?: string,
 ): Diagnostic[] {
+  return parseCompilerResult(output, currentFile, workspaceRoot, documentText).diagnostics;
+}
+
+export function parseCompilerResult(
+  output: string,
+  currentFile: string,
+  workspaceRoot: string,
+  documentText?: string,
+): CompilerRunResult {
   const envelope = JSON.parse(output) as CompilerEnvelope;
   if (envelope.version !== 1 || !Array.isArray(envelope.diagnostics)) {
     throw new Error("unsupported diagnostic envelope");
   }
 
-  return (envelope.diagnostics as CompilerDiagnostic[])
-    .filter((diagnostic) => locationMatches(diagnostic.location, currentFile, workspaceRoot))
-    .map((diagnostic) => toLspDiagnostic(diagnostic, workspaceRoot, documentText));
+  const diagnostics = envelope.diagnostics as CompilerDiagnostic[];
+  return {
+    diagnostics: diagnostics
+      .filter((diagnostic) => locationMatches(diagnostic.location, currentFile, workspaceRoot))
+      .map((diagnostic) => toLspDiagnostic(diagnostic, workspaceRoot, documentText)),
+    projectIssues: diagnostics
+      .filter((diagnostic) => !asString(diagnostic.location?.file))
+      .map((diagnostic) => ({
+        severity: toSeverity(asString(diagnostic.severity)),
+        message: [asString(diagnostic.code), renderMessage(diagnostic)].filter(Boolean).join(": "),
+      })),
+  };
 }
 
 function toLspDiagnostic(
@@ -211,9 +230,6 @@ function toLspDiagnostic(
     (endCandidate.line === start.line && endCandidate.character < start.character)
       ? start
       : endCandidate;
-  const title = asString(diagnostic.title);
-  const message = asString(diagnostic.message) || title || "++PHP compiler diagnostic";
-  const help = asString(diagnostic.help);
   const relatedInformation = (diagnostic.related ?? [])
     .map((related) => toRelatedInformation(related, workspaceRoot))
     .filter((value): value is DiagnosticRelatedInformation => value !== null);
@@ -229,15 +245,22 @@ function toLspDiagnostic(
     severity: toSeverity(asString(diagnostic.severity)),
     code: asString(diagnostic.code) || undefined,
     source: "++PHP",
-    message: [
-      message,
-      title && title !== message ? `Category: ${title}` : "",
-      help ? `Help: ${help}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
+    message: renderMessage(diagnostic),
     relatedInformation: relatedInformation.length > 0 ? relatedInformation : undefined,
   };
+}
+
+function renderMessage(diagnostic: CompilerDiagnostic): string {
+  const title = asString(diagnostic.title);
+  const message = asString(diagnostic.message) || title || "++PHP compiler diagnostic";
+  const help = asString(diagnostic.help);
+  return [
+    message,
+    title && title !== message ? `Category: ${title}` : "",
+    help ? `Help: ${help}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function diagnosticOffset(value: unknown): number {
@@ -272,7 +295,7 @@ function locationMatches(
   workspaceRoot: string,
 ): boolean {
   const reported = asString(location?.file);
-  if (!reported) return true;
+  if (!reported) return false;
   const reportedPath = path.isAbsolute(reported) ? reported : path.resolve(workspaceRoot, reported);
   return path.normalize(reportedPath) === path.normalize(currentFile);
 }
