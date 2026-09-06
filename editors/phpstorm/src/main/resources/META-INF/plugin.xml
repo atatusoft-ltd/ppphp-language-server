@@ -4,7 +4,18 @@
     <vendor>Atatusoft</vendor>
 
     <description><![CDATA[
-        Syntax highlighting and Language Server Protocol support for ++PHP (.ppphp) files.
+        <p>Language support for ++PHP, a superset of PHP that compiles to PHP.
+        Edit .ppphp files alongside your existing PHP code in PhpStorm.</p>
+        <ul>
+            <li>Familiar highlighting, deterministic type completion, and automatic imports.</li>
+            <li>Live compiler diagnostics, code navigation, and class-family rename refactoring.</li>
+            <li>Native file and class creation with namespace and parent-type suggestions.</li>
+            <li>Independent code-style settings, formatting, and PHPDoc comment scaffolding.</li>
+            <li>PHP navigation to declarations compiled from ++PHP in mixed projects.</li>
+        </ul>
+        <p>The language server is bundled; a local Node.js runtime and the ++PHP compiler
+        are required separately. Formatting does not yet have complete PHP parity.</p>
+        <p><a href="https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/editors/phpstorm/README.md">Setup, features, and support</a></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
