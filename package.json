@@ -32,8 +32,8 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@types/node": "26.4.0",
-    "@types/vscode": "1.134.0",
+    "@types/node": "26.4.1",
+    "@types/vscode": "1.136.0",
     "@vitest/coverage-v8": "4.1.11",
     "@vscode/vsce": "3.9.2",
     "esbuild": "0.28.2",
