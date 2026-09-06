@@ -2,6 +2,10 @@
 
 ## Development setup
 
+Keep TypeScript and typescript-eslint within the linter's published peer dependency range. Upgrade the compiler only when the lint toolchain supports it; do not bypass peer checks with `--force` or `--legacy-peer-deps`. Consult the [upstream compatibility policy](https://typescript-eslint.io/users/dependency-versions/) and the dependency versions recorded in the package manifest.
+
+Dependabot groups routine minor/patch npm updates, while major updates remain separate PRs so an incompatible major cannot block compatible maintenance updates. Validate each proposed dependency set with a clean `npm ci` and `npm run check`, including both editor builds in CI.
+
 Install the tools described in the [requirements](README.md#requirements), then run:
 
 ```shell

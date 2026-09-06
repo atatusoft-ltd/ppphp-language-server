@@ -8,8 +8,10 @@ updates:
     groups:
       npm-development:
         dependency-type: development
+        update-types: [minor, patch]
       npm-production:
         dependency-type: production
+        update-types: [minor, patch]
 
   - package-ecosystem: gradle
     directory: /editors/phpstorm
