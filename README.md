@@ -4,20 +4,20 @@ Editor tooling for ++PHP source files. This repository contains one editor-neutr
 
 ## Current capabilities
 
-| Capability                | VS Code | PhpStorm | Notes                                               |
-| ------------------------- | ------- | -------- | --------------------------------------------------- |
-| `.ppphp` file recognition | Yes     | Yes      | Exclusive extension and shared emblem icon          |
-| Syntax highlighting       | Yes     | Yes      | PHP lexical baseline plus compiler semantic roles   |
-| Compiler diagnostics      | Yes     | Yes      | Runs `ppphp check` on open and save                 |
-| Deterministic completions | Yes     | Yes      | Known project, Composer, PHP, and ++PHP constructs  |
-| Keyword hover help        | Yes     | Yes      | Documents ++PHP extensions                          |
-| Document symbols          | Yes     | Yes      | Safe lexical outline                                |
-| Go to definition          | Yes     | Yes      | Compiler-owned project symbols and member types     |
-| File/declaration creation | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions     |
-| Code-style settings       | No      | Yes      | PHP formatter controls with ++PHP-owned values      |
-| Class-family rename       | Yes     | Yes      | Compiler-verified project edits and file rename     |
-| Use import                | Yes     | Yes      | Safe type imports from the shared symbol catalog    |
-| Formatting                | Not yet | Yes      | Token-safe PhpStorm formatting and live indentation |
+| Capability                | VS Code | PhpStorm | Notes                                                                                            |
+| ------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `.ppphp` file recognition | Yes     | Yes      | Exclusive extension and shared emblem icon                                                       |
+| Syntax highlighting       | Yes     | Yes      | PHP lexical baseline plus compiler semantic roles                                                |
+| Compiler diagnostics      | Yes     | Yes      | Debounced compiler-core analysis of unsaved buffers; supplemental checks remain in `ppphp check` |
+| Deterministic completions | Yes     | Yes      | Known project, Composer, PHP, and ++PHP constructs                                               |
+| Keyword hover help        | Yes     | Yes      | Documents ++PHP extensions                                                                       |
+| Document symbols          | Yes     | Yes      | Safe lexical outline                                                                             |
+| Go to definition          | Yes     | Yes      | Compiler-owned project symbols and member types                                                  |
+| File/declaration creation | Native  | Yes      | PhpStorm `++PHP File` and `++PHP Class` actions                                                  |
+| Code-style settings       | No      | Yes      | PHP formatter controls with ++PHP-owned values                                                   |
+| Class-family rename       | Yes     | Yes      | Compiler-verified project edits and file rename                                                  |
+| Use import                | Yes     | Yes      | Safe type imports from the shared symbol catalog                                                 |
+| Formatting                | Not yet | Yes      | Token-safe PhpStorm formatting and live indentation                                              |
 
 Go to definition uses compiler-owned symbol identity across scopes and files. Rename uses the same identity to verify every candidate class, interface, trait, or enum reference before returning project-wide edits. Comments, strings, unrelated same-spelling symbols, generated output, cache directories, and non-`.ppphp` files are not edited. A matching source filename is renamed with its declaration, and collisions or incomplete editor support are refused instead of producing a partial refactor. Function, method, property, variable, and parameter rename remain unavailable until their dynamic and scope-specific safety contracts are complete.
 
@@ -70,6 +70,8 @@ Language-server and editor releases track the ++PHP toolchain using quarterly Ca
 
 See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
 
+See [docs/editor-support.md](docs/editor-support.md) for the editors and IDEs ++PHP intends to support and where each integration stands.
+
 ## Configuration
 
 VS Code exposes these workspace/resource settings:
@@ -79,7 +81,9 @@ VS Code exposes these workspace/resource settings:
 - `ppphp.diagnostics.compiler.enabled`
 - `ppphp.diagnostics.compiler.timeoutMilliseconds`
 
-Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm host also needs Node.js available on `PATH`, through `PPPHP_NODE_PATH`, or through the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node`.
+Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm plugin uses the project's local Node.js runtime configured in the IDE, then falls back to `PATH`. `PPPHP_NODE_PATH` or the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node` can explicitly override both.
+
+On Windows, the language server invokes Composer's argument-safe PHP proxy directly instead of executing `ppphp.bat` through a shell. PHP is resolved as `php.exe` on `PATH`; set `PPPHP_PHP_PATH` to an absolute PHP executable path when PhpStorm does not inherit that path.
 
 Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
 
@@ -97,7 +101,7 @@ res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
 editors/phpstorm/          JetBrains LSP, TextMate, and ++PHP PSI integration
-docs/                      Architecture and roadmap decisions
+docs/                      Architecture, roadmap, and editor-support tracking
 scripts/                   PHP build orchestration and repository guardrails
 ```
 

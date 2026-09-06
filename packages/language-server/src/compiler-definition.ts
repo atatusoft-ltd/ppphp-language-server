@@ -140,6 +140,10 @@ async function resolveCompilerSymbolAtPosition(
     request,
   );
 
+  if (execution.failure) {
+    return { symbol: null, unavailableReason: execution.failure };
+  }
+
   if (execution.notFound) {
     return {
       symbol: null,

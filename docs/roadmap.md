@@ -34,3 +34,4 @@ Once the compiler protocol exists:
 - Integration tests against real VS Code and PhpStorm sandboxes
 - Signed Marketplace and JetBrains Plugin Repository releases
 - Reproducible release provenance and software bill of materials
+- Standalone `ppphp-ls` distribution, a Tree-sitter grammar, and the Neovim, Sublime Text, and Zed integrations tracked in [editor-support.md](editor-support.md)

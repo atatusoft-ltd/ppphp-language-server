@@ -9,6 +9,7 @@ import { maskNonCode } from "./language-features.js";
 import { phpNamespaceDeclarations } from "./php-syntax.js";
 import { parseTypeDeclarations, type TypeCatalogEntry } from "./type-catalog.js";
 import type { ImportSorting } from "./server-settings.js";
+import { isNonClassTypeName } from "./semantic-tokens.js";
 
 interface ImportScope {
   namespace: string;
@@ -39,7 +40,7 @@ export type TypeImportPlanner = (entry: TypeCatalogEntry) => TypeImportPlan | nu
 const IDENTIFIER = "[A-Z_\\u0080-\\u{10ffff}][A-Z0-9_\\u0080-\\u{10ffff}]*";
 const QUALIFIED_NAME = new RegExp(`^${IDENTIFIER}(?:\\\\${IDENTIFIER})*$`, "iu");
 const QUALIFIED_NAME_PREFIX = new RegExp(`^(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "iu");
-const FULLY_QUALIFIED_NAME = new RegExp(`\\\\${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
+const TYPE_NAME = new RegExp(`(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
 
 export function typeImportCodeActionsAt(
   document: TextDocument,
@@ -51,10 +52,11 @@ export function typeImportCodeActionsAt(
   const masked = maskNonCode(source);
   const requestedStart = document.offsetAt(range.start);
   const requestedEnd = document.offsetAt(range.end);
-  const match = [...masked.matchAll(FULLY_QUALIFIED_NAME)].find((candidate) => {
+  const match = [...masked.matchAll(TYPE_NAME)].find((candidate) => {
     const start = candidate.index ?? -1;
     const end = start + candidate[0].length;
-    const isAbsolute = start === 0 || !isNameCharacter(masked[start - 1] ?? "");
+    const isAbsolute =
+      start === 0 || (!isNameCharacter(masked[start - 1] ?? "") && masked[start - 1] !== "$");
     return (
       isAbsolute &&
       (requestedStart === requestedEnd
@@ -64,34 +66,82 @@ export function typeImportCodeActionsAt(
   });
   const start = match?.index;
   if (!match || start === undefined) return [];
-  if (!isTypeReferenceAt(masked, start, start + match[0].length)) return [];
+  if (!isTypeCompletionAt(masked, start, start + match[0].length)) return [];
 
-  const fqn = match[0].slice(1);
-  const entry = catalog.find((candidate) => equalName(candidate.fqn, fqn));
-  if (!entry) return [];
+  const absolute = match[0].startsWith("\\");
+  const name = absolute ? match[0].slice(1) : match[0];
+  if (!absolute && (name.includes("\\") || !unresolvedTypeAt(document, range, catalog))) return [];
+  const entries = catalog.filter((candidate) =>
+    equalName(absolute ? candidate.fqn : candidate.name, name),
+  );
+  const planner = createTypeImportPlanner(
+    document,
+    start,
+    importSorting,
+    absolute ? undefined : name,
+  );
+  return entries.flatMap((entry) => {
+    const plan = planner?.(entry);
+    if (!plan) return [];
 
-  const plan = createTypeImportPlanner(document, start, importSorting)?.(entry);
-  if (!plan) return [];
-
-  const edits: TextEdit[] = [
-    {
-      range: {
-        start: document.positionAt(start),
-        end: document.positionAt(start + match[0].length),
+    const edits: TextEdit[] = [
+      {
+        range: {
+          start: document.positionAt(start),
+          end: document.positionAt(start + match[0].length),
+        },
+        newText: plan.reference,
       },
-      newText: plan.reference,
-    },
-  ];
-  if (plan.importEdit) edits.push(plan.importEdit);
+    ];
+    if (plan.importEdit) edits.push(plan.importEdit);
 
-  return [
-    {
-      title: `Use import for ${entry.fqn}`,
-      kind: CodeActionKind.QuickFix,
-      isPreferred: true,
-      edit: { changes: { [document.uri]: edits } },
-    },
-  ];
+    return [
+      {
+        title: absolute ? `Use import for ${entry.fqn}` : `Import class ${entry.fqn}`,
+        kind: CodeActionKind.RefactorRewrite,
+        isPreferred: entries.length === 1,
+        data: { ppphp: { kind: "import", version: document.version, fqn: entry.fqn } },
+        edit: { changes: { [document.uri]: edits } },
+      },
+    ];
+  });
+}
+
+/** Only unresolved, unqualified type references may introduce a new namespace binding. */
+export function unresolvedTypeAt(
+  document: TextDocument,
+  range: Range,
+  catalog: readonly TypeCatalogEntry[],
+): { name: string; namespace: string } | null {
+  const source = maskNonCode(document.getText());
+  const offset = document.offsetAt(range.start);
+  const match = [...source.matchAll(TYPE_NAME)].find(
+    (candidate) => candidate.index <= offset && offset <= candidate.index + candidate[0].length,
+  );
+  if (
+    !match ||
+    match[0].includes("\\") ||
+    source[match.index - 1] === "$" ||
+    !isTypeCompletionAt(source, match.index, match.index + match[0].length)
+  )
+    return null;
+  const scope = importScopeAt(source, match.index);
+  if (!scope || isImportDeclarationLine(source, match.index)) return null;
+  const name = match[0];
+  if (isNonClassTypeName(name)) return null;
+  if (
+    importStatements(source, scope).some((statement) =>
+      statement.types.some((type) => equalName(type.alias, name)),
+    )
+  )
+    return null;
+  if (
+    catalog.some(
+      (entry) => equalName(entry.name, name) && equalName(entry.namespace, scope.namespace),
+    )
+  )
+    return null;
+  return { name, namespace: scope.namespace };
 }
 
 export function planTypeImportAt(
@@ -107,6 +157,7 @@ export function createTypeImportPlanner(
   document: TextDocument,
   offset: number,
   importSorting: ImportSorting = "alphabetic",
+  unresolvedName?: string,
 ): TypeImportPlanner | null {
   const source = document.getText();
   const masked = maskNonCode(source);
@@ -118,7 +169,7 @@ export function createTypeImportPlanner(
     return null;
   }
   const imported = statements.flatMap((statement) => statement.types);
-  const referencedLocalTypes = aliasSensitiveTypeReferences(masked, scope, offset);
+  const referencedLocalTypes = aliasSensitiveTypeReferences(masked, scope, offset, unresolvedName);
   const localNames = new Set(
     parseTypeDeclarations(source, "project")
       .filter((type) => equalName(type.namespace, scope.namespace))
@@ -548,26 +599,27 @@ export function isTypeCompletionAt(source: string, start: number, end: number): 
   );
   const statement = before.slice(statementStart + 1);
   const typeName = `(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`;
-  const precedingTypes = `(?:\\??${typeName}|[?&|()\\s])*`;
-
-  if (
-    new RegExp(
-      `^\\s*(?:(?:public|protected|private|static|readonly|final|abstract|var)\\s+)+${precedingTypes}$`,
-      "iu",
-    ).test(statement)
-  ) {
+  // Do not repeat an identifier regexp inside another repetition: long declaration
+  // headers with a non-type suffix otherwise cause exponential backtracking.
+  const modifiers =
+    /^\s*(?:(?:public|protected|private|static|readonly|final|abstract|var)\s+)+/iu.exec(statement);
+  if (modifiers && isTypeExpressionFragment(statement.slice(modifiers[0].length))) {
     return true;
   }
-  if (new RegExp(`\\bthrows\\s+${precedingTypes}$`, "iu").test(statement)) return true;
+  const throwsClause = /\bthrows\s+/iu.exec(statement);
+  if (
+    throwsClause &&
+    isTypeExpressionFragment(statement.slice(throwsClause.index + throwsClause[0].length))
+  )
+    return true;
 
   const parameter = currentDeclarationParameter(before);
   if (parameter !== null) {
-    if (
-      new RegExp(
-        `^\\s*(?:(?:public|protected|private|readonly)\\s+)*${precedingTypes}$`,
-        "iu",
-      ).test(parameter)
-    ) {
+    const parameterType = parameter.replace(
+      /^\s*(?:(?:public|protected|private|readonly)\s+)*/iu,
+      "",
+    );
+    if (isTypeExpressionFragment(parameterType)) {
       return true;
     }
   }
@@ -649,6 +701,7 @@ function aliasSensitiveTypeReferences(
   source: string,
   scope: ImportScope,
   ignoredOffset: number,
+  unresolvedName?: string,
 ): Set<string> {
   const references = new Set<string>();
   const expression = new RegExp(`(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
@@ -657,6 +710,7 @@ function aliasSensitiveTypeReferences(
     const end = start + match[0].length;
     if (start <= ignoredOffset && ignoredOffset <= end) continue;
     if (match[0].startsWith("\\")) continue;
+    if (unresolvedName && equalName(match[0], unresolvedName)) continue;
     if (isTypeCompletionAt(source, start, end)) {
       const prefix = match[0].split("\\", 1)[0];
       if (prefix) references.add(prefix.toLowerCase());

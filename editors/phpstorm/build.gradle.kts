@@ -26,6 +26,7 @@ dependencies {
         phpstorm("2025.2.1")
         // Present on PhpStorm's boot classpath, but omitted from the Gradle SDK view.
         bundledLibrary("lib/app-client.jar")
+        bundledPlugin("JavaScript")
         bundledPlugin("com.jetbrains.php")
     }
 }

@@ -238,6 +238,16 @@ class PpphpCodeStyleSettings(container: CodeStyleSettings) :
 private class PpphpSettingsCustomizable(
     private val delegate: CodeStyleSettingsCustomizable,
 ) : CodeStyleSettingsCustomizable by delegate {
+    // Kotlin delegation does not forward these Java default methods (which are no-ops).
+    // Preserve PHP's labels and grouping as well as its list of supported fields.
+    override fun renameStandardOption(fieldName: String, newTitle: String) {
+        delegate.renameStandardOption(fieldName, newTitle)
+    }
+
+    override fun moveStandardOption(fieldName: String, newGroup: String) {
+        delegate.moveStandardOption(fieldName, newGroup)
+    }
+
     override fun showCustomOption(
         settingsClass: Class<out CustomCodeStyleSettings>,
         fieldName: String,

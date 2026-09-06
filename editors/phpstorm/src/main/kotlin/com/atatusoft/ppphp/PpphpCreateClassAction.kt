@@ -18,6 +18,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
@@ -62,6 +63,17 @@ class PpphpCreateClassAction : DumbAwareAction(
     "Create a ++PHP class, interface, trait, or enum",
     PpphpIcons.FILE,
 ) {
+    fun createFromReference(project: Project, directory: PsiDirectory, name: String, namespace: String) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            val catalog = runCatching { PpphpTypeCatalogResolver.resolve(project) }
+                .getOrDefault(PpphpKnownTypeCatalog.EMPTY)
+            ApplicationManager.getApplication().invokeLater {
+                if (!project.isDisposed && directory.isValid) {
+                    showDialog(project, null, directory, PpphpComposerNamespaceResolver.Resolution.NONE, catalog, name, namespace)
+                }
+            }
+        }
+    }
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
     override fun update(event: AnActionEvent) {
@@ -91,12 +103,14 @@ class PpphpCreateClassAction : DumbAwareAction(
 
     private fun showDialog(
         project: Project,
-        view: IdeView,
+        view: IdeView?,
         directory: PsiDirectory,
         composer: PpphpComposerNamespaceResolver.Resolution,
         typeCatalog: PpphpKnownTypeCatalog,
+        initialName: String = "",
+        initialNamespace: String? = null,
     ) {
-        val dialog = PpphpCreateClassDialog(project, directory, composer, typeCatalog)
+        val dialog = PpphpCreateClassDialog(project, directory, composer, typeCatalog, initialName, initialNamespace)
         if (!dialog.showAndGet()) return
 
         try {
@@ -109,7 +123,10 @@ class PpphpCreateClassAction : DumbAwareAction(
                 .compute<PsiFile?, RuntimeException> {
                     PpphpDeclarationCreator.create(project, directory, specification)
                 }
-            created?.let(view::selectElement)
+            created?.let {
+                if (view != null) view.selectElement(it)
+                else FileEditorManager.getInstance(project).openFile(it.virtualFile, true)
+            }
         } catch (error: IncorrectOperationException) {
             Messages.showErrorDialog(
                 project,
@@ -284,19 +301,22 @@ internal object PpphpTemplateCycling {
     }
 }
 
-private class PpphpCreateClassDialog(
+internal class PpphpCreateClassDialog(
     private val project: Project,
     private val directory: PsiDirectory,
     composer: PpphpComposerNamespaceResolver.Resolution,
     private val typeCatalog: PpphpKnownTypeCatalog,
+    initialName: String = "",
+    initialNamespace: String? = null,
 ) : DialogWrapper(project, true) {
-    private val typeNameField = JBTextField(42)
+    private val typeNameField = JBTextField(initialName, 42)
     private val namespaceSuggestions = PpphpNamespaceSuggestions.suggest(directory, composer)
     private val namespaceField = JComboBox(namespaceSuggestions.toTypedArray()).apply {
         isEditable = true
         namespaceSuggestions.firstOrNull()?.let { selectedItem = it }
+        initialNamespace?.let { selectedItem = it }
     }
-    private val fileNameField = JBTextField(42)
+    private val fileNameField = JBTextField(if (initialName.isEmpty()) "" else "$initialName.ppphp", 42)
     private val directoryField = JBTextField(directory.virtualFile.presentableUrl, 42)
     private val templateSelector = JComboBox(PpphpDeclarationTemplate.entries.toTypedArray())
     private val templateUpDownHint = JBLabel()

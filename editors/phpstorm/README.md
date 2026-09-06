@@ -12,6 +12,12 @@ Type completion reuses existing `use` imports and aliases, adding a safe import 
 
 ## Creating source files
 
+Alt+Enter on a fully qualified type offers **Use import**. On an unresolved short type name it offers **Import class**, with a keyboard-navigable **Class to import** popup showing the matching fully qualified names, and **Create class**, which opens the existing ++PHP declaration dialog with the name and namespace prefilled. Imports reuse aliases, respect sorting, and refuse conflicting bindings. Candidate discovery includes mixed PHP/++PHP sources, Composer dependencies, configured PHP stubs, and runtime built-ins. Compiler resolution excludes scoped symbols such as generic parameters. Actions are collected by native LSP support rather than a separate 350ms availability request, and edits from stale document versions are refused.
+
+Typing `/**` and pressing Enter creates an indented PHPDoc block with a closing `*/`; Enter inside it continues the `*` prefix through PhpStorm's native comment handling. This is comment scaffolding, not signature-derived `@param`/`@return` tag generation.
+
+Compiler-core diagnostics refresh from unsaved buffers after a 300ms typing pause (immediately on save). Update the configured compiler to one supporting `editor:diagnostics` version 1; supplemental PHPStan checks remain available through `ppphp check`. A PHPStan `Cannot run program` notification from the IDE is a separate quality-tool/interpreter configuration failure: check that its PHP executable still exists, particularly after Homebrew upgrades.
+
 The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Both actions always create `.ppphp` files and use the ++PHP emblem.
 
 The class action follows PhpStorm's PHP creation workflow: choose a class, interface, trait, or enum; accept or edit the Composer/PSR namespace suggestion; optionally choose its PHP parent types; and choose `string` or `int` for a backed enum. The parent controls offer deterministic completion from ++PHP project sources, Composer dependencies, the active PHP runtime, and PhpStorm's PHP index; class and interface candidates are kept distinct, and final classes are excluded from `extends`. While the Name editor is focused, Up and Down cycle through declaration templates using PhpStorm's native template-cycling behavior. Generated declarations deliberately mirror PhpStorm's bundled PHP templates, including the configured PHP file header. The plugin does not insert inactive ++PHP syntax.
@@ -22,19 +28,29 @@ The filename defaults to the declaration name but can be changed independently. 
 
 Plugin releases use the quarterly CalVer shared by the ++PHP toolchain. The current target is `2026.3.1-rc-2`.
 
+## Formatting coverage
+
+The code-style controls mirror PHP, but formatter behavior does not yet have complete PHP parity. Known gaps include switch/case indentation, casts, some ternary/operator contexts, and mixed PHP/HTML layout; see the [formatting architecture notes](../../docs/architecture.md). The previews use the actual ++PHP formatter, so these differences are not hidden behind PHP-rendered examples.
+
 ## Local requirements
 
 - PhpStorm 2025.2 or newer
 - Node.js 22 or newer
 - The `ppphp` compiler in the project at `vendor/bin/ppphp`, on `PATH`, or configured through `PPPHP_COMPILER_PATH`
 
-PhpStorm started from the desktop may not inherit your shell's Node.js path. Set `PPPHP_NODE_PATH` before starting PhpStorm, or add this line under **Help → Edit Custom VM Options**:
+The plugin uses the project's local Node.js runtime configured under **Settings → Languages & Frameworks → JavaScript Runtime**. This also works when PhpStorm is started from the desktop and does not inherit the path used by nvm, fnm, or another shell version manager. `PPPHP_NODE_PATH` and the following custom VM option remain available as explicit overrides:
 
 ```text
 -Dppphp.language.server.node.path=/absolute/path/to/node
 ```
 
+On Windows, PHP must also be available as `php.exe` on the IDE's effective `PATH`. Set `PPPHP_PHP_PATH` to an absolute PHP executable path when using a desktop or version-manager installation that PhpStorm does not inherit. The language server runs Composer's PHP proxy directly and never constructs a shell command from project paths.
+
 After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
+
+## Troubleshooting blank code-style previews
+
+If code-style previews are blank, check **Help → Show Log in Finder/Explorer** for errors before changing formatting settings. An `IElementType.TooManyElementTypesException` (shown in logs as `IElementType$TooManyElementTypesException`) means the IDE-wide element-type registry is exhausted; it can break indexing and newly created previews across languages. Fully restart PhpStorm, not just the ++PHP language server. If it recurs, inspect the first registry-exhaustion entry for the language registering excessive element types and report it to that plugin's maintainer. Reinstalling ++PHP or changing indentation preferences does not repair an exhausted registry in a running IDE.
 
 ## Windows and WSL smoke test
 
