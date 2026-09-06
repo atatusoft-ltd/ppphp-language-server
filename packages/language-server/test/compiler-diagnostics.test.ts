@@ -1,8 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { DiagnosticSeverity } from "vscode-languageserver/node";
-import { parseCompilerOutput } from "../src/compiler-diagnostics.js";
+import { parseCompilerOutput, parseCompilerResult } from "../src/compiler-diagnostics.js";
 
 describe("compiler diagnostic mapping", () => {
+  it("keeps project-wide failures visible without inventing a source location", () => {
+    const output = JSON.stringify({
+      version: 1,
+      diagnostics: [
+        {
+          code: "P6007",
+          message: "The analysis directory is a symbolic link.",
+          severity: "error",
+          location: null,
+          help: "Use a real directory.",
+        },
+        { code: "P2099", message: "Project warning", severity: "warning" },
+        { code: "P1001", message: "Other source error", location: { file: "other.ppphp" } },
+      ],
+    });
+    const result = parseCompilerResult(output, "/workspace/main.ppphp", "/workspace");
+    expect(result.diagnostics).toEqual([]);
+    expect(result.projectIssues).toEqual([
+      {
+        severity: DiagnosticSeverity.Error,
+        message: "P6007: The analysis directory is a symbolic link.\nHelp: Use a real directory.",
+      },
+      { severity: DiagnosticSeverity.Warning, message: "P2099: Project warning" },
+    ]);
+    expect(parseCompilerOutput(output, "/workspace/main.ppphp", "/workspace")).toEqual([]);
+  });
   it("converts the versioned compiler envelope to LSP diagnostics", () => {
     const diagnostics = parseCompilerOutput(
       JSON.stringify({

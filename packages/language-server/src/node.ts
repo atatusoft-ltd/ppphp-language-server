@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   createConnection,
   DidChangeConfigurationNotification,
+  DiagnosticSeverity,
   ErrorCodes,
   ProposedFeatures,
   ResponseError,
@@ -49,6 +50,7 @@ const diagnosticScheduler = new DiagnosticScheduler(validateOpenDocuments, (erro
 });
 let reportedCoverageNote: string | undefined;
 let unavailableReason: string | undefined;
+let reportedProjectIssues = new Set<string>();
 
 connection.onInitialize((params: InitializeParams) => {
   const options = params.initializationOptions as { typeActions?: TypeActionCapabilities } | null;
@@ -244,6 +246,7 @@ documents.onDidClose(({ document }) => {
 });
 
 async function validateOpenDocuments(isCurrent: () => boolean): Promise<void> {
+  const projectIssues = new Map<string, DiagnosticSeverity>();
   const snapshot = documents
     .all()
     .map((document) =>
@@ -272,11 +275,29 @@ async function validateOpenDocuments(isCurrent: () => boolean): Promise<void> {
       diagnostics: result.diagnostics,
     });
     reportUnavailable(result.unavailableReason);
+    for (const issue of result.projectIssues ?? []) {
+      projectIssues.set(`++PHP project ${workspaceRoot}: ${issue.message}`, issue.severity);
+    }
     if (result.coverageNote && result.coverageNote !== reportedCoverageNote) {
       reportedCoverageNote = result.coverageNote;
       connection.console.warn(result.coverageNote);
     }
   }
+  if (!isCurrent()) return;
+  for (const [message, severity] of projectIssues) {
+    if (reportedProjectIssues.has(message)) continue;
+    if (severity === DiagnosticSeverity.Error) {
+      connection.console.error(message);
+      void connection.window.showErrorMessage(message);
+    } else if (severity === DiagnosticSeverity.Warning) {
+      connection.console.warn(message);
+      void connection.window.showWarningMessage(message);
+    } else {
+      connection.console.info(message);
+      void connection.window.showInformationMessage(message);
+    }
+  }
+  reportedProjectIssues = new Set(projectIssues.keys());
 }
 
 async function getSettings(scopeUri: string): Promise<ServerSettings> {

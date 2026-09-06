@@ -25,6 +25,8 @@ The changes below are prepared for `2026.3.1-rc-2`.
 
 ### Fixed
 
+- Project-wide compiler failures appear as project notifications, preserving the reason and help instead of incorrectly underlining the first token of every open source file.
+
 - Import intentions use native PhpStorm LSP collection rather than timeout-based polling. Unresolved short names offer namespace choices and a prefilled Create class dialog; VS Code receives the same individual import candidates. Catalog discovery includes configured PHP stubs and mixed-project PHP sources.
 - Type-context scanning avoids exponential regular-expression backtracking on long declaration headers, preventing completion and import actions from stalling on ordinary source files.
 - PhpStorm recognizes PHPDoc as comments and uses native Enter handling to create/continue correctly indented comment blocks without swallowing subsequent code.

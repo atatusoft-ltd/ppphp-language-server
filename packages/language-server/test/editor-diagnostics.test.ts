@@ -42,10 +42,21 @@ describe("unsaved compiler diagnostics", () => {
     expect(
       parse({ ...response(), analysis: { ...response().analysis, fullParity: true } }).coverageNote,
     ).toContain("without supplemental");
-    expect(
-      parse({ ...response(), diagnostics: [{ message: "Project issue", location: null }] })
-        .diagnostics[0]?.range,
-    ).toEqual({ start: { line: 0, character: 0 }, end: { line: 0, character: 0 } });
+    const projectFailure = parse({
+      ...response(),
+      diagnostics: [
+        {
+          code: "P6007",
+          message: "Project issue",
+          location: null,
+          help: "Check the project cache.",
+        },
+      ],
+    });
+    expect(projectFailure.diagnostics).toEqual([]);
+    expect(projectFailure.projectIssues).toEqual([
+      { severity: 1, message: "P6007: Project issue\nHelp: Check the project cache." },
+    ]);
   });
 
   it("refuses oversized buffers before spawning a compiler", async () => {
