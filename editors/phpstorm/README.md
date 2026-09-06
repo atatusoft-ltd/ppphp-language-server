@@ -1,74 +1,99 @@
 # ++PHP for PhpStorm
 
-The PhpStorm plugin registers `.ppphp` as a distinct ++PHP language with shallow PSI, native PHP lexical highlighting, shared language-server semantic highlighting, and the ++PHP emblem. Every valid PHP token receives the same color key as it does in a `.php` file, while the language server layers ++PHP-specific types and keywords on top. PHP parsing and inspections do not interpret ++PHP source. The bundled ++PHP language server supplies authoritative compiler diagnostics through JetBrains native LSP integration.
+[![Checks](https://img.shields.io/github/actions/workflow/status/atatusoft-ltd/ppphp-language-server/ci.yml?branch=main&label=checks)](https://github.com/atatusoft-ltd/ppphp-language-server/actions/workflows/ci.yml?query=branch%3Amain)
+[![Documentation](https://img.shields.io/badge/docs-read-7952b3)](https://github.com/atatusoft-ltd/ppphp-src/tree/main/docs)
+[![License: Apache](https://img.shields.io/badge/license-Apache-blue)](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/LICENSE)
 
-For projects with `ppphp.json`, the configured compiler cache and non-compiled build artifacts are excluded from project-content indexing. The plugin reads `output/.ppphp/manifest.json` and exposes only entries marked as PHP compiled from `.ppphp` through a filtered PhpStorm library. Metadata, stale files, and native PHP files copied into the output stay excluded, preventing duplicate declarations while allowing ordinary `.php` code to resolve and complete ++PHP-authored classes.
+Write [++PHP](https://ppphplang.org) in PhpStorm with familiar highlighting, deterministic completion, live compiler diagnostics, and native editor actions. ++PHP is a superset of PHP that compiles to PHP; this plugin gives `.ppphp` source files their own language support alongside your existing PHP tooling.
 
-Run `ppphp build` after adding or changing declarations that native PHP code consumes. PhpStorm watches the project and output roots and refreshes the synthetic library when the build manifest changes. A missing, unsupported, malformed, or unsafe manifest fails closed; it never causes the entire output tree to be indexed. Hand-written shadow stubs are not needed for mixed-project resolution. Unsafe paths that escape or overlap protected project directories are never excluded or exposed.
+## Features
 
-PhpStorm's **Refactor | Rename** action is available on ++PHP classes, interfaces, traits, and enums. The language server verifies every project occurrence through compiler symbol identity, updates references across configured source roots, and renames a matching `.ppphp` source file. Refactors that would collide, cross project boundaries, or require unsupported editor file operations are refused without partial edits.
+- **Familiar highlighting** that uses your PHP color scheme, with compiler-backed semantic highlighting for ++PHP.
+- **Type completion and automatic imports** from your project, Composer dependencies, configured stubs, and PHP built-ins. Existing imports and aliases are reused; new imports follow your code-style settings.
+- **Live diagnostics** for unsaved edits after a short typing pause, refreshed immediately on save.
+- **Go to Declaration** for project types, functions, variables, parameters, and supported member-access chains.
+- **Rename refactoring** for classes, interfaces, traits, and enums, including matching declaration filenames when safe.
+- **Import and creation actions** to shorten fully qualified types, choose between matching classes, or create a missing class.
+- **Native file and class creation** with namespace suggestions and context-aware parent-type completion.
+- **Formatting and PHPDoc scaffolding** with independent ++PHP code-style settings and automatic comment continuation.
+- **Mixed-project navigation** so ordinary PHP code can find declarations compiled from ++PHP.
 
-Type completion reuses existing `use` imports and aliases, adding a safe import when no short-name collision exists. Generated imports follow the ++PHP import-sorting choice under code-conversion settings. A fully qualified type offers **Use import** through the intention menu; both behaviors come from the shared language server and therefore match VS Code.
+Completion uses known symbols, not generated guesses. The language server is bundled; Node.js and the ++PHP compiler are installed separately. Formatting and PHPDoc support have the boundaries described below.
 
-## Creating source files
+## Quick start
 
-Alt+Enter on a fully qualified type offers **Use import**. On an unresolved short type name it offers **Import class**, with a keyboard-navigable **Class to import** popup showing the matching fully qualified names, and **Create class**, which opens the existing ++PHP declaration dialog with the name and namespace prefilled. Imports reuse aliases, respect sorting, and refuse conflicting bindings. Candidate discovery includes mixed PHP/++PHP sources, Composer dependencies, configured PHP stubs, and runtime built-ins. Compiler resolution excludes scoped symbols such as generic parameters. Actions are collected by native LSP support rather than a separate 350ms availability request, and edits from stale document versions are refused.
+1. Install the plugin ZIP through **Settings → Plugins → gear menu → Install Plugin from Disk…**, then restart PhpStorm. If you are building the plugin yourself, follow the [contributor build instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CONTRIBUTING.md#development-setup).
+2. Configure a local Node.js runtime under **Settings → Languages & Frameworks → JavaScript Runtime**. Its supported range is recorded in the [language-server manifest](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/packages/language-server/package.json); IDE compatibility is declared by the plugin package.
+3. Open your project folder and install the compiler in its terminal:
 
-Typing `/**` and pressing Enter creates an indented PHPDoc block with a closing `*/`; Enter inside it continues the `*` prefix through PhpStorm's native comment handling. This is comment scaffolding, not signature-derived `@param`/`@return` tag generation.
+   ```shell
+   composer require --dev atatusoft-ltd/ppphp-src
+   ```
 
-Compiler diagnostics refresh from unsaved buffers after a short typing pause (immediately on save). Keep the configured compiler up to date for unsaved-buffer analysis; supplemental PHPStan checks remain available through `ppphp check`. A PHPStan `Cannot run program` notification from the IDE is a separate quality-tool/interpreter configuration failure: check that its PHP executable still exists, particularly after Homebrew upgrades.
+4. For a new ++PHP project, create its configuration:
 
-The Project view's **New** menu includes **++PHP File** and **++PHP Class**. Both actions always create `.ppphp` files and use the ++PHP emblem.
+   ```shell
+   vendor/bin/ppphp init
+   ```
 
-The class action follows PhpStorm's PHP creation workflow: choose a class, interface, trait, or enum; accept or edit the Composer/PSR namespace suggestion; optionally choose its PHP parent types; and choose `string` or `int` for a backed enum. The parent controls offer deterministic completion from ++PHP project sources, Composer dependencies, the active PHP runtime, and PhpStorm's PHP index; class and interface candidates are kept distinct, and final classes are excluded from `extends`. While the Name editor is focused, Up and Down cycle through declaration templates using PhpStorm's native template-cycling behavior. Generated declarations deliberately mirror PhpStorm's bundled PHP templates, including the configured PHP file header. The plugin does not insert inactive ++PHP syntax.
+5. Open a `.ppphp` file. The plugin starts its language server automatically.
 
-The plugin also adds **Editor | Code Style | ++PHP**. Its formatter, PHPDoc, code-conversion, and code-generation tabs mirror PhpStorm's PHP controls but store their values independently for ++PHP. Reformat Code and live Enter indentation apply the structural indentation, spacing, brace-placement, and blank-line choices through ++PHP's shallow PSI, preserving strings and ++PHP-only syntax rather than feeding the source to PHP's parser. Declaration creation reads the same values; class-family braces appear on a new line by default and follow the selected PHP-compatible class-brace placement and spacing options.
+For PHP and Composer prerequisites and the complete build workflow, see the [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md). For an existing checkout, run `composer install` to restore its dependencies instead of adding the compiler again.
 
-The filename defaults to the declaration name but can be changed independently. Namespace suggestions first use the nearest Composer manifest's canonical ++PHP source mappings (`extra.ppphp.source-autoload` and `extra.ppphp.source-autoload-dev`). When no source mapping applies, they fall back to PhpStorm's PHP project model. This keeps creation correct after `ppphp composer:configure` moves Composer's runtime mappings to generated PHP while requiring no editor-only namespace configuration.
-
-## Formatting coverage
-
-The code-style controls mirror PHP, but formatter behavior does not yet have complete PHP parity. Known gaps include switch/case indentation, casts, some ternary/operator contexts, and mixed PHP/HTML layout; see the [formatting architecture notes](../../docs/architecture.md). The previews use the actual ++PHP formatter, so these differences are not hidden behind PHP-rendered examples.
-
-## Local requirements
-
-- PhpStorm compatible with the plugin's Marketplace compatibility range
-- Node.js compatible with the [language-server manifest](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/packages/language-server/package.json)
-- The `ppphp` compiler in the project at `vendor/bin/ppphp`, on `PATH`, or configured through `PPPHP_COMPILER_PATH`
-
-The plugin uses the project's local Node.js runtime configured under **Settings → Languages & Frameworks → JavaScript Runtime**. This also works when PhpStorm is started from the desktop and does not inherit the path used by nvm, fnm, or another shell version manager. `PPPHP_NODE_PATH` and the following custom VM option remain available as explicit overrides:
-
-```text
--Dppphp.language.server.node.path=/absolute/path/to/node
-```
-
-On Windows, PHP must also be available as `php.exe` on the IDE's effective `PATH`. Set `PPPHP_PHP_PATH` to an absolute PHP executable path when using a desktop or version-manager installation that PhpStorm does not inherit. The language server runs Composer's PHP proxy directly and never constructs a shell command from project paths.
-
-After installing or updating the plugin from disk, restart PhpStorm so the `.ppphp` language association is refreshed.
+The compiler is discovered at `vendor/bin/ppphp` in your project, then on `PATH`. Open the folder containing `ppphp.json` so project-wide operations use the correct source boundaries.
 
 ### Installing a release candidate
 
-For an intentionally installed prerelease plugin, use the matching compiler command in the [release-candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Check the installed plugin's version in Settings → Plugins and choose its release entry. Composer selects stable packages by default; a stable compiler may not implement the editor protocol required by a prerelease plugin.
+Composer selects stable packages by default. If you intentionally install a prerelease plugin, check its version in **Settings → Plugins** and use the matching compiler command in its [release-candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Choose the installed plugin's release entry, not simply the newest candidate: a stable compiler may not implement a prerelease plugin's editor protocol.
 
-## Troubleshooting blank code-style previews
+## Everyday editing
 
-If code-style previews are blank, check **Help → Show Log in Finder/Explorer** for errors before changing formatting settings. An `IElementType.TooManyElementTypesException` (shown in logs as `IElementType$TooManyElementTypesException`) means the IDE-wide element-type registry is exhausted; it can break indexing and newly created previews across languages. Fully restart PhpStorm, not just the ++PHP language server. If it recurs, inspect the first registry-exhaustion entry for the language registering excessive element types and report it to that plugin's maintainer. Reinstalling ++PHP or changing indentation preferences does not repair an exhausted registry in a running IDE.
+### Imports and refactoring
 
-## Windows and WSL smoke test
+Use the intention menu (**Alt+Enter** in the default keymap) on a fully qualified type for **Use import**. On an unresolved short type name, choose **Import class** and select the intended namespace from the **Class to import** popup, or choose **Create class** to open a prefilled declaration dialog.
 
-Before release, install the built plugin in a supported PhpStorm version on Windows and open the same ++PHP project through WSL. Confirm that:
+Use **Refactor → Rename** on a class, interface, trait, or enum to update its project references. Rename requires `ppphp.json`; unsafe name collisions and edits outside the project are refused. Function, method, property, and variable rename are not currently provided.
 
-- no ++PHP plugin exception or `ProviderMismatchException` is reported;
-- indexing completes, the Project view remains usable, and Composer support loads normally;
-- the compiler cache and non-compiled build artifacts are excluded, while compiled ++PHP declarations, `src`, `app`, stubs, vendor, and `ppphp.json` remain indexed;
-- native PHP references resolve declarations compiled from `.ppphp`, while copied PHP outputs do not create duplicate declarations;
-- changing `ppphp.json` refreshes the effective exclusions without repeated failures;
-- opening and saving `.ppphp` files still starts diagnostics;
-- definition, completion, hover, symbols, and class-family rename continue to work; and
-- restarting PhpStorm leaves startup and indexing clean.
+### Creating declarations
 
-Build the distributable plugin from the repository root with:
+In the Project view, choose **New → ++PHP File** or **New → ++PHP Class**. The class dialog also creates interfaces, traits, and enums. It suggests the namespace from your project's Composer mappings and offers known classes or interfaces for `extends` and `implements`, excluding final classes from inheritance suggestions.
+
+The dialog follows your PHP file-header template and ++PHP code-style settings. You can change the filename independently of the declaration name.
+
+### Code style and documentation comments
+
+Configure **Settings → Editor → Code Style → ++PHP**, including import sorting under **Code Conversion**. These settings are independent of the ordinary PHP scheme. **Reformat Code** and indentation on Enter use the ++PHP formatter.
+
+Typing `/**` and pressing Enter creates a closed, indented PHPDoc block; Enter inside the block continues its `*` prefix. This scaffolds the comment but does not generate signature-derived `@param` or `@return` tags.
+
+The formatter does not yet have complete PHP parity. Known gaps include switch/case indentation, casts, some ternary/operator contexts, and mixed PHP/HTML layout. See the [formatting coverage notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/architecture.md#editor-adapters) for details.
+
+## Working with PHP and ++PHP together
+
+Keep your existing PHP tooling for `.php` files. To let native PHP code resolve ++PHP-authored declarations, build the project after adding or changing declarations that PHP consumes:
 
 ```shell
-./editors/phpstorm/gradlew -p editors/phpstorm buildPlugin
+vendor/bin/ppphp build
 ```
+
+The plugin uses the compiler's build manifest to expose generated declarations to PhpStorm's PHP index. Copied PHP files, stale output, and compiler metadata stay excluded to avoid duplicate declarations. Hand-written shadow stubs are not needed for this integration; without a valid build manifest, generated declarations are not exposed.
+
+Live diagnostics cover the compiler's own findings in unsaved buffers. Run `vendor/bin/ppphp check` for the complete saved-project check, including supplemental PHPStan analysis when configured. The plugin does not build your application automatically, and native PHP inspections do not analyze `.ppphp` source.
+
+## Troubleshooting
+
+- **No highlighting?** Check that the filename ends in `.ppphp` and is associated with **++PHP**, not PHP or plain text. Restart PhpStorm after installing or updating the plugin.
+- **Language server unavailable?** Check the configured local Node.js runtime. Desktop-launched IDEs may not inherit your shell's version-manager environment.
+- **Compiler unavailable?** Run `vendor/bin/ppphp --version` in the project terminal and check the PHP executable visible to the IDE. `PPPHP_COMPILER_PATH` can select a compiler, and `PPPHP_PHP_PATH` can select PHP; use absolute paths. On Windows, PHP must be available as `php.exe` unless explicitly configured.
+- **Unsaved diagnostics unavailable?** Update the project's compiler with `composer update atatusoft-ltd/ppphp-src` and inspect the reported error. For a prerelease plugin, follow its matching installation notes above.
+- **Undefined types from PHP files?** Rebuild the project and check that its generated output and build manifest exist. Do not add the entire build directory to the PHP include path as a workaround.
+- **PHPStan says “Cannot run program”?** Check PhpStorm's PHP interpreter and PHPStan executable settings. This is a separate quality-tool launch failure, not evidence that ++PHP live diagnostics ran.
+- **Blank code-style previews or startup errors?** See the [PhpStorm troubleshooting guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm-troubleshooting.md).
+
+## Feedback and support
+
+Report bugs or request features in the [issue tracker](https://github.com/atatusoft-ltd/ppphp-language-server/issues). Include a small reproducible example, your operating system, the installed IDE, plugin and compiler versions, and relevant logs with private paths and source removed. Use **Help → Show Log in Finder/Explorer** to locate the IDE log.
+
+[Language documentation](https://github.com/atatusoft-ltd/ppphp-src/tree/main/docs) · [Source and contributing](https://github.com/atatusoft-ltd/ppphp-language-server) · [Changelog](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md) · [Report a security issue](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/SECURITY.md)
+
+Licensed under the [Apache License](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/LICENSE).

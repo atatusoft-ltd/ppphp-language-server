@@ -30,3 +30,16 @@ Do not insert the release value into evergreen documentation or product descript
 8. Create a `v*` tag only after every manifest and artifact reports the same version.
 
 Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or binary remains an explicit maintainer action.
+
+## PhpStorm Windows and WSL smoke test
+
+Install the built plugin in a supported PhpStorm version on Windows and open the same ++PHP project through WSL. Confirm that:
+
+- no plugin exception or `ProviderMismatchException` is reported;
+- indexing completes and Composer support remains usable;
+- compiler cache, metadata, stale output, and copied PHP outputs stay excluded, while compiled ++PHP declarations and source/dependency roots remain indexed;
+- native PHP references resolve compiled ++PHP declarations without duplicate copied-PHP declarations;
+- changing `ppphp.json` refreshes exclusions without repeated failures;
+- unsaved edits and saves both refresh diagnostics;
+- definition, completion, hover, symbols, and class-family rename work; and
+- restarting PhpStorm leaves startup and indexing clean.
