@@ -20,7 +20,14 @@ The repository README keeps its requested badges as repository navigation. Do no
 
 ## Media checklist — required before publishing
 
-The gallery is managed in the Marketplace **Media** section, not by the README or `plugin.xml`. It has not been populated by this copy change. Capture genuine behavior from the packaged plugin in a clean, non-private example project:
+The gallery is managed in the Marketplace **Media** section, not by the README or `plugin.xml`. These maintainer-supplied captures are retained unedited as gallery candidates:
+
+- [Syntax highlighting](../editors/phpstorm/images/syntax-highlighting.png): “++PHP generic types and PHP syntax highlighting in the editor.”
+- [Import class intention](../editors/phpstorm/images/import-class-intention.png): “Import a missing type from the intention menu, with an import preview.”
+
+Before uploading, review the import-action capture: it includes duplicate action rows, unrelated AI actions, a clipped preview, and a local project path in the Problems panel. Recapture that view with the desired action clearly visible; normalize the two images' framing and aspect ratios. These are real captures, not proof of the qualified-name fix or completion acceptance. The public gallery has not been populated.
+
+Additional useful captures from the packaged plugin in a clean, non-private example project:
 
 - Type completion accepting a short name and adding its sorted import.
 - The declaration dialog with namespace and parent-type suggestions.

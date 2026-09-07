@@ -44,6 +44,124 @@ beforeEach(() => {
 });
 
 describe("type action parity", () => {
+  it.each([{}, { groupedImports: true, classCreation: true }])(
+    "shortens the screenshot's generic qualified name for client %j",
+    async (capabilities) => {
+      const entry = {
+        ...catalog[0]!,
+        name: "Repository",
+        namespace: "Atatusoft\\Showcase\\Contracts",
+        fqn: "Atatusoft\\Showcase\\Contracts\\Repository",
+        kind: "interface" as const,
+      };
+      const text = `<?php\nnamespace Atatusoft\\Showcase\\Infrastructure;\nclass InMemoryRepository<T> implements ${entry.fqn}<T> {}`;
+      const document = TextDocument.create("file:///workspace/app.ppphp", "ppphp", 7, text);
+      resolveType(entry.fqn);
+      // The action must work throughout the qualified name, not just its basename.
+      for (const segment of ["Atatusoft", "Showcase", "Contracts", "Repository"]) {
+        const offset = text.indexOf(entry.fqn) + entry.fqn.indexOf(segment) + 2;
+        const position = document.positionAt(offset);
+        const result = await typeCodeActionsAt(
+          document,
+          { start: position, end: position },
+          [entry],
+          "/workspace/app.ppphp",
+          "/workspace",
+          { enabled: true, timeoutMilliseconds: 1000, importSorting: "alphabetic" },
+          capabilities,
+        );
+        expect(result).toHaveLength(1);
+        expect(result[0]?.title).toBe(`Use import for ${entry.fqn}`);
+        expect(TextDocument.applyEdits(document, result[0]!.edit!.changes![document.uri]!)).toBe(
+          `<?php\nnamespace Atatusoft\\Showcase\\Infrastructure;\n\nuse ${entry.fqn};\nclass InMemoryRepository<T> implements Repository<T> {}`,
+        );
+      }
+    },
+  );
+
+  it.each([
+    ["<?php\nnew Atatusoft\\DemoRunner();", "Atatusoft\\DemoRunner"],
+    ["<?php\nnamespace Atatusoft;\nnew namespace\\DemoRunner();", "Atatusoft\\DemoRunner"],
+    [
+      "<?php\nnamespace App;\nuse Atatusoft as SDK;\nnew SDK\\DemoRunner();",
+      "Atatusoft\\DemoRunner",
+    ],
+    [
+      "<?php\nnamespace App;\nuse Vendor\\{Contracts as SDK};\nnew SDK\\DemoRunner();",
+      "Vendor\\Contracts\\DemoRunner",
+    ],
+    ["<?php\nnamespace App;\nnew Atatusoft\\DemoRunner();", "App\\Atatusoft\\DemoRunner"],
+  ])("uses compiler identity for qualified reference in %s", async (text, fqn) => {
+    const entry = { ...catalog[0]!, fqn, namespace: fqn.slice(0, fqn.lastIndexOf("\\")) };
+    resolveType(fqn);
+    const { document, range } = input(text);
+    const result = await typeCodeActionsAt(
+      document,
+      range,
+      [...catalog.filter((candidate) => candidate.fqn !== fqn), entry],
+      "/workspace/app.ppphp",
+      "/workspace",
+      { enabled: true, timeoutMilliseconds: 1000, importSorting: "alphabetic" },
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toBe(`Use import for ${fqn}`);
+    const edited = TextDocument.applyEdits(document, result[0]!.edit!.changes![document.uri]!);
+    expect(edited).toContain("new DemoRunner();");
+    if (entry.namespace !== "Atatusoft" || !text.includes("namespace Atatusoft;"))
+      expect(edited).toContain(`use ${fqn};`);
+  });
+
+  it("reuses aliases and refuses short-name collisions for qualified types", async () => {
+    resolveType("Atatusoft\\DemoRunner");
+    const aliased =
+      "<?php\nnamespace App;\nuse Atatusoft\\DemoRunner as Runner;\nnew Atatusoft\\DemoRunner();";
+    // Select the use site rather than the existing import.
+    const document = TextDocument.create("file:///workspace/app.ppphp", "ppphp", 7, aliased);
+    const position = document.positionAt(aliased.lastIndexOf("DemoRunner"));
+    const result = await typeCodeActionsAt(
+      document,
+      { start: position, end: position },
+      catalog,
+      "/workspace/app.ppphp",
+      "/workspace",
+      { enabled: true, timeoutMilliseconds: 1000, importSorting: "alphabetic" },
+    );
+    expect(result[0]?.edit?.changes?.[document.uri]).toHaveLength(1);
+    expect(TextDocument.applyEdits(document, result[0]!.edit!.changes![document.uri]!)).toContain(
+      "new Runner();",
+    );
+    expect(
+      await actions("<?php namespace App; new Atatusoft\\DemoRunner(); class DemoRunner {}"),
+    ).toEqual([]);
+  });
+
+  it("fails closed for unresolved, unavailable, non-type, or uncatalogued qualified symbols", async () => {
+    const text = "<?php namespace App; new Atatusoft\\DemoRunner();";
+    expect(await actions(text, { classCreation: true })).toEqual([]);
+    vi.mocked(resolveCompilerSymbolAt).mockResolvedValue({
+      symbol: null,
+      unavailableReason: "Unavailable",
+    });
+    expect(await actions(text)).toEqual([]);
+    resolveType("Missing\\DemoRunner");
+    expect(await actions(text)).toEqual([]);
+    vi.mocked(resolveCompilerSymbolAt).mockResolvedValue({
+      symbol: {
+        symbolId: "type-parameter:DemoRunner",
+        kind: "typeParameter",
+        filePath: "/workspace/app.ppphp",
+        range: { start: 0, end: 1 },
+        selectionRange: { start: 0, end: 1 },
+      },
+    });
+    expect(await actions(text)).toEqual([]);
+  });
+
+  it("keeps absolute-name imports independent of compiler availability", async () => {
+    expect(await actions("<?php namespace App; new \\Atatusoft\\DemoRunner();")).toHaveLength(1);
+    expect(resolveCompilerSymbolAt).not.toHaveBeenCalled();
+  });
+
   it("scans long declaration headers without exponential identifier backtracking", () => {
     const text = `<?php class Example { public function ${"longName".repeat(20)}($value = DemoRunner::create()) {}`;
     const start = text.indexOf("DemoRunner");
@@ -123,3 +241,15 @@ describe("type action parity", () => {
     }
   });
 });
+
+function resolveType(fqn: string) {
+  vi.mocked(resolveCompilerSymbolAt).mockResolvedValue({
+    symbol: {
+      symbolId: `type:${fqn.toLowerCase()}`,
+      kind: "class",
+      filePath: "/workspace/type.ppphp",
+      range: { start: 0, end: 1 },
+      selectionRange: { start: 0, end: 1 },
+    },
+  });
+}

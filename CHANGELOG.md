@@ -35,6 +35,8 @@ This opts into this candidate only; the unversioned installation command selects
 
 ### Fixed
 
+- Qualified type references without a leading namespace separator now offer **Use import** after compiler symbol resolution, including generic parent types and namespace aliases. Both editors retain the existing sorted-import and collision checks.
+
 - Project-wide compiler failures appear as project notifications, preserving the reason and help instead of incorrectly underlining the first token of every open source file.
 
 - Import intentions use native PhpStorm LSP collection rather than timeout-based polling. Unresolved short names offer namespace choices and a prefilled Create class dialog; VS Code receives the same individual import candidates. Catalog discovery includes configured PHP stubs and mixed-project PHP sources.
