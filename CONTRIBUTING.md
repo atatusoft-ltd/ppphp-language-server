@@ -4,7 +4,7 @@
 
 Keep TypeScript and typescript-eslint within the linter's published peer dependency range. Upgrade the compiler only when the lint toolchain supports it; do not bypass peer checks with `--force` or `--legacy-peer-deps`. Consult the [upstream compatibility policy](https://typescript-eslint.io/users/dependency-versions/) and the dependency versions recorded in the package manifest.
 
-Dependabot groups routine minor/patch npm updates, while major updates remain separate PRs so an incompatible major cannot block compatible maintenance updates. Validate each proposed dependency set with a clean `npm ci` and `npm run check`, including both editor builds in CI.
+Dependabot groups routine minor/patch npm updates, while unrelated major updates remain separate PRs so an incompatible major cannot block compatible maintenance updates. The Vitest runner and its coverage adapters are one group even for major updates because they require matching peer versions. Keep the development Node requirement in the root package manifest compatible with both the test and lint toolchains; `.nvmrc` selects the development runtime line. Validate each proposed dependency set with a clean `npm ci` and `npm run check`, including both editor builds in CI.
 
 Install the tools described in the [requirements](README.md#requirements), then run:
 
@@ -35,7 +35,7 @@ Use the checked-in Gradle wrapper directly when running the complete PhpStorm ve
 
 ## Change flow
 
-After the maintainer creates `develop`, branch from it for normal work and target it with pull requests. Keep `main` release-ready and use pull requests to merge `develop` into `main` for releases. Until then, keep local changes small and reviewable on `main`.
+Use `develop` for normal work and pull requests into `main`, keeping `main` release-ready. Do not create remote feature branches. Existing dependency-update PR branches may be updated in place to resolve their checks and reviews. Temporary working branches stay local. After merging, synchronize `develop` with `main` without rewriting shared history.
 
 Each pull request should explain the user-visible behavior, list verification performed, include tests for protocol or parser logic, and update the changelog when appropriate. Avoid combining unrelated dependency, formatting, and feature changes.
 

@@ -6,6 +6,10 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # The runner and coverage adapters require exact matching peer versions,
+      # including major updates. Keep this ahead of the general dev group.
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
       npm-development:
         dependency-type: development
         update-types: [minor, patch]
