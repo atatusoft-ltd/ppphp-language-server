@@ -1,7 +1,6 @@
 # ++PHP for Visual Studio Code
 
 [![Checks](https://img.shields.io/github/actions/workflow/status/atatusoft-ltd/ppphp-language-server/ci.yml?branch=main&label=checks)](https://github.com/atatusoft-ltd/ppphp-language-server/actions/workflows/ci.yml?query=branch%3Amain)
-[![Documentation](https://img.shields.io/badge/docs-read-7952b3)](https://github.com/atatusoft-ltd/ppphp-src/tree/main/docs)
 [![License: Apache](https://img.shields.io/badge/license-Apache-blue)](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/LICENSE)
 
 Language support for [++PHP](https://ppphplang.org), a superset of PHP that compiles to PHP. Write `.ppphp` files with syntax highlighting, compiler diagnostics, deterministic type completion, and code navigation in Visual Studio Code.
