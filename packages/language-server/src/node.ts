@@ -14,7 +14,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
 import { checkDocument, filePathFromUri } from "./compiler-diagnostics.js";
-import { DiagnosticScheduler } from "./diagnostic-scheduler.js";
+import { DiagnosticScheduler, diagnosticSnapshot } from "./diagnostic-scheduler.js";
 import { prepareTypeRenameAt, renameTypeAt, type RenameClientSupport } from "./compiler-rename.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
 import {
@@ -230,28 +230,28 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
 });
 
 // TextDocuments emits this for both initial open and every incremental buffer change.
-documents.onDidChangeContent(() => {
-  diagnosticScheduler.schedule();
+documents.onDidChangeContent(({ document }) => {
+  diagnosticScheduler.schedule(undefined, document.uri);
 });
 documents.onDidSave(({ document }) => {
   const filePath = filePathFromUri(document.uri);
   if (filePath) {
     updateTypeCatalogDocument(findWorkspaceRoot(filePath), filePath, document.getText());
   }
-  diagnosticScheduler.schedule(0);
+  diagnosticScheduler.schedule(0, document.uri);
 });
 documents.onDidClose(({ document }) => {
   diagnosticScheduler.schedule();
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
 });
 
-async function validateOpenDocuments(isCurrent: () => boolean): Promise<void> {
+async function validateOpenDocuments(
+  isCurrent: () => boolean,
+  signal: AbortSignal,
+  priorityUri?: string,
+): Promise<void> {
   const projectIssues = new Map<string, DiagnosticSeverity>();
-  const snapshot = documents
-    .all()
-    .map((document) =>
-      TextDocument.create(document.uri, document.languageId, document.version, document.getText()),
-    );
+  const snapshot = diagnosticSnapshot(documents.all(), priorityUri);
   for (const document of snapshot) {
     if (!isCurrent()) return;
     const filePath = filePathFromUri(document.uri);
@@ -267,7 +267,14 @@ async function validateOpenDocuments(isCurrent: () => boolean): Promise<void> {
         findWorkspaceRoot(otherPath) === workspaceRoot
       );
     });
-    const result = await checkDocument(document, filePath, workspaceRoot, settings, overlays);
+    const result = await checkDocument(
+      document,
+      filePath,
+      workspaceRoot,
+      settings,
+      overlays,
+      signal,
+    );
     if (!isCurrent()) return;
     connection.sendDiagnostics({
       uri: document.uri,

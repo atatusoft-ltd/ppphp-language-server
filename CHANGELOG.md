@@ -35,6 +35,8 @@ This opts into this candidate only; the unversioned installation command selects
 
 ### Fixed
 
+- Live diagnostics use a shorter debounce, prioritize the edited document, and cancel obsolete compiler checks without publishing stale results. Other open buffers remain part of analysis; compiler semantic-analysis time still determines the remaining latency.
+
 - Qualified type references without a leading namespace separator now offer **Use import** after compiler symbol resolution, including generic parent types and namespace aliases. Both editors retain the existing sorted-import and collision checks.
 
 - Project-wide compiler failures appear as project notifications, preserving the reason and help instead of incorrectly underlining the first token of every open source file.
