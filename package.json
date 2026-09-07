@@ -5,7 +5,7 @@
   "description": "Editor tooling and a language server for ++PHP.",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=22.0.0"
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "workspaces": [
     "packages/*",
@@ -34,7 +34,7 @@
     "@eslint/js": "10.0.1",
     "@types/node": "26.4.0",
     "@types/vscode": "1.134.0",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "5.0.0",
     "@vscode/vsce": "3.9.2",
     "esbuild": "0.28.2",
     "eslint": "10.9.1",
