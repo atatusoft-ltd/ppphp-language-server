@@ -7,6 +7,55 @@ import {
 } from "../src/compiler-process.js";
 
 describe("compiler process execution", () => {
+  it("does not launch already-cancelled work", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const result = await executeCompiler(
+      "missing-command",
+      [],
+      process.cwd(),
+      5000,
+      undefined,
+      controller.signal,
+    );
+    expect(result).toEqual({ stdout: "", stderr: "", notFound: false, cancelled: true });
+  });
+
+  it("terminates an obsolete compiler without treating cancellation as a failure", async () => {
+    const controller = new AbortController();
+    const execution = executeCompiler(
+      process.execPath,
+      ["-e", "setInterval(() => {}, 1000)"],
+      process.cwd(),
+      5000,
+      undefined,
+      controller.signal,
+    );
+    const timer = setTimeout(() => controller.abort(), 20);
+    try {
+      expect(await execution).toEqual({ stdout: "", stderr: "", notFound: false, cancelled: true });
+    } finally {
+      clearTimeout(timer);
+      controller.abort();
+    }
+  });
+
+  it("keeps completed output when the signal is aborted afterward", async () => {
+    const controller = new AbortController();
+    const result = await executeCompiler(
+      process.execPath,
+      ["-e", "console.log('done')"],
+      process.cwd(),
+      5000,
+      undefined,
+      controller.signal,
+    );
+    controller.abort();
+    expect(result.stdout.trim()).toBe("done");
+    expect(result.failure).toBeUndefined();
+    expect(result.cancelled).toBeUndefined();
+  });
+
   it("invokes Composer Windows batch wrappers through their PHP proxy without a shell", () => {
     const invocation = resolveCompilerInvocation(
       "C:\\workspace with spaces\\vendor\\bin\\ppphp.bat",
