@@ -29,14 +29,13 @@ In mixed PhpStorm projects, native PHP code can resolve declarations authored in
 
 ## Requirements
 
-- PHP 8.4 or newer for repository tooling and build orchestration
-- Node.js 22 or newer
-- npm 10 or newer
+- PHP and Composer, following the compiler's [installation prerequisites](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md#requirements)
+- Node.js and npm compatible with the repository's [package manifest](package.json); use [.nvmrc](.nvmrc) for the development runtime
 - The ++PHP compiler, either:
   - at `vendor/bin/ppphp` in the opened project,
   - available as `ppphp` on `PATH` or in a platform-standard binary directory, or
   - configured explicitly in the editor or through `PPPHP_COMPILER_PATH`
-- For the PhpStorm plugin build: Java 21 or newer; the checked-in Gradle wrapper supplies Gradle itself
+- For the PhpStorm plugin build: a Java runtime compatible with the [build configuration](editors/phpstorm/build.gradle.kts); the checked-in Gradle wrapper supplies Gradle itself
 
 ## Local development
 
@@ -64,11 +63,9 @@ still recommended before the complete development check above.
 
 The VS Code package is written to `build/ppphp-vscode.vsix`. The PhpStorm plugin archive is written below `editors/phpstorm/build/distributions/`.
 
-## Versioning
+## Releases
 
-Language-server and editor releases track the ++PHP toolchain using quarterly CalVer. The current version is `2026.3.1-rc-2` across every package and editor manifest.
-
-See [docs/releasing.md](docs/releasing.md) for the version policy and coordinated release checklist.
+See the [release notes](https://github.com/atatusoft-ltd/ppphp-language-server/releases) for release-specific changes and [docs/releasing.md](docs/releasing.md) for the maintainer checklist. Compatibility is declared in the package and plugin metadata.
 
 See [docs/editor-support.md](docs/editor-support.md) for the editors and IDEs ++PHP intends to support and where each integration stands.
 

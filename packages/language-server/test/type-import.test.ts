@@ -127,7 +127,7 @@ describe("type import actions", () => {
     );
   });
 
-  it("ignores qualified names in comments and import declarations", () => {
+  it("ignores comments/import declarations and requires compiler identity for relative names", () => {
     const comment = "<?php\n// \\Vendor\\Contracts\\Repository\nclass Service {}\n";
     const imported = "<?php\nuse \\Vendor\\Contracts\\Repository;\nclass Service {}\n";
     const relative = "<?php\nclass Service implements Vendor\\Contracts\\Repository {}\n";

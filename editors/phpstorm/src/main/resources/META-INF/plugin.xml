@@ -1,10 +1,33 @@
-<idea-plugin require-restart="true">
+<idea-plugin require-restart="true" url="https://ppphplang.org">
     <id>com.atatusoft.ppphp</id>
     <name>++PHP</name>
     <vendor>Atatusoft</vendor>
 
     <description><![CDATA[
-        Syntax highlighting and Language Server Protocol support for ++PHP (.ppphp) files.
+        <p>Support for the ++PHP programming language. Edit .ppphp source with code
+        completion, error checking, navigation, and refactoring. ++PHP extends PHP and compiles to PHP.</p>
+        <h2>Features</h2>
+        <ul>
+            <li>Syntax highlighting using the IDE's PHP color scheme, with compiler-backed semantic highlighting.</li>
+            <li>Type completion from project code, Composer dependencies, stubs, and PHP built-ins,
+                with automatic imports that respect aliases and code style.</li>
+            <li>Live compiler diagnostics for unsaved edits.</li>
+            <li>Go to Declaration and rename for classes, interfaces, traits, and enums.</li>
+            <li>Use import, Import class, and Create class intention actions.</li>
+            <li>File and declaration templates with namespace and parent-type suggestions.</li>
+            <li>Code formatting, indentation, and PHPDoc comment scaffolding.</li>
+            <li>Native PHP navigation to declarations compiled from ++PHP in mixed projects.</li>
+        </ul>
+        <h2>Getting started</h2>
+        <p>The language server is bundled. Configure a local Node.js runtime, install the ++PHP
+        compiler in your project, and open a .ppphp file. Follow the
+        <a href="https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm.md#installation-and-setup">installation and setup guide</a>
+        for the steps in PhpStorm, the currently tested host.</p>
+        <p>Formatting does not yet have complete PHP parity, and PHPDoc scaffolding does not generate
+        signature-derived tags. See
+        <a href="https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm.md#everyday-editing">editing support and limitations</a>.</p>
+        <p><a href="https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm.md">User guide</a> |
+        <a href="https://github.com/atatusoft-ltd/ppphp-language-server/issues">Report an issue</a></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

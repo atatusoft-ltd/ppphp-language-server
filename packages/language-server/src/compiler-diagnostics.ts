@@ -59,6 +59,7 @@ export async function checkDocument(
   workspaceRoot: string,
   settings: CompilerSettings,
   overlays: readonly TextDocument[],
+  signal?: AbortSignal,
 ): Promise<CompilerRunResult> {
   if (!settings.enabled) return { diagnostics: [] };
   try {
@@ -85,7 +86,9 @@ export async function checkDocument(
           contents: other.getText(),
         })),
       }),
+      signal,
     );
+    if (execution.cancelled) return { diagnostics: [] };
     if (execution.failure) throw new Error(execution.failure);
     if (!execution.stdout.trim())
       throw new Error(

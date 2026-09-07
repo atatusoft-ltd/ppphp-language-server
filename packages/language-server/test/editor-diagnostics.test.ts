@@ -150,4 +150,24 @@ describe("unsaved compiler diagnostics", () => {
       ).unavailableReason,
     ).toBe("Timeout");
   });
+
+  it("forwards round cancellation and does not report an unavailable compiler", async () => {
+    const controller = new AbortController();
+    vi.mocked(executeCompiler).mockResolvedValue({
+      stdout: "",
+      stderr: "",
+      notFound: false,
+      cancelled: true,
+    });
+    const result = await checkDocument(
+      document,
+      "/workspace/a.ppphp",
+      "/workspace",
+      { enabled: true, timeoutMilliseconds: 1000 },
+      [],
+      controller.signal,
+    );
+    expect(vi.mocked(executeCompiler).mock.lastCall?.[5]).toBe(controller.signal);
+    expect(result).toEqual({ diagnostics: [] });
+  });
 });
