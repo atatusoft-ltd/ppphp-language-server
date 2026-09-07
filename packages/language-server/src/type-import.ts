@@ -42,43 +42,59 @@ const QUALIFIED_NAME = new RegExp(`^${IDENTIFIER}(?:\\\\${IDENTIFIER})*$`, "iu")
 const QUALIFIED_NAME_PREFIX = new RegExp(`^(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "iu");
 const TYPE_NAME = new RegExp(`(?:\\\\)?${IDENTIFIER}(?:\\\\${IDENTIFIER})*`, "giu");
 
-export function typeImportCodeActionsAt(
+/** Find the complete type name even when the caret is inside a namespace segment. */
+export function typeReferenceAt(
   document: TextDocument,
   range: Range,
-  catalog: readonly TypeCatalogEntry[],
-  importSorting: ImportSorting = "alphabetic",
-): CodeAction[] {
-  const source = document.getText();
-  const masked = maskNonCode(source);
+): { name: string; start: number; end: number } | null {
+  const masked = maskNonCode(document.getText());
   const requestedStart = document.offsetAt(range.start);
   const requestedEnd = document.offsetAt(range.end);
   const match = [...masked.matchAll(TYPE_NAME)].find((candidate) => {
     const start = candidate.index ?? -1;
     const end = start + candidate[0].length;
-    const isAbsolute =
+    const isNameStart =
       start === 0 || (!isNameCharacter(masked[start - 1] ?? "") && masked[start - 1] !== "$");
     return (
-      isAbsolute &&
+      isNameStart &&
       (requestedStart === requestedEnd
         ? start <= requestedStart && requestedStart <= end
         : start < requestedEnd && requestedStart < end)
     );
   });
   const start = match?.index;
-  if (!match || start === undefined) return [];
-  if (!isTypeCompletionAt(masked, start, start + match[0].length)) return [];
+  if (!match || start === undefined) return null;
+  const end = start + match[0].length;
+  if (!isTypeCompletionAt(masked, start, end)) return null;
+  return { name: match[0], start, end };
+}
 
-  const absolute = match[0].startsWith("\\");
-  const name = absolute ? match[0].slice(1) : match[0];
-  if (!absolute && (name.includes("\\") || !unresolvedTypeAt(document, range, catalog))) return [];
+export function typeImportCodeActionsAt(
+  document: TextDocument,
+  range: Range,
+  catalog: readonly TypeCatalogEntry[],
+  importSorting: ImportSorting = "alphabetic",
+  resolvedQualifiedName?: string,
+): CodeAction[] {
+  const reference = typeReferenceAt(document, range);
+  if (!reference) return [];
+  const { start, end } = reference;
+
+  const absolute = reference.name.startsWith("\\");
+  const qualified = reference.name.includes("\\");
+  const name = absolute ? reference.name.slice(1) : reference.name;
+  // Relative/alias-qualified names must be resolved by the compiler, never by
+  // matching their spelling to a catalog FQN or assuming the global namespace.
+  if (qualified && !absolute && !resolvedQualifiedName) return [];
+  if (!qualified && !unresolvedTypeAt(document, range, catalog)) return [];
   const entries = catalog.filter((candidate) =>
-    equalName(absolute ? candidate.fqn : candidate.name, name),
+    equalName(qualified ? candidate.fqn : candidate.name, resolvedQualifiedName ?? name),
   );
   const planner = createTypeImportPlanner(
     document,
     start,
     importSorting,
-    absolute ? undefined : name,
+    qualified ? undefined : name,
   );
   return entries.flatMap((entry) => {
     const plan = planner?.(entry);
@@ -88,7 +104,7 @@ export function typeImportCodeActionsAt(
       {
         range: {
           start: document.positionAt(start),
-          end: document.positionAt(start + match[0].length),
+          end: document.positionAt(end),
         },
         newText: plan.reference,
       },
@@ -97,7 +113,7 @@ export function typeImportCodeActionsAt(
 
     return [
       {
-        title: absolute ? `Use import for ${entry.fqn}` : `Import class ${entry.fqn}`,
+        title: qualified ? `Use import for ${entry.fqn}` : `Import class ${entry.fqn}`,
         kind: CodeActionKind.RefactorRewrite,
         isPreferred: entries.length === 1,
         data: { ppphp: { kind: "import", version: document.version, fqn: entry.fqn } },
