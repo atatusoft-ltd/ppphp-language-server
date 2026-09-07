@@ -2,11 +2,11 @@
 
 ## Development setup
 
-Keep TypeScript and typescript-eslint within the linter's published peer dependency range. TypeScript remains pinned to 6.0.3 because typescript-eslint 8.69.0 supports `>=4.8.4 <6.1.0`, not TypeScript 7. Revisit the compiler upgrade when the lint toolchain supports it; do not bypass peer checks with `--force` or `--legacy-peer-deps`. See the [upstream compatibility policy](https://typescript-eslint.io/users/dependency-versions/).
+Keep TypeScript and typescript-eslint within the linter's published peer dependency range. Upgrade the compiler only when the lint toolchain supports it; do not bypass peer checks with `--force` or `--legacy-peer-deps`. Consult the [upstream compatibility policy](https://typescript-eslint.io/users/dependency-versions/) and the dependency versions recorded in the package manifest.
 
 Dependabot groups routine minor/patch npm updates, while major updates remain separate PRs so an incompatible major cannot block compatible maintenance updates. Validate each proposed dependency set with a clean `npm ci` and `npm run check`, including both editor builds in CI.
 
-Install PHP 8.4, Node.js 22, and Java 21 or newer, then run:
+Install the tools described in the [requirements](README.md#requirements), then run:
 
 ```shell
 npm ci
@@ -46,6 +46,14 @@ Each pull request should explain the user-visible behavior, list verification pe
 ```shell
 php scripts/sync_language_resources.php
 ```
+
+## Public-facing copy
+
+Product descriptions, headings, introductions, examples, component labels, and editor READMEs describe ++PHP without release numbers or channel labels. Keep compatibility in machine-readable manifests and installation prerequisites; link to those sources instead of duplicating their constraints. Exact releases belong in dated release notes and changelogs, not evergreen product copy.
+
+The default public install command is `composer require --dev atatusoft-ltd/ppphp-src`. Pinned prerelease commands belong only under an explicit **Installing a release candidate** section or in that release's notes. A release bump must not require rewriting product descriptions or READMEs. The release consistency check validates metadata, not marketing prose.
+
+Adapt copy to its host. The JetBrains plugin is named **++PHP**; supported IDEs belong in compatibility metadata, not the product title. Its Marketplace overview comes from the HTML plugin description, not the VS Code README. Keep setup details in the user guide and maintain gallery/contact fields separately; see the [JetBrains listing handoff](docs/jetbrains-marketplace.md).
 
 ## Adding LSP capabilities
 

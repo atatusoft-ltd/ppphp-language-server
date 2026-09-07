@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file. The format 
 
 The changes below are prepared for `2026.3.1-rc-2`.
 
+### Installing a release candidate
+
+The editor packages for `2026.3.1-rc-2` require the matching compiler candidate for their editor protocol. Install it explicitly in your project:
+
+```shell
+composer require --dev atatusoft-ltd/ppphp-src:2026.3.1-rc-2
+```
+
+This opts into this candidate only; the unversioned installation command selects stable packages. See the [compiler's release notes](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/releases/2026.3.1-rc-2.md) for its prerequisites and release-specific behavior.
+
 ### Added
 
 - Coordinated `YYYY.Q.R[-channel[-N]]` toolchain versioning with automated cross-package consistency checks.
@@ -24,6 +34,10 @@ The changes below are prepared for `2026.3.1-rc-2`.
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
+
+- Live diagnostics use a shorter debounce, prioritize the edited document, and cancel obsolete compiler checks without publishing stale results. Other open buffers remain part of analysis; compiler semantic-analysis time still determines the remaining latency.
+
+- Qualified type references without a leading namespace separator now offer **Use import** after compiler symbol resolution, including generic parent types and namespace aliases. Both editors retain the existing sorted-import and collision checks.
 
 - Project-wide compiler failures appear as project notifications, preserving the reason and help instead of incorrectly underlining the first token of every open source file.
 

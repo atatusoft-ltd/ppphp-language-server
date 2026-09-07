@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -12,6 +12,7 @@ export interface CompilerExecutionResult {
   stderr: string;
   notFound: boolean;
   failure?: string;
+  cancelled?: boolean;
 }
 
 export interface CompilerInvocation {
@@ -42,8 +43,14 @@ export function executeCompiler(
   cwd: string,
   timeoutMilliseconds: number,
   input?: string,
+  signal?: AbortSignal,
 ): Promise<CompilerExecutionResult> {
   return new Promise((resolve) => {
+    const cancelled = { stdout: "", stderr: "", notFound: false, cancelled: true };
+    if (signal?.aborted) {
+      resolve(cancelled);
+      return;
+    }
     const environment = compilerProcessEnvironment();
     const invocation = resolveCompilerInvocation(command, args, process.platform, environment);
     if (invocation.unavailableReason) {
@@ -56,7 +63,8 @@ export function executeCompiler(
       return;
     }
 
-    let child;
+    let child: ChildProcess | undefined;
+    const abort = () => child?.kill();
     try {
       child = execFile(
         invocation.command,
@@ -70,6 +78,11 @@ export function executeCompiler(
           windowsHide: true,
         },
         (error, stdout, stderr) => {
+          signal?.removeEventListener("abort", abort);
+          if (signal?.aborted) {
+            resolve(cancelled);
+            return;
+          }
           const code = error && "code" in error ? error.code : undefined;
           const notFound = code === "ENOENT";
           resolve({
@@ -89,6 +102,11 @@ export function executeCompiler(
       });
       return;
     }
+
+    // execFile's callback runs after the child's streams close. Kill obsolete
+    // work, but do not release the scheduler's single-flight slot before then.
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
 
     if (input !== undefined) {
       child.stdin?.on("error", () => undefined);

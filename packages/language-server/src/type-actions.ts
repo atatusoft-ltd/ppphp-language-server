@@ -4,7 +4,7 @@ import { resolveCompilerSymbolAt } from "./compiler-definition.js";
 import type { CompilerSettings } from "./compiler-diagnostics.js";
 import type { ImportSorting } from "./server-settings.js";
 import type { TypeCatalogEntry } from "./type-catalog.js";
-import { typeImportCodeActionsAt, unresolvedTypeAt } from "./type-import.js";
+import { typeImportCodeActionsAt, typeReferenceAt, unresolvedTypeAt } from "./type-import.js";
 
 export interface TypeActionCapabilities {
   groupedImports?: boolean;
@@ -21,6 +21,24 @@ export async function typeCodeActionsAt(
   settings: CompilerSettings & { importSorting: ImportSorting },
   capabilities: TypeActionCapabilities = {},
 ): Promise<CodeAction[]> {
+  const reference = typeReferenceAt(document, range);
+  if (reference?.name.includes("\\") && !reference.name.startsWith("\\")) {
+    const resolution = await resolveCompilerSymbolAt(
+      document,
+      document.positionAt(reference.start),
+      filePath,
+      workspaceRoot,
+      settings,
+    );
+    if (resolution.unavailableReason || !resolution.symbol?.symbolId.startsWith("type:")) return [];
+    return typeImportCodeActionsAt(
+      document,
+      range,
+      catalog,
+      settings.importSorting,
+      resolution.symbol.symbolId.slice("type:".length),
+    );
+  }
   const unresolved = unresolvedTypeAt(document, range, catalog);
   const imports = typeImportCodeActionsAt(document, range, catalog, settings.importSorting);
   if (!unresolved) return imports;
