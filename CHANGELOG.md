@@ -35,6 +35,8 @@ This opts into this candidate only; the unversioned installation command selects
 
 ### Fixed
 
+- Live diagnostics reuse the compiler's retained worker when available, coalesce superseded snapshots without cold-restarting healthy workers, and retain single-shot compatibility with older compilers. Installation changes, resource limits and shutdown retire workers safely. Unavailable analysis preserves existing diagnostics rather than falsely clearing errors; measured latency and remaining cold-start costs are documented in `docs/diagnostic-performance.md`.
+
 - Live diagnostics use a shorter debounce, prioritize the edited document, and cancel obsolete compiler checks without publishing stale results. Other open buffers remain part of analysis; compiler semantic-analysis time still determines the remaining latency.
 
 - Qualified type references without a leading namespace separator now offer **Use import** after compiler symbol resolution, including generic parent types and namespace aliases. Both editors retain the existing sorted-import and collision checks.

@@ -60,6 +60,7 @@ export async function checkDocument(
   settings: CompilerSettings,
   overlays: readonly TextDocument[],
   signal?: AbortSignal,
+  execute: typeof executeCompiler = executeCompiler,
 ): Promise<CompilerRunResult> {
   if (!settings.enabled) return { diagnostics: [] };
   try {
@@ -73,19 +74,22 @@ export async function checkDocument(
       total += size;
     }
     if (total > 8 * 1024 * 1024) throw new Error("Live diagnostic buffers exceed 8 MiB in total.");
-    const execution = await executeCompiler(
+    const input = JSON.stringify({
+      version: 1,
+      document: { path: filePath, contents: document.getText(), version: document.version },
+      overlays: buffers.map((other) => ({
+        path: filePathFromUri(other.uri),
+        contents: other.getText(),
+      })),
+    });
+    if (Buffer.byteLength(input) > 16 * 1024 * 1024)
+      throw new Error("A live diagnostic request exceeds 16 MiB.");
+    const execution = await execute(
       resolveCompiler(settings.compilerPath, workspaceRoot),
       ["editor:diagnostics", "--working-directory", workspaceRoot, "--format=json"],
       workspaceRoot,
       settings.timeoutMilliseconds,
-      JSON.stringify({
-        version: 1,
-        document: { path: filePath, contents: document.getText(), version: document.version },
-        overlays: buffers.map((other) => ({
-          path: filePathFromUri(other.uri),
-          contents: other.getText(),
-        })),
-      }),
+      input,
       signal,
     );
     if (execution.cancelled) return { diagnostics: [] };

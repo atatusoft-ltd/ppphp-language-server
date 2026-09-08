@@ -91,6 +91,27 @@ describe("unsaved compiler diagnostics", () => {
     expect(() => parse({ ...response(), analysis: {} })).toThrow("coverage");
   });
 
+  it("bounds encoded JSON independently of decoded buffer sizes", async () => {
+    vi.mocked(executeCompiler).mockClear();
+    const buffers = Array.from({ length: 4 }, (_, index) =>
+      TextDocument.create(
+        `file:///workspace/${index}.ppphp`,
+        "ppphp",
+        1,
+        "\u0000".repeat(1024 * 1024),
+      ),
+    );
+    const result = await checkDocument(
+      buffers[0]!,
+      "/workspace/0.ppphp",
+      "/workspace",
+      { enabled: true, timeoutMilliseconds: 1000 },
+      buffers,
+    );
+    expect(result.unavailableReason).toContain("16 MiB");
+    expect(executeCompiler).not.toHaveBeenCalled();
+  });
+
   it("sends unsaved contents and other buffers via stdin without writing source files", async () => {
     vi.mocked(executeCompiler).mockResolvedValue({
       stdout: JSON.stringify(response()),

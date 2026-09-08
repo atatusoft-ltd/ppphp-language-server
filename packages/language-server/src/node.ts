@@ -9,12 +9,14 @@ import {
   TextDocumentSyncKind,
   TextDocuments,
   type InitializeParams,
+  type MessageActionItem,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import packageMetadata from "../package.json";
 import { findDefinitionAt } from "./compiler-definition.js";
 import { checkDocument, filePathFromUri } from "./compiler-diagnostics.js";
 import { DiagnosticScheduler, diagnosticSnapshot } from "./diagnostic-scheduler.js";
+import { DiagnosticClient } from "./diagnostic-client.js";
 import { prepareTypeRenameAt, renameTypeAt, type RenameClientSupport } from "./compiler-rename.js";
 import { classifySemanticTokens } from "./compiler-semantic-tokens.js";
 import {
@@ -48,6 +50,7 @@ let renameClientSupport: RenameClientSupport = {
 const diagnosticScheduler = new DiagnosticScheduler(validateOpenDocuments, (error) => {
   reportUnavailable(error instanceof Error ? error.message : String(error));
 });
+const diagnosticClient = new DiagnosticClient();
 let reportedCoverageNote: string | undefined;
 let unavailableReason: string | undefined;
 let reportedProjectIssues = new Set<string>();
@@ -113,12 +116,16 @@ connection.onInitialized(() => {
 connection.onDidChangeConfiguration(() => {
   invalidateTypeCatalog();
   diagnosticScheduler.schedule(0);
+  void diagnosticClient.reset();
 });
 connection.onDidChangeWatchedFiles(() => {
   invalidateTypeCatalog();
   diagnosticScheduler.schedule();
 });
-connection.onShutdown(() => diagnosticScheduler.dispose());
+connection.onShutdown(async () => {
+  diagnosticScheduler.dispose();
+  await diagnosticClient.reset();
+});
 
 connection.onCompletion(async ({ textDocument, position }) => {
   const document = documents.get(textDocument.uri);
@@ -274,8 +281,13 @@ async function validateOpenDocuments(
       settings,
       overlays,
       signal,
+      diagnosticClient.execute,
     );
     if (!isCurrent()) return;
+    if (result.unavailableReason) {
+      reportUnavailable(result.unavailableReason);
+      continue;
+    }
     connection.sendDiagnostics({
       uri: document.uri,
       version: document.version,
@@ -295,13 +307,15 @@ async function validateOpenDocuments(
     if (reportedProjectIssues.has(message)) continue;
     if (severity === DiagnosticSeverity.Error) {
       connection.console.error(message);
-      void connection.window.showErrorMessage(message);
+      void connection.window.showErrorMessage<MessageActionItem>(message).catch(() => undefined);
     } else if (severity === DiagnosticSeverity.Warning) {
       connection.console.warn(message);
-      void connection.window.showWarningMessage(message);
+      void connection.window.showWarningMessage<MessageActionItem>(message).catch(() => undefined);
     } else {
       connection.console.info(message);
-      void connection.window.showInformationMessage(message);
+      void connection.window
+        .showInformationMessage<MessageActionItem>(message)
+        .catch(() => undefined);
     }
   }
   reportedProjectIssues = new Set(projectIssues.keys());
@@ -344,7 +358,12 @@ function reportUnavailable(reason: string | undefined): void {
   if (reason && reason !== unavailableReason) {
     unavailableReason = reason;
     connection.console.warn(reason);
-    void connection.window.showErrorMessage(`++PHP tooling unavailable: ${reason}`);
+    // Some clients cannot display a modal request (or disconnect while it is
+    // pending). The log above remains available; notification failure must not
+    // crash the server while it is recovering from an analysis failure.
+    void connection.window
+      .showErrorMessage<MessageActionItem>(`++PHP tooling unavailable: ${reason}`)
+      .catch(() => undefined);
   }
 }
 

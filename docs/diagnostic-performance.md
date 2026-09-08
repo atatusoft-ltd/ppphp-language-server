@@ -9,7 +9,7 @@ The path is editor change notification, debounce, any remaining obsolete work, s
 The shared server now:
 
 - Coalesces edit bursts for 50 ms, retaining immediate save/configuration refreshes.
-- Cancels the obsolete compiler process immediately on snapshot invalidation and waits for process completion before starting another round.
+- Discards obsolete retained-worker responses, keeping the compiler's reusable state alive, and sends only the latest pending snapshot afterward. Older compilers use single-shot subprocesses, which are terminated on invalidation and reaped before the next round.
 - Checks the most recently edited document first, retaining the complete immutable overlay snapshot and subsequent checks of other open documents.
 - Suppresses cancelled-generation diagnostics and warnings. It never clears diagnostics merely because work was cancelled.
 
@@ -37,10 +37,23 @@ With the target first among diagnostic documents, the previous packaged server a
 
 These sequential samples are not controlled speedup ratios. Opening the target last confirmed the scheduling issue: the previous server published other documents first, whereas the updated server published the target first in every observed round. A later run under heavier concurrent load was much slower even with the update (470–1,202 ms for syntax and 1,959–7,446 ms for repairs). The 200 ms target is therefore **not reliably met**, and neither target priority nor a shorter timer eliminates compiler cost or host contention.
 
-The compiler task independently traced the valid-source cost to declaration-context preparation and semantic analysis. Reusing a process alone still left those phases above the interaction budget in its local profile. Compiler-owned reuse must use exact project/dependency/overlay identities and preserve the endpoint's no-write contract; a persistent transport alone is not a sufficient fix.
+The compiler task independently traced the valid-source cost to declaration-context preparation and semantic analysis. Reusing a process alone still left those phases above the interaction budget in its initial profile. Compiler-owned reuse must preserve project/dependency/overlay freshness and the endpoint's no-write contract; a persistent transport alone is not a sufficient fix.
+
+## Retained-worker integration
+
+Later on 8 September 2026, the compiler's committed retained transport and immutable metadata/platform reuse were tested through the same ten-buffer LSP path. The compiler build-identity check was included. On the local PHP 8.5 runtime, with the target opened last, the first valid publication took 1,187 ms. Three subsequent deletion/repair pairs produced:
+
+| Update                      | Edit to matching-version publication |
+| --------------------------- | ------------------------------------ |
+| Missing semicolon (`P1001`) | 155–214 ms                           |
+| Repaired, zero diagnostics  | 263–321 ms                           |
+
+The target was published first in all six rounds. These timings include the 50 ms debounce and any remaining background diagnostic request. They do not include IDE rendering, and are observations rather than controlled speedup ratios. Repairs are substantially faster than the earlier single-shot samples, but **the 200 ms target remains unmet reliably**, particularly for cold execution. Recycling or replacing a worker reintroduces cold cost; an older compiler remains correct through single-shot fallback without receiving the warm-worker speedup.
+
+The worker-ready frame is transport readiness, not prewarming. The client deliberately preserves semantic coverage and dependency overlays instead of returning a quick syntax-only success that could erase real errors. The compiler rechecks configuration, sources, dependencies and overlays on every request; the client retains neither semantic models nor previous results as a substitute for analysis. See [the compiler transport contract](https://github.com/atatusoft-ltd/ppphp-src/blob/develop/docs/editor-protocol.md) for lifecycle and ownership details.
 
 ## Regression and follow-up checks
 
-Deterministic tests cover edit coalescing, immediate generation invalidation, process cancellation, shutdown, single-flight behavior while cancelled work finishes, latest-target priority, immutable overlays, background refreshes retaining priority, and suppression of stale errors. Real subprocess tests cover cancellation before launch, cancellation in flight, and completed output unaffected by later cancellation.
+Deterministic tests cover edit coalescing, immediate generation invalidation, process cancellation, shutdown, single-flight behavior while cancelled work finishes, latest-target priority, immutable overlays, background refreshes retaining priority, and suppression of stale errors. Real subprocess tests cover cancellation before launch, cancellation in flight, completed output unaffected by later cancellation, fragmented UTF-8/CRLF framing, handshake and response validation, bounded startup/request failure, recycling, installation changes, fallback backoff and retained-worker limits. An actual stdio LSP test exercises valid → error → repaired transitions, skips superseded revisions without restarting the worker, preserves diagnostics during compiler failure, and verifies shutdown reaping.
 
 For subsequent compiler improvements, repeat the deletion/repair measurement with the edited file opened both first and last. Include body/type errors, dependent open documents, rapid edits during analysis, and cold versus warm execution. Record both compiler duration and matching-version LSP publication; separately verify the installed IDE's display latency. Do not infer a 200 ms semantic guarantee from fast syntax-error results.
