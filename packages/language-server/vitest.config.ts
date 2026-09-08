@@ -8,6 +8,8 @@ export default defineConfig({
         "src/compiler-definition.ts",
         "src/compiler-diagnostics.ts",
         "src/diagnostic-scheduler.ts",
+        "src/diagnostic-client.ts",
+        "src/diagnostic-worker.ts",
         "src/compiler-process.ts",
         "src/compiler-rename.ts",
         "src/compiler-semantic-tokens.ts",
