@@ -20,8 +20,10 @@ Completion uses known symbols, not generated guesses. The extension bundles its 
 
 ## Quick start
 
+New compiler installations are blocked until the renamed Composer package is published. The new-install command below is for use after publication only; check the [release status and compatible compiler instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate) before continuing. Existing checkouts can restore their locked dependencies now with `composer install` instead.
+
 1. Install **++PHP** by **Atatusoft Ltd** from the Extensions view in VS Code.
-2. Open your project folder and install the compiler from its integrated terminal:
+2. Open your project folder. For a new installation, **only after a compatible stable compiler is published**, run in its integrated terminal:
 
    ```shell
    composer require --dev atatusoft/ppphp
@@ -76,7 +78,7 @@ For example, to order added imports by length:
 
 - **No highlighting or suggestions?** Save the file with the `.ppphp` extension and check that its language mode is **++PHP**. Do not associate these files with the ordinary PHP language mode.
 - **Compiler unavailable?** Confirm that `vendor/bin/ppphp --version` runs from the project terminal. Check `ppphp.compiler.path` and the PHP executable visible to VS Code.
-- **Unsaved-buffer diagnostics unavailable?** Update the project's compiler with `composer update atatusoft/ppphp` and check the reported error. If the project still requires the former package name, follow the [migration steps](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md#migrating-from-the-former-package-name) first. Do not treat a saved-file check as analysis of unsaved edits.
+- **Unsaved-buffer diagnostics unavailable?** Check [compiler availability and compatibility](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate) first. Once the intended release is published, update an existing `atatusoft/ppphp` requirement with `composer update atatusoft/ppphp`. If the project still requires the former package name, follow the [migration steps](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md#migrating-from-the-former-package-name) instead. Do not treat a saved-file check as analysis of unsaved edits.
 - **Need more detail?** Open **View → Output** and select **++PHP Language Server**. After changing the environment or installing tools, run **Developer: Reload Window** from the Command Palette.
 
 The extension does not currently provide formatting, debugging, signature help, or rename for functions, methods, properties, and variables. It requires a desktop extension host that can run the compiler; browser-only workspaces are not supported.

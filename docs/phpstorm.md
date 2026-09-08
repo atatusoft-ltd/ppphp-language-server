@@ -4,9 +4,11 @@ For a feature overview, see the [++PHP plugin](../editors/phpstorm/README.md). T
 
 ## Installation and setup
 
+New compiler installations are blocked until the renamed Composer package is published. The new-install command below is for use after publication only; check the [release status and compatible compiler instructions](../CHANGELOG.md#installing-a-release-candidate) before continuing. Existing checkouts can restore their locked dependencies now with `composer install` instead.
+
 1. Install the plugin ZIP through **Settings → Plugins → gear menu → Install Plugin from Disk…**, then restart PhpStorm. If you are building the plugin yourself, follow the [contributor build instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CONTRIBUTING.md#development-setup).
 2. Configure a local Node.js runtime under **Settings → Languages & Frameworks → JavaScript Runtime**. Its supported range is recorded in the [language-server manifest](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/packages/language-server/package.json); IDE compatibility is declared by the plugin package.
-3. Open your project folder and install the compiler in its terminal:
+3. Open your project folder. For a new installation, **only after a compatible stable compiler is published**, run in its terminal:
 
    ```shell
    composer require --dev atatusoft/ppphp
@@ -69,7 +71,7 @@ Live diagnostics cover the compiler's own findings in unsaved buffers. Run `vend
 - **No highlighting?** Check that the filename ends in `.ppphp` and is associated with **++PHP**, not PHP or plain text. Restart PhpStorm after installing or updating the plugin.
 - **Language server unavailable?** Check the configured local Node.js runtime. Desktop-launched IDEs may not inherit your shell's version-manager environment.
 - **Compiler unavailable?** Run `vendor/bin/ppphp --version` in the project terminal and check the PHP executable visible to the IDE. `PPPHP_COMPILER_PATH` can select a compiler, and `PPPHP_PHP_PATH` can select PHP; use absolute paths. On Windows, PHP must be available as `php.exe` unless explicitly configured.
-- **Unsaved diagnostics unavailable?** Update the project's compiler with `composer update atatusoft/ppphp` and inspect the reported error. If the project still requires the former package name, follow the [migration steps](compiler-installation.md#migrating-from-the-former-package-name) first. For a compiler candidate, follow the matching installation notes above.
+- **Unsaved diagnostics unavailable?** Check [compiler availability and compatibility](../CHANGELOG.md#installing-a-release-candidate) first. Once the intended release is published, update an existing `atatusoft/ppphp` requirement with `composer update atatusoft/ppphp`. If the project still requires the former package name, follow the [migration steps](compiler-installation.md#migrating-from-the-former-package-name) instead. For a compiler candidate, follow the matching installation notes above.
 - **Undefined types from PHP files?** Rebuild the project and check that its generated output and build manifest exist. Do not add the entire build directory to the PHP include path as a workaround.
 - **PHPStan says “Cannot run program”?** Check PhpStorm's PHP interpreter and PHPStan executable settings. This is a separate quality-tool launch failure, not evidence that ++PHP live diagnostics ran.
 - **Blank code-style previews or startup errors?** See the [PhpStorm troubleshooting guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm-troubleshooting.md).
