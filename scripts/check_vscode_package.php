@@ -6,6 +6,11 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 
 try {
+    foreach (['Phar', 'SimpleXML'] as $extension) {
+        if (!extension_loaded($extension)) {
+            throw new RuntimeException("VSIX verification requires the PHP {$extension} extension.");
+        }
+    }
     $archive = new PharData($argv[1] ?? $root . '/build/ppphp-vscode.vsix');
     $manifest = json_decode($archive['extension/package.json']->getContent(), true, 512, JSON_THROW_ON_ERROR);
     $source = json_decode(file_get_contents($root . '/editors/vscode/package.json'), true, 512, JSON_THROW_ON_ERROR);
