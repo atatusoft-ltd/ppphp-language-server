@@ -1,0 +1,16 @@
+{
+  "name": "ppphp-debugger-spike",
+  "publisher": "local-spike",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "contributes": {
+    "breakpoints": [
+      {
+        "language": "ppphp"
+      }
+    ]
+  }
+}

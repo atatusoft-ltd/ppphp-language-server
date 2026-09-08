@@ -30,6 +30,7 @@ Once the compiler protocol exists:
 
 ## Later
 
+- Xdebug-backed debugging: the [executed feasibility spike](debugger-spike.md) establishes runtime/editor reuse and identifies the remaining setup and source-stepping work; this is not a shipped debugger.
 - Editor-neutral canonical formatter or format-preserving edit protocol for VS Code parity
 - Integration tests against real VS Code and PhpStorm sandboxes
 - Signed Marketplace and JetBrains Plugin Repository releases
