@@ -67,6 +67,14 @@ try {
         expect_equal('release tag', getenv('GITHUB_REF_NAME'), 'v' . $canonicalVersion);
     }
 
+    foreach (['CHANGELOG.md', 'editors/vscode/CHANGELOG.md'] as $changelog) {
+        $releaseHeading = '/^## (?:\\[' . preg_quote($canonicalVersion, '/') . '\\]|'
+            . preg_quote($canonicalVersion, '/') . ') - \\d{4}-\\d{2}-\\d{2}\\r?$/m';
+        if (preg_match($releaseHeading, read_text($repositoryRoot, $changelog)) !== 1) {
+            fail("{$changelog} must include a dated release heading for {$canonicalVersion}.");
+        }
+    }
+
     fwrite(STDOUT, "Version metadata is consistent: tooling {$canonicalVersion}, compiler {$compilerVersion}.\n");
 } catch (JsonException | RuntimeException $error) {
     fail($error->getMessage());

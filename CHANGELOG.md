@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
-The changes below are prepared for tooling release `2026.3.2`. The numeric version advances because `2026.3.1` has already been published to the VS Code Marketplace; compiler compatibility remains unchanged.
+## [2026.3.2] - 2026-09-08
+
+The numeric tooling version advances because `2026.3.1` has already been published to the VS Code Marketplace; compiler compatibility remains unchanged.
 
 ### Installing a release candidate
 
@@ -21,6 +23,14 @@ This opts into this candidate only, without lowering the project's `minimum-stab
 Runtime verification: both packaged language servers passed clean-document and unsaved error/repair checks against the published compiler with PHP CLI `memory_limit=512M`. The same smoke project exhausted a `128M` limit while loading PHP signatures. If analysis fails at that limit, configure the PHP CLI used by the editor with `memory_limit=512M` in its `php.ini`, then restart the language server. Changing a web-server PHP configuration alone does not configure the editor's CLI process.
 
 Projects requiring the former package must follow the [package migration steps](docs/compiler-installation.md#migrating-from-the-former-package-name) first, using the candidate command above in place of the stable command. RC-1 remains published under `atatusoft-ltd/ppphp-src`; its historical installation commands, tags, and assets are unchanged. The compiler's GitHub repository also remains unchanged.
+
+### Fixed
+
+- Editor setup now points directly to the published compatible compiler installation instructions. Removed obsolete package-publication blockers while keeping stable and candidate installation distinct.
+- Current compiler installation and update instructions use the canonical Composer package `atatusoft/ppphp`, with migration and publication prerequisites documented. Compiler discovery continues to use the package-independent `vendor/bin/ppphp` proxy.
+- Release validation requires dated notes for the current version in both the repository and packaged VS Code changelogs.
+
+## [2026.3.1] - 2026-09-08
 
 ### Added
 
@@ -40,10 +50,6 @@ Projects requiring the former package must follow the [package migration steps](
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
-
-- Editor setup now points directly to the published compatible compiler installation instructions. Removed obsolete package-publication blockers while keeping stable and candidate installation distinct.
-
-- Current compiler installation and update instructions use the canonical Composer package `atatusoft/ppphp`, with migration and publication prerequisites documented. Compiler discovery continues to use the package-independent `vendor/bin/ppphp` proxy.
 
 - Extension, plugin and language-server release versions no longer inherit compiler RC suffixes. Compiler compatibility retains its exact identity separately. The VS Code publisher ID now matches the registered Marketplace publisher.
 
