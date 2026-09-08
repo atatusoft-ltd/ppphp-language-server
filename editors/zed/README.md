@@ -10,7 +10,7 @@ This is a local source integration. It has not been published in Zed's extension
 
 Install the repository's [runtime prerequisites](../../README.md#requirements), plus [Rust through rustup](https://www.rust-lang.org/tools/install). Zed needs Rust installed through rustup to build development extensions.
 
-From the repository root:
+On Linux/macOS, from the repository root (Windows users should follow the next section):
 
 ```shell
 rustup target add wasm32-wasip2
@@ -20,6 +20,30 @@ php scripts/build.php zed
 This runs Rust formatting and adapter/grammar tests, builds the shared server, and produces `editors/zed/extension.wasm`. In Zed, run **zed: install dev extension** and select the **editors/zed** directory. Zed builds the extension and fetches the pinned Tree-sitter grammar. For grammar build prerequisites, see [Zed extension development](https://zed.dev/docs/extensions/developing-extensions).
 
 For a ++PHP project outside this repository, configure the server as shown below. Opening the language-server repository itself automatically finds its built server.
+
+### Windows, including repositories in WSL
+
+When running Windows Zed, install Rust through **Windows rustup**. A WSL Rust installation is separate. Long repository paths and WSL UNC paths can make MSVC fail with `LNK1104` while linking Rust build scripts, even when the object file exists. Zed always builds inside the selected extension directory, so setting `CARGO_TARGET_DIR` does not shorten its build paths.
+
+From **Windows PowerShell** at the repository root, using Windows PHP:
+
+```powershell
+rustup target add wasm32-wasip2
+php scripts/build.php zed-dev
+```
+
+In Zed, run **zed: install dev extension** and select the printed directory, normally `%LOCALAPPDATA%\ppphp\zed-dev`. This command copies the extension source to a short native path, preserving Zed's build caches on subsequent runs. Edit the repository files and run `zed-dev` again before rebuilding the installed extension. On Linux/macOS the command stages into `build/zed-dev`.
+
+Build the shared server with `php scripts/build.php server` on the machine that hosts your project. For a WSL project, run that command in WSL and open the project using Zed's WSL connection. Server discovery uses the project host; the local extension copy does not contain a server bundle.
+
+If installation still fails, run **zed: open log** for the underlying Cargo error. Verify the same development build in PowerShell:
+
+```powershell
+$extension = Join-Path $env:LOCALAPPDATA 'ppphp\zed-dev'
+Push-Location $extension
+cargo build --locked --target wasm32-wasip2 --target-dir "$extension\target"
+Pop-Location
+```
 
 ## Configure Zed
 
@@ -94,7 +118,7 @@ npm run check:zed
 php scripts/build.php zed
 ```
 
-Rust tests exercise configured commands, argument boundaries, environment overrides, local/PATH discovery, missing dependencies, Windows paths, and worktree isolation. The language tests compile every query against the exact grammar revision in `extension.toml`, exercise the shared ++PHP fixture, and check metadata and semantic-token coverage. CI also builds the Wasm target.
+Rust tests exercise configured commands, argument boundaries, environment overrides, local/PATH discovery, missing dependencies, Windows paths, and worktree isolation. The language tests compile every query against the exact grammar revision in `extension.toml`, exercise the shared ++PHP fixture, and check metadata and semantic-token coverage. CI also builds the Wasm target on Linux and compiles the staged dev extension with the native Windows toolchain. The release build uses an explicit `editors/zed/target` directory for reliable artifact copying.
 
 Before publication, complete a real-editor smoke test on each supported project host:
 
