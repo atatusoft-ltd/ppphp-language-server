@@ -2,10 +2,10 @@
   "name": "ppphp-vscode",
   "displayName": "++PHP",
   "description": "Syntax highlighting and language intelligence for ++PHP.",
-  "version": "2026.3.1-rc-2",
+  "version": "2026.3.1",
   "ppphpToolchainVersion": "2026.3.1-rc-2",
   "private": true,
-  "publisher": "Atatusoft",
+  "publisher": "AtatusoftLtd",
   "license": "Apache-2.0",
   "icon": "images/ppphp-emblem-128.png",
   "engines": {
@@ -91,7 +91,7 @@
           "type": "boolean",
           "default": true,
           "scope": "resource",
-          "description": "Run compiler-core diagnostics on unsaved .ppphp buffers after edits (300ms debounce). Requires editor:diagnostics compiler support; supplemental PHPStan checks remain in ppphp check."
+          "description": "Run compiler-core diagnostics on unsaved .ppphp buffers after edits. Requires editor:diagnostics compiler support; supplemental PHPStan checks remain in ppphp check."
         },
         "ppphp.diagnostics.compiler.timeoutMilliseconds": {
           "type": "number",

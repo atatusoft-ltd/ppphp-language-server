@@ -20,7 +20,7 @@ Completion uses known symbols, not generated guesses. The extension bundles its 
 
 ## Quick start
 
-1. Install **++PHP** by **Atatusoft** from the Extensions view in VS Code.
+1. Install **++PHP** by **Atatusoft Ltd** from the Extensions view in VS Code.
 2. Open your project folder and install the compiler from its integrated terminal:
 
    ```shell

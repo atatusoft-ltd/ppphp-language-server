@@ -6,7 +6,7 @@ Keep TypeScript and typescript-eslint within the linter's published peer depende
 
 Dependabot groups routine minor/patch npm updates, while unrelated major updates remain separate PRs so an incompatible major cannot block compatible maintenance updates. The Vitest runner and its coverage adapters are one group even for major updates because they require matching peer versions. Keep the development Node requirement in the root package manifest compatible with both the test and lint toolchains; `.nvmrc` selects the development runtime line. Validate each proposed dependency set with a clean `npm ci` and `npm run check`, including both editor builds in CI.
 
-Install the tools described in the [requirements](README.md#requirements), then run:
+Install the tools described in the [requirements](README.md#requirements), with PHP's Phar and SimpleXML extensions enabled for repository tests and VSIX artifact validation. These are build/test dependencies, not additional requirements imposed by the editor plugin. Then run:
 
 ```shell
 npm ci

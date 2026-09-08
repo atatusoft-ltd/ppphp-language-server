@@ -152,6 +152,7 @@ function package_vscode(string $root): void
     remove_stale_artifacts($artifact);
     run_tool('npm', ['run', 'package', '--workspace', 'ppphp-vscode'], $root);
     require_artifact($artifact, 'VS Code extension');
+    run_command([PHP_BINARY, $root . '/scripts/check_vscode_package.php', $artifact], $root);
 }
 
 function build_phpstorm(string $root): void

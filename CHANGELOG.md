@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
-The changes below are prepared for `2026.3.1-rc-2`.
+The changes below are prepared for tooling release `2026.3.1`.
 
 ### Installing a release candidate
 
-The editor packages for `2026.3.1-rc-2` require the matching compiler candidate for their editor protocol. Install it explicitly in your project:
+The editor packages target compiler candidate `2026.3.1-rc-2` for their editor protocol. The RC suffix identifies the compiler, not the extension or plugin release. Install the compiler candidate explicitly in your project:
 
 ```shell
 composer require --dev atatusoft-ltd/ppphp-src:2026.3.1-rc-2
@@ -18,7 +18,7 @@ This opts into this candidate only; the unversioned installation command selects
 
 ### Added
 
-- Coordinated `YYYY.Q.R[-channel[-N]]` toolchain versioning with automated cross-package consistency checks.
+- Coordinated numeric tooling releases with separately validated compiler compatibility metadata.
 - Canonical ++PHP emblem branding for extension listings and `.ppphp` file icons.
 - Editor-neutral Language Server Protocol foundation.
 - Compiler-backed go to definition in VS Code and PhpStorm for project types, functions, local and parameter bindings, inherited members, and typed access chains, including unsaved current-document contents.
@@ -34,6 +34,8 @@ This opts into this candidate only; the unversioned installation command selects
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
+
+- Extension, plugin and language-server release versions no longer inherit compiler RC suffixes. Compiler compatibility retains its exact identity separately. The VS Code publisher ID now matches the registered Marketplace publisher.
 
 - Live diagnostics reuse the compiler's retained worker when available, coalesce superseded snapshots without cold-restarting healthy workers, and retain single-shot compatibility with older compilers. Installation changes, resource limits and shutdown retire workers safely. Unavailable analysis preserves existing diagnostics rather than falsely clearing errors; measured latency and remaining cold-start costs are documented in `docs/diagnostic-performance.md`.
 
