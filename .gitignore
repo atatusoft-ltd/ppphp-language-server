@@ -14,3 +14,8 @@ editors/vscode/images/
 build/
 editors/phpstorm/.intellijPlatform/
 editors/phpstorm/.kotlin/
+
+# Zed extension build and grammar artifacts
+editors/zed/target/
+editors/zed/extension.wasm
+editors/zed/grammars/

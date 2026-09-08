@@ -29,7 +29,9 @@ Do not insert the release value into evergreen documentation or product descript
 5. Run `php scripts/build.php vscode`, then smoke-test highlighting and language-server startup.
 6. Run `php scripts/build.php phpstorm`, then run the complete structure validation, configuration validation, and Plugin Verifier suite.
 7. Install both local packages and smoke-test `.ppphp` recognition, highlighting, diagnostics, completion, hover, and symbols.
-8. Inspect the built VSIX and plugin ZIP, not only source manifests. Confirm that their release versions match `VERSION`, the VSIX publisher is `AtatusoftLtd`, and the VSIX does not acquire a pre-release flag from compiler compatibility metadata. Create a `v*` tag only after all checks pass.
+8. Inspect the built VSIX and plugin ZIP, not only source manifests. Confirm that their release versions match `VERSION`, the VSIX publisher is `AtatusoftLtd`, and the VSIX does not acquire a pre-release flag from compiler compatibility metadata.
+9. Run `php scripts/build.php zed`, install `editors/zed` as a Zed dev extension, and complete its [smoke checklist](../editors/zed/README.md#verification). The Zed manifest, Rust package, and Cargo lockfile must match `VERSION`. The extension registry submission requires a repository rooted at `editors/zed` and remains a separate maintainer action.
+10. Create a `v*` tag only after all checks pass and every tooling manifest and artifact reports the version in `VERSION`.
 
 Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or binary remains an explicit maintainer action.
 

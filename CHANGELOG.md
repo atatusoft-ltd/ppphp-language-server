@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Zed source extension with local language-server discovery, workspace settings, PHP Tree-sitter editing queries, ++PHP semantic-token mappings, Rust/Wasm builds, and adapter/grammar checks.
+
 ## [2026.3.2] - 2026-09-08
 
 The numeric tooling version advances because `2026.3.1` has already been published to the VS Code Marketplace; compiler compatibility remains unchanged.

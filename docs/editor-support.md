@@ -23,7 +23,7 @@ The target for each editor is the experience described in the website design. Th
 | PhpStorm / IntelliJ          | JetBrains Marketplace plugin (`++PHP`)                                                   | Available     | Source preview |
 | Neovim                       | Tree-sitter grammar plus an `nvim-lspconfig` entry for `vim.lsp.enable("ppphp")`         | Beta          | Planned        |
 | Sublime Text                 | Syntax definition and LSP settings distributed through Package Control                   | Beta          | Planned        |
-| Zed                          | Extension using the Tree-sitter grammar and locating or downloading the language server  | Beta          | Planned        |
+| Zed                          | Rust/Wasm extension with PHP Tree-sitter baseline and local language-server discovery    | Beta          | Source preview |
 | Language server (standalone) | `ppphp-ls`, speaking LSP over stdio, installable on its own so any LSP client can use it | Available     | Source preview |
 
 ## Delivery strategy
@@ -32,7 +32,7 @@ The next goal is not the largest possible editor list. It is to make the shared 
 
 ### Phase 0: finish the two primary editors
 
-Keep VS Code and PhpStorm as the only active editor-specific implementation tracks until both have published Beta packages. Close their current gaps first: editor-neutral formatting for VS Code parity, build/check commands, real-editor smoke tests, signed publishing, upgrade testing, and actionable toolchain-version mismatch reporting.
+VS Code and PhpStorm remain the primary publication tracks. Zed now has a local source integration; normal-channel publication remains pending. Close their current gaps first: editor-neutral formatting for VS Code parity, build/check commands, real-editor smoke tests, signed publishing, upgrade testing, and actionable toolchain-version mismatch reporting.
 
 Publish the existing VSIX to both Visual Studio Marketplace and [Open VSX](https://github.com/eclipse-openvsx/openvsx/wiki/Publishing-Extensions). This extends the same adapter to VSCodium and other Open VSX consumers without creating a third editor implementation.
 
@@ -52,7 +52,7 @@ Sublime follows Neovim. Its syntax and snippets can reuse the TextMate-family as
 
 ### Phase 4: Zed, then Helix
 
-Zed follows once the Tree-sitter grammar and server-download metadata have survived a Neovim release. [Zed requires a grammar for every language extension](https://zed.dev/docs/extensions/languages) and expects a language-server extension to download the server or find it in the user's environment rather than bundle it. The extension therefore needs a small Rust/Wasm adapter, pinned grammar revisions, checksums for downloaded server artifacts, and semantic-token mappings.
+The [Zed source extension](../editors/zed/README.md) is implemented under `editors/zed`. It uses a pinned PHP Tree-sitter grammar for baseline editing and the shared LSP for ++PHP semantic tokens, diagnostics, completion, hover, symbols, definition, imports, and capability-negotiated rename. It locates a configured command, a project-local or repository server bundle, or `ppphp-ls` on the project host's `PATH`. It does not download an unpublished server package. A dedicated ++PHP grammar, standalone distribution, and editor smoke tests remain prerequisites for normal-channel publication. [Zed requires a grammar for every language extension](https://zed.dev/docs/extensions/languages) and expects a language-server extension to download the server or find it in the user's environment rather than bundle it. The adapter and semantic-token mappings are covered by local checks; future server downloads must verify checksums. PHP grammar recovery can limit outline, indentation, and text objects around ++PHP-only syntax. Standard LSP features remain owned by the shared server.
 
 Helix is the next low-cost candidate after Zed. It can consume the same Tree-sitter grammar and standalone server through its [`languages.toml` registry](https://docs.helix-editor.com/guides/adding_languages.html), but it should not displace the three editors already promised by the public target line-up. Vim, Emacs, Eclipse, and other integrations remain community or demand-led until an owner and measurable user demand exist.
 

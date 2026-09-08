@@ -20,6 +20,8 @@ try {
         'vscode-extension' => build_vscode_extension($repositoryRoot),
         'vscode' => package_vscode($repositoryRoot),
         'phpstorm' => build_phpstorm($repositoryRoot),
+        'zed' => build_zed($repositoryRoot),
+        'zed-check' => check_zed($repositoryRoot),
         'editors', 'all' => build_editors($repositoryRoot),
         'help', '--help', '-h' => print_usage(),
         default => usage_error("unknown target '{$target}'"),
@@ -177,10 +179,48 @@ function build_phpstorm(string $root): void
     require_artifact($artifacts[0], 'PhpStorm plugin');
 }
 
+function check_zed(string $root): void
+{
+    $editor = $root . '/editors/zed';
+    run_command([PHP_BINARY, $root . '/scripts/check_release_version.php'], $root);
+    run_tool('cargo', ['fmt', '--all', '--', '--check'], $editor);
+    run_tool('cargo', ['test', '--locked'], $editor);
+}
+
+function build_zed(string $root): void
+{
+    check_zed($root);
+    build_server($root);
+    $editor = $root . '/editors/zed';
+    $artifact = $editor . '/extension.wasm';
+    remove_stale_artifacts($artifact);
+    run_tool(
+        'cargo',
+        ['build', '--locked', '--release', '--target', 'wasm32-wasip2'],
+        $editor,
+    );
+    $targetDirectory = getenv('CARGO_TARGET_DIR');
+    if ($targetDirectory === false || $targetDirectory === '') {
+        $targetDirectory = $editor . '/target';
+    } elseif (
+        !str_starts_with($targetDirectory, '/')
+        && preg_match('/^(?:[A-Za-z]:[\\\\\\/]|\\\\\\\\)/', $targetDirectory) !== 1
+    ) {
+        $targetDirectory = $editor . '/' . $targetDirectory;
+    }
+    copy_required_file(
+        $targetDirectory . '/wasm32-wasip2/release/ppphp_zed.wasm',
+        $artifact,
+    );
+    require_artifact($artifact, 'Zed extension Wasm');
+    fwrite(STDOUT, "\nIn Zed, run 'zed: install dev extension' and select {$editor}.\n");
+}
+
 function build_editors(string $root): void
 {
     package_vscode($root);
     build_phpstorm($root);
+    build_zed($root);
 }
 
 function copy_required_file(string $source, string $destination): void
@@ -437,8 +477,10 @@ Targets:
   vscode-extension   Build the unpackaged VS Code extension and bundled server
   vscode             Build the installable VS Code VSIX
   phpstorm           Build and test the installable PhpStorm plugin ZIP
-  editors            Build both installable editor packages
-  all                Build both installable editor packages
+  zed                Test and build the Zed Wasm extension and local server
+  zed-check          Check Rust formatting, adapter tests, and grammar queries
+  editors            Build all editor artifacts
+  all                Build all editor artifacts
   help               Show this help
 
 Every packaging target removes its previous artifact and prints the absolute path

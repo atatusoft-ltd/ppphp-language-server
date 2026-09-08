@@ -14,6 +14,8 @@
   "scripts": {
     "build": "php scripts/build.php vscode-extension",
     "build:phpstorm": "php scripts/build.php phpstorm",
+    "build:zed": "php scripts/build.php zed",
+    "check:zed": "php scripts/build.php zed-check",
     "build:server": "php scripts/build.php server",
     "build:vscode": "php scripts/build.php vscode-extension",
     "check": "npm run check:tooling && npm run check:version && npm run check:editor && npm run sync:resources:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
