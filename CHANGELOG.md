@@ -4,19 +4,21 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
-The changes below are prepared for tooling release `2026.3.1`.
+The changes below are prepared for tooling release `2026.3.2`. The numeric version advances because `2026.3.1` has already been published to the VS Code Marketplace; compiler compatibility remains unchanged.
 
 ### Installing a release candidate
 
 The editor packages target compiler candidate `2026.3.1-rc-2` for their editor protocol. The RC suffix identifies the compiler, not the extension or plugin release.
 
-Publication prerequisite: the renamed Composer package `atatusoft/ppphp` is not yet published. The following command applies once this candidate is available under that name; it is not currently a working installation route. Existing checkouts can restore their locked dependencies with `composer install` in the meantime. Do not remove the old requirement until the intended replacement release is available.
+Compiler candidate `2026.3.1-rc-2` is published on [Packagist](https://packagist.org/packages/atatusoft/ppphp). Install this compatible candidate explicitly:
 
 ```shell
 composer require --dev atatusoft/ppphp:2026.3.1-rc-2
 ```
 
-This opts into this candidate only; the unversioned installation command selects stable packages. See the [compiler's release notes](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/releases/2026.3.1-rc-2.md) for its prerequisites and release-specific behavior.
+This opts into this candidate only, without lowering the project's `minimum-stability`. As of September 8, 2026, no stable compiler release is published under this package name, so the unversioned stable installation command is not yet usable. Existing checkouts can restore their locked dependencies with `composer install`. See the [compiler's release notes](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/releases/2026.3.1-rc-2.md) for its prerequisites and release-specific behavior.
+
+Runtime verification: both packaged language servers passed clean-document and unsaved error/repair checks against the published compiler with PHP CLI `memory_limit=512M`. The same smoke project exhausted a `128M` limit while loading PHP signatures. If analysis fails at that limit, configure the PHP CLI used by the editor with `memory_limit=512M` in its `php.ini`, then restart the language server. Changing a web-server PHP configuration alone does not configure the editor's CLI process.
 
 Projects requiring the former package must follow the [package migration steps](docs/compiler-installation.md#migrating-from-the-former-package-name) first, using the candidate command above in place of the stable command. RC-1 remains published under `atatusoft-ltd/ppphp-src`; its historical installation commands, tags, and assets are unchanged. The compiler's GitHub repository also remains unchanged.
 
@@ -38,6 +40,8 @@ Projects requiring the former package must follow the [package migration steps](
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
+
+- Editor setup now points directly to the published compatible compiler installation instructions. Removed obsolete package-publication blockers while keeping stable and candidate installation distinct.
 
 - Current compiler installation and update instructions use the canonical Composer package `atatusoft/ppphp`, with migration and publication prerequisites documented. Compiler discovery continues to use the package-independent `vendor/bin/ppphp` proxy.
 
