@@ -13,6 +13,8 @@ export default tseslint.config(
       "**/node_modules/**",
       "editors/vscode/language-configuration.json",
       "editors/vscode/syntaxes/**",
+      "editors/zed/grammars/**",
+      "editors/zed/target/**",
     ],
   },
   eslint.configs.recommended,
