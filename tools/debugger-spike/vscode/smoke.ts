@@ -106,7 +106,7 @@ export async function run(): Promise<void> {
     let output = "";
     runtime.stdout!.on("data", (part: Buffer) => {
       if (output.length < 1024 * 1024) output += part.toString();
-      else runtime.kill();
+      else runtime.kill("SIGKILL");
     });
     const runtimeExit = new Promise<number | null>((resolve) => runtime.once("exit", resolve));
     await nextStop();
@@ -200,6 +200,8 @@ export async function run(): Promise<void> {
   } finally {
     await vscode.debug.stopDebugging();
     for (const disposable of disposables) disposable.dispose();
-    for (const child of children) child.kill();
+    // These are only the fixture and bridge processes owned by this test.
+    // Do not leave an orphan if application code ignores graceful termination.
+    for (const child of children) child.kill("SIGKILL");
   }
 }
