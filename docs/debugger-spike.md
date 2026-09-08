@@ -235,6 +235,11 @@ protocol messages and session duration, rejects DTDs in XML, and checks artifact
 hashes before forwarding editor commands. It executes only the authored fixture
 in these tests. No debugger payload is deliberately persisted by the bridge.
 
+Review also identified two harness edge cases, both corrected and retested:
+a child that ignores SIGTERM is force-killed after a short grace period, and
+PhpStorm's listener explicitly uses the same IPv4 loopback address as the bridge.
+The native session also passes with the JVM configured to prefer IPv6.
+
 This is **not production hardening**. In particular:
 
 - Hash checks are a stale-build guard, not an immutable filesystem snapshot.

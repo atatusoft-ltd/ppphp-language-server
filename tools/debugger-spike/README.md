@@ -55,6 +55,8 @@ The core test checks:
 - The original exception location and expected output.
 - Rejection of stale source/output, changed map/manifest, unsupported map format,
   traversal paths, and unknown breakpoint sources.
+- Bounded cleanup of a timed-out child that ignores SIGTERM (requires `pcntl`;
+  otherwise reported as NOT RUN). The supervisor force-kills after a short grace period.
 
 `OBSERVE` lines record behavior, not successes. In particular, the additional
 `when` stops are a known quality gap even when the test completes successfully.

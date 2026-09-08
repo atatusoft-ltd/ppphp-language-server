@@ -51,7 +51,8 @@ class PpphpDebuggerSpikeTest : BasePlatformTestCase() {
         val breakpoint = ApplicationManager.getApplication().runWriteAction<com.intellij.xdebugger.breakpoints.XLineBreakpoint<com.intellij.xdebugger.breakpoints.XBreakpointProperties<*>>> {
             manager.breakpointManager.addLineBreakpoint(nativeType, file.url, 8, null)
         }
-        val server = ServerSocket(0, 1, InetAddress.getLoopbackAddress())
+        // The bridge connects to IPv4 loopback, even when the JVM prefers IPv6.
+        val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
         server.soTimeout = 20000
         var session: XDebugSession? = null
         var bridge: Process? = null

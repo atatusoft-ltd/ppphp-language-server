@@ -48,6 +48,16 @@ final class Process
         if (is_resource($this->handle)) {
             if (proc_get_status($this->handle)['running']) {
                 proc_terminate($this->handle);
+                $deadline = hrtime(true) + 250_000_000;
+                do {
+                    usleep(10000);
+                    $running = proc_get_status($this->handle)['running'];
+                } while ($running && hrtime(true) < $deadline);
+                if ($running) {
+                    // A child can ignore SIGTERM. Do not enter blocking proc_close
+                    // until it has received an unconditional termination request.
+                    proc_terminate($this->handle, 9);
+                }
             }
             foreach ($this->pipes as $pipe) {
                 if (is_resource($pipe)) {

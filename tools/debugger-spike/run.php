@@ -35,7 +35,7 @@ try {
     echo 'Project: ', $root, "\n";
     $build = new Process([PHP_BINARY, '-d', 'memory_limit=512M', $compiler, 'build', '--working-directory=' . $root]);
     echo $build->finish(120);
-    foreach (['runtime.php', 'safety.php'] as $test) {
+    foreach (['runtime.php', 'safety.php', 'process-test.php'] as $test) {
         $process = new Process([PHP_BINARY, __DIR__ . '/' . $test, $root, $extension]);
         echo $process->finish(120);
     }
