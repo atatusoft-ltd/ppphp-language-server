@@ -35,6 +35,8 @@ function fixture(tooling = "2026.3.1", compiler = "2026.3.1-rc-2") {
     ),
   });
   put("editors/phpstorm/gradle.properties", `pluginVersion=${tooling}\n`);
+  put("CHANGELOG.md", `# Changelog\n\n## [Unreleased]\n\n## [${tooling}] - 2026-09-08\n`);
+  put("editors/vscode/CHANGELOG.md", `# Changelog\n\n## ${tooling} - 2026-09-08\n`);
   mkdirSync(path.join(root, "scripts"));
   for (const script of ["check_release_version.php", "check_vscode_package.php"])
     copyFileSync(path.join(repo, "scripts", script), path.join(root, "scripts", script));
@@ -73,6 +75,23 @@ it("detects compiler compatibility and top-level lockfile drift", () => {
   value.put("package-lock.json", { version: "2026.3.1-rc-2" });
   expect(value.run().stderr).toContain("package-lock.json version");
 });
+it.each(["CHANGELOG.md", "editors/vscode/CHANGELOG.md"])(
+  "requires a dated tooling release entry in %s",
+  (changelog) => {
+    for (const invalid of [
+      "## Unreleased\n",
+      "## 2026.3.1\n",
+      "## 2026.3.2 - 2026-09-08\n",
+      "## 2026.3.1-rc-2 - 2026-09-08\n",
+    ]) {
+      const value = fixture();
+      value.put(changelog, invalid);
+      const result = value.run();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(`${changelog} must include a dated release heading`);
+    }
+  },
+);
 it.each(["valid", "suffix", "publisher", "pre-release"])(
   "checks %s metadata inside the actual VSIX archive",
   (mode) => {

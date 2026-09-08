@@ -2,11 +2,11 @@
 
 Both editors use the same project-local ++PHP compiler. PHP and Composer prerequisites live in the compiler's [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md#requirements).
 
-The canonical Composer package is `atatusoft/ppphp`. Check the [release notes for publication status and compiler compatibility](../CHANGELOG.md#installing-a-release-candidate) before installing or migrating: a package rename does not itself publish a release. Do not remove an existing requirement until the intended replacement release is available.
+The canonical Composer package is `atatusoft/ppphp`. Start with your tooling release's [compatible compiler installation instructions](../CHANGELOG.md#installing-a-release-candidate), which identify the available release and its install command. The sections below describe stable installation, updates, and migration; they do not replace those release-specific instructions.
 
 ## New projects and updates
 
-To install the stable compiler once available:
+When a compatible stable compiler is available, its normal installation command is:
 
 ```shell
 composer require --dev atatusoft/ppphp
@@ -22,7 +22,7 @@ For an existing checkout, use `composer install` to restore its locked dependenc
 
 ## Migrating from the former package name
 
-For projects with `atatusoft-ltd/ppphp-src` in `require-dev`, first confirm the replacement release is available, then run:
+For projects with `atatusoft-ltd/ppphp-src` in `require-dev`, first choose the replacement using the [release-specific instructions](../CHANGELOG.md#installing-a-release-candidate). If it is a candidate, use that exact candidate command as the second step below; the unversioned example applies only to a published stable release:
 
 ```shell
 composer remove --dev --no-update atatusoft-ltd/ppphp-src
