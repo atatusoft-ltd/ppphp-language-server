@@ -38,8 +38,22 @@ jobs:
           rustup toolchain install stable --profile minimal --component rustfmt
           rustup default stable
           rustup target add wasm32-wasip2
+      - name: Verify generated grammar
+        run: |
+          php scripts/build.php zed-grammar
+          git diff --exit-code -- grammars/ppphp/src
       - name: Build and check Zed
         run: php scripts/build.php zed
+      - name: Package standalone server
+        run: php scripts/build.php server-release
+      - name: Upload release inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ppphp-zed-release-inputs
+          path: |
+            build/server-release/*
+            editors/zed/extension.wasm
+          if-no-files-found: error
 
   windows-dev:
     name: Windows dev extension
@@ -57,9 +71,11 @@ jobs:
           coverage: none
       - name: Set up Rust
         run: |
-          rustup toolchain install stable --profile minimal
+          rustup toolchain install stable --profile minimal --component rustfmt
           rustup default stable
           rustup target add wasm32-wasip2
+      - name: Check adapter and grammar on Windows
+        run: php scripts/build.php zed-check
       - name: Stage and compile the dev extension
         shell: pwsh
         run: |

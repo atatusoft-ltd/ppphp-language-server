@@ -20,7 +20,7 @@ const QUERIES: &[(&str, &str)] = &[
 ];
 
 fn captures(query: &str, source: &str) -> HashSet<(String, String)> {
-    let language = tree_sitter_php::LANGUAGE_PHP.into();
+    let language = tree_sitter_ppphp::LANGUAGE.into();
     let query = Query::new(&language, query).expect("valid query for the pinned grammar");
     let mut parser = Parser::new();
     parser.set_language(&language).unwrap();
@@ -82,6 +82,69 @@ fn lexical_highlights_and_outline_survive_ppphp_syntax() {
 }
 
 #[test]
+fn generic_types_and_typed_locals_have_native_highlights_without_lsp() {
+    let source = include_str!("../../fixtures/generic-types.ppphp");
+    let language = tree_sitter_ppphp::LANGUAGE.into();
+    let mut parser = Parser::new();
+    parser.set_language(&language).unwrap();
+    for fixture in [
+        source,
+        include_str!("../../fixtures/recognized-syntax.ppphp"),
+    ] {
+        let tree = parser.parse(fixture, None).unwrap();
+        assert!(
+            !tree.root_node().has_error(),
+            "++PHP syntax must not rely on PHP parser recovery: {}",
+            tree.root_node().to_sexp()
+        );
+    }
+
+    let highlights = captures(QUERIES[0].1, source);
+    for (kind, text) in [
+        ("type", "Box"),
+        ("type", "T"),
+        ("type", "U"),
+        ("type", "Model"),
+        ("type", "Product"),
+        ("type.builtin", "array"),
+        ("type.builtin", "string"),
+        ("punctuation.bracket", "<"),
+        ("punctuation.bracket", ">"),
+        ("keyword", "throws"),
+        ("keyword", "readonly"),
+    ] {
+        assert!(
+            highlights.contains(&(kind.into(), text.into())),
+            "missing {kind}: {text}"
+        );
+    }
+    assert!(!highlights.contains(&("type".into(), "NotAType".into())));
+
+    // Generic angle brackets participate in matching; comparison and shift
+    // operators in the same document must remain ordinary operators.
+    let tree = parser.parse(source, None).unwrap();
+    let query = Query::new(&language, QUERIES[1].1).unwrap();
+    let mut cursor = QueryCursor::new();
+    let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+    let comparison = source.find("$left < $right").unwrap() + "$left ".len();
+    let shift = source.find("$left >> 1").unwrap() + "$left ".len();
+    while let Some(matched) = matches.next() {
+        for capture in matched.captures {
+            assert_ne!(capture.node.start_byte(), comparison);
+            assert_ne!(capture.node.start_byte(), shift);
+        }
+    }
+}
+
+#[test]
+fn ordinary_php_constructs_keep_parsing_with_the_ppphp_grammar() {
+    let language = tree_sitter_ppphp::LANGUAGE.into();
+    let mut parser = Parser::new();
+    parser.set_language(&language).unwrap();
+    let source = "<?php\n$items = array('one', 'two');\n$copy = (array) $items;\nif ($a < $b && $b > $c) { echo $a >> 1; }\nfunction greet(string $name): string { return \"Hello {$name}\"; }\n";
+    assert!(!parser.parse(source, None).unwrap().root_node().has_error());
+}
+#[test]
 fn manifest_and_language_configuration_register_only_ppphp() {
     let manifest: toml::Value = toml::from_str(include_str!("../extension.toml")).unwrap();
     let config: toml::Value =
@@ -100,14 +163,14 @@ fn manifest_and_language_configuration_register_only_ppphp() {
     );
     assert_eq!(server["language_ids"]["++PHP"].as_str(), Some("ppphp"));
     let grammar = &manifest["grammars"][config["grammar"].as_str().unwrap()];
-    assert_eq!(grammar["path"].as_str(), Some("php"));
+    assert_eq!(grammar["path"].as_str(), Some("grammars/ppphp"));
     assert_eq!(
         grammar["rev"],
-        cargo["dev-dependencies"]["tree-sitter-php"]["rev"]
+        cargo["dev-dependencies"]["tree-sitter-ppphp"]["rev"]
     );
     assert_eq!(
         grammar["repository"],
-        cargo["dev-dependencies"]["tree-sitter-php"]["git"]
+        cargo["dev-dependencies"]["tree-sitter-ppphp"]["git"]
     );
     let version = include_str!("../../../VERSION").trim();
     assert_eq!(manifest["version"].as_str(), Some(version));

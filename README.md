@@ -2,7 +2,7 @@
 
 Editor tooling for ++PHP source files. This repository contains one editor-neutral Language Server Protocol (LSP) implementation plus thin integrations for Visual Studio Code, PhpStorm, and Zed.
 
-The [Zed extension](editors/zed/README.md) can be built and installed locally. It adds `.ppphp` recognition, a pinned PHP Tree-sitter baseline, and access to the shared LSP. Enable semantic tokens in Zed for ++PHP-specific highlighting. Zed has no published extension package yet.
+The [Zed extension](editors/zed/README.md) can be built and installed locally. It adds native ++PHP type/generic highlighting and an automatically installed shared LSP. The release workflow supports Zed registry distribution without a checkout or development tools; the registry package is not published yet.
 
 ## Current capabilities
 

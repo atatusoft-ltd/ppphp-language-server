@@ -15,10 +15,24 @@ export default tseslint.config(
       "editors/vscode/syntaxes/**",
       "editors/zed/grammars/**",
       "editors/zed/target/**",
+      "grammars/ppphp/vendor/**",
+      "grammars/ppphp/src/**",
     ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ["grammars/ppphp/grammar.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: Object.fromEntries(
+        ["grammar", "seq", "choice", "repeat", "optional", "field", "alias", "token", "prec"].map(
+          (name) => [name, "readonly"],
+        ),
+      ),
+    },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   {
     files: ["**/*.ts"],
     rules: {

@@ -1,4 +1,4 @@
-; PHP lexical baseline; parser-dependent ++PHP roles come from LSP semantic tokens.
+; Native PHP/++PHP syntax colors work without a language server.
 (name) @variable
 (variable_name) @variable
 (comment) @comment
@@ -40,3 +40,11 @@
 ] @operator
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 [";" "," ":" "\\"] @punctuation.delimiter
+
+; ++PHP types and generic delimiters are structural, not comparison operators.
+(type_parameter name: (name) @type)
+(named_type (qualified_name (name) @type))
+(object_creation_expression (name) @type)
+["throws" "when"] @keyword
+(type_arguments "<" @punctuation.bracket ">" @punctuation.bracket)
+(type_parameters "<" @punctuation.bracket ">" @punctuation.bracket)

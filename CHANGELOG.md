@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Added
 
-- Zed source extension with local language-server discovery, workspace settings, PHP Tree-sitter editing queries, ++PHP semantic-token mappings, Rust/Wasm builds, and adapter/grammar checks.
+- Zed extension with native ++PHP type/generic grammar, managed versioned server downloads with checksum verification, workspace settings, semantic-token mappings, Windows build support, and standalone release packaging.
 
 ## [2026.3.2] - 2026-09-08
 

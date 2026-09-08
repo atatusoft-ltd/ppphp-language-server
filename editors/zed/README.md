@@ -1,53 +1,24 @@
 # ++PHP for Zed
 
-Language support for `.ppphp` files using the shared ++PHP language server.
+Language support for `.ppphp` files: native type and generic highlighting, comments, bracket matching, indentation, outline, text objects, and the shared ++PHP language server.
 
-The extension provides file recognition, PHP baseline highlighting, comments, bracket matching, indentation, outline, and Vim text objects. The language server supplies compiler diagnostics, deterministic completion, keyword hover, document symbols, definition, semantic tokens, import actions, and safe class-family rename where the client supports the required workspace edits.
+## Installation and distribution
 
-This is a local source integration. It has not been published in Zed's extension registry.
+The registry entry is not published yet. Before publication, maintainers must publish the versioned language-server asset described in [Releasing](../../docs/releasing.md#zed-distribution). Source installation is available below.
 
-## Install from source
+Once published, users install **++PHP** from Zed's extension registry and open their project. They do not need this repository, Rust, npm, a manually built server, or absolute executable paths.
 
-Install the repository's [runtime prerequisites](../../README.md#requirements), plus [Rust through rustup](https://www.rust-lang.org/tools/install). Zed needs Rust installed through rustup to build development extensions.
+Zed distributes the compiled extension and ++PHP Tree-sitter grammar. Native highlighting covers built-in and named types, nested generics, generic parameters and bounds, typed locals, `throws`, and `when`. These colors work immediately, including when the language server or compiler is unavailable.
 
-On Linux/macOS, from the repository root (Windows users should follow the next section):
+On first language-server startup, the adapter obtains Node.js through Zed and downloads the standalone `server.cjs` for the extension's exact tooling version from this repository's GitHub release. It verifies the download against the release's `SHA256SUMS`, stores it in the extension host's cache, and verifies the cached copy before reusing it offline. Upgrades use a separate version directory. Interrupted downloads are discarded.
 
-```shell
-rustup target add wasm32-wasip2
-php scripts/build.php zed
-```
+For WSL/SSH projects, installation and execution happen on the project host. Windows paths are never reused on a Linux host. The first install needs access to the release download and Zed's Node.js runtime.
 
-This runs Rust formatting and adapter/grammar tests, builds the shared server, and produces `editors/zed/extension.wasm`. In Zed, run **zed: install dev extension** and select the **editors/zed** directory. Zed builds the extension and fetches the pinned Tree-sitter grammar. For grammar build prerequisites, see [Zed extension development](https://zed.dev/docs/extensions/developing-extensions).
+Compiler-backed diagnostics, definition, completion, and safe edits require the compatible ++PHP compiler in the project or on that host's PATH; see the [runtime prerequisites](../../README.md#requirements). The extension does not install or change project Composer dependencies. Basic highlighting and the server's fallback features remain usable without a compiler.
 
-For a ++PHP project outside this repository, configure the server as shown below. Opening the language-server repository itself automatically finds its built server.
+## Optional settings
 
-### Windows, including repositories in WSL
-
-When running Windows Zed, install Rust through **Windows rustup**. A WSL Rust installation is separate. Long repository paths and WSL UNC paths can make MSVC fail with `LNK1104` while linking Rust build scripts, even when the object file exists. Zed always builds inside the selected extension directory, so setting `CARGO_TARGET_DIR` does not shorten its build paths.
-
-From **Windows PowerShell** at the repository root, using Windows PHP:
-
-```powershell
-rustup target add wasm32-wasip2
-php scripts/build.php zed-dev
-```
-
-In Zed, run **zed: install dev extension** and select the printed directory, normally `%LOCALAPPDATA%\ppphp\zed-dev`. This command copies the extension source to a short native path, preserving Zed's build caches on subsequent runs. Edit the repository files and run `zed-dev` again before rebuilding the installed extension. On Linux/macOS the command stages into `build/zed-dev`.
-
-Build the shared server with `php scripts/build.php server` on the machine that hosts your project. For a WSL project, run that command in WSL and open the project using Zed's WSL connection. Server discovery uses the project host; the local extension copy does not contain a server bundle.
-
-If installation still fails, run **zed: open log** for the underlying Cargo error. Verify the same development build in PowerShell:
-
-```powershell
-$extension = Join-Path $env:LOCALAPPDATA 'ppphp\zed-dev'
-Push-Location $extension
-cargo build --locked --target wasm32-wasip2 --target-dir "$extension\target"
-Pop-Location
-```
-
-## Configure Zed
-
-Merge this into Zed's settings, replacing both absolute paths with paths on the machine that hosts your project:
+For additional compiler-owned semantic roles, enable semantic tokens:
 
 ```json
 {
@@ -55,16 +26,18 @@ Merge this into Zed's settings, replacing both absolute paths with paths on the 
     "++PHP": {
       "semantic_tokens": "combined"
     }
-  },
+  }
+}
+```
+
+This supplements the native grammar using your existing theme. Zed's [semantic tokens](https://zed.dev/docs/extensions/languages#syntax-highlighting-with-semantic-tokens) are optional for type and generic syntax colors.
+
+Project settings can also configure the compiler and shared server:
+
+```json
+{
   "lsp": {
     "ppphp-ls": {
-      "binary": {
-        "path": "/absolute/path/to/node",
-        "arguments": [
-          "/absolute/path/to/ppphp-language-server/packages/language-server/dist/server.cjs",
-          "--stdio"
-        ]
-      },
       "settings": {
         "ppphp": {
           "completion": {
@@ -83,50 +56,92 @@ Merge this into Zed's settings, replacing both absolute paths with paths on the 
 }
 ```
 
-The language is named `++PHP`, the Zed language-server key is `ppphp-ls`, and the LSP document language ID is `ppphp`. Only `.ppphp` files are associated automatically; ordinary PHP files retain their own language support.
+For a compiler override, add `"compiler": { "path": "/absolute/path/to/ppphp" }` inside `settings.ppphp`. `PPPHP_COMPILER_PATH` and `PPPHP_PHP_PATH` remain available.
 
-Zed's [semantic token setting](https://zed.dev/docs/extensions/languages#syntax-highlighting-with-semantic-tokens) must be enabled for compiler-owned ++PHP roles. Use `combined` to keep lexical string, comment, and punctuation colors alongside semantic tokens. This works with your existing theme.
+Only `.ppphp` files are associated automatically. The language is named `++PHP`, the language-server key is `ppphp-ls`, and the LSP language ID is `ppphp`.
 
-The `settings.ppphp` object is returned when the server requests its `ppphp` configuration section. For a compiler override, add `"compiler": { "path": "/absolute/path/to/ppphp" }` inside that object. Otherwise, the shared server discovers the compiler in the project or environment. Compiler and PHP overrides through `PPPHP_COMPILER_PATH` and `PPPHP_PHP_PATH` remain available, including through `binary.env`.
+## Server overrides and development
 
-On Windows use JSON-escaped paths such as `C:\\tools\\nodejs\\node.exe`. For remote or WSL projects, configure executables and server paths on that project's host. Rebuild the server after updating this checkout, and use Zed's **editor: restart language server** action.
-
-## Server discovery
-
-Discovery is repeated independently for each worktree, in this order:
+Discovery is worktree-local, in this order:
 
 1. An explicit `lsp.ppphp-ls.binary.path`, with `binary.arguments` and `binary.env`.
-2. `node_modules/@ppphp/language-server/dist/server.cjs` under the worktree root, launched with that host's `node`.
+2. `node_modules/@ppphp/language-server/dist/server.cjs` under the worktree root, launched with that host's Node.js.
 3. `packages/language-server/dist/server.cjs` under the worktree root, for development in this repository.
-4. A `ppphp-ls` executable on the worktree host's `PATH`.
+4. A `ppphp-ls` executable on the project host's PATH.
+5. The automatically installed, versioned server with Zed's Node.js runtime.
 
-The default arguments are `--stdio`. Custom arguments replace that default; for a discovered bundle the bundle path is always prepended. An explicit empty argument list is preserved. A configured command is authoritative; startup failures do not silently select a different server.
+An explicit command is authoritative; startup errors do not silently select another server. Arguments default to `--stdio`; custom arguments replace that default, and an explicit empty list is preserved. Discovered bundles prepend the bundle path. Environment overrides are applied per worktree.
 
-The npm package is currently private. The project-local path supports a locally linked package; it is not an instruction to install an unpublished npm package. The extension neither bundles a server inside Wasm nor downloads one. An unavailable server produces setup guidance in Zed's language-server status/log.
+The npm package is private; the project-local discovery path supports locally linked development copies. Production installation uses the GitHub release asset.
 
-## Limits
+Before the first server release is published, source developers can build with `php scripts/build.php server` and use an override on the project host:
 
-The pinned PHP Tree-sitter grammar is a lexical baseline, not a complete ++PHP parser. Generics, typed locals, checked errors, and `when` expressions can cause parser recovery; outline, indentation, bracket matching, and text objects may be incomplete near those constructs. The shared server supplies ++PHP semantics and remains the authority for diagnostics and edits. A dedicated ++PHP Tree-sitter grammar is future work.
+```json
+{
+  "lsp": {
+    "ppphp-ls": {
+      "binary": {
+        "path": "/absolute/path/to/node",
+        "arguments": ["/absolute/path/to/server.cjs", "--stdio"]
+      }
+    }
+  }
+}
+```
 
-Formatting is not supplied by this extension or the shared server. Class-creation dialogs, compiler build/check tasks, and PhpStorm's generated-PHP indexing are editor-specific features and are not implemented here. Rename remains subject to compiler verification and the server's client-capability checks.
+Use JSON-escaped Windows paths such as `C:\\tools\\nodejs\\node.exe`. WSL/SSH overrides use paths on the project host. After rebuilding the server, run **editor: restart language server**.
 
-## Verification
+## Install a development extension
+
+Source developers need [Rust through rustup](https://www.rust-lang.org/tools/install). End users of the published extension do not.
+
+On Linux/macOS, from the repository root:
 
 ```shell
-npm run check
-npm run check:zed
+rustup target add wasm32-wasip2
 php scripts/build.php zed
 ```
 
-Rust tests exercise configured commands, argument boundaries, environment overrides, local/PATH discovery, missing dependencies, Windows paths, and worktree isolation. The language tests compile every query against the exact grammar revision in `extension.toml`, exercise the shared ++PHP fixture, and check metadata and semantic-token coverage. CI also builds the Wasm target on Linux and compiles the staged dev extension with the native Windows toolchain. The release build uses an explicit `editors/zed/target` directory for reliable artifact copying.
+In Zed, run **zed: install dev extension** and select `editors/zed`. Zed compiles the adapter and the pinned ++PHP grammar.
 
-Before publication, complete a real-editor smoke test on each supported project host:
+### Windows and WSL checkouts
 
-- Install the dev extension and open `editors/fixtures/recognized-syntax.ppphp`; verify the language is `++PHP` and regular `.php` files remain PHP.
-- Verify comments, strings, brackets, indentation, outline, completion, hover, and semantic highlighting with `semantic_tokens: combined`.
-- With the compatible compiler installed in a sample project, verify unsaved diagnostics, definition, safe imports, and class-family rename, including a source-file rename.
-- Change compiler configuration and restart the server; verify the chosen settings take effect.
-- Open two worktrees with different server/compiler paths; confirm each uses its own host and configuration.
-- Verify missing server/runtime errors give setup guidance, then restore the configuration and restart.
+Install Rust through Windows rustup when running Windows Zed. A WSL Rust installation is separate.
 
-Build outputs, grammar checkouts, and `target/` are ignored. Keep `Cargo.lock` checked in. All adapter versions track the repository's `VERSION`.
+Long paths can cause MSVC `LNK1104` errors for Rust build-script objects. Zed explicitly builds inside the selected extension's `target` directory, so `CARGO_TARGET_DIR` does not shorten its paths. Use Windows PHP from PowerShell to prepare a short native source directory:
+
+```powershell
+rustup target add wasm32-wasip2
+php scripts/build.php zed-dev
+```
+
+Select the printed directory in **zed: install dev extension**, normally `%LOCALAPPDATA%\ppphp\zed-dev`. Re-run `zed-dev` after changing source, then rebuild the dev extension. It refreshes source and preserves Zed's build caches. On Linux/macOS, this staging command uses `build/zed-dev`.
+
+The repository's `zed-check`, `zed`, `editors`, and `all` targets use a short native Cargo target directory on Windows as well. Build the server on the machine hosting the project.
+
+For installation errors, run **zed: open log**. See [Zed extension development](https://zed.dev/docs/extensions/developing-extensions) for grammar build prerequisites.
+
+## Verification and limits
+
+```shell
+npm run check
+php scripts/build.php zed-grammar
+php scripts/build.php zed
+php scripts/build.php server-release
+```
+
+Tests cover native PHP/++PHP parsing, type and generic captures without LSP, operator/bracket distinctions, every editing query, stdio LSP behavior, command overrides, Windows paths, worktree isolation, and managed installation/cache failures. CI regenerates the parser and builds on Linux and Windows.
+
+Before publication, test a clean Zed profile against the actual published server asset:
+
+- Install through the registry and open a project outside this repository with no server override.
+- Confirm type/generic colors with semantic tokens off and no compiler installed.
+- Verify automatic runtime/server installation, then restart offline using the cache.
+- Repeat on native Windows and a WSL/SSH host; verify paths and caches remain host-local.
+- With the compatible project compiler, check diagnostics, completion, hover, definition, imports, and safe class-family rename.
+- Enable semantic tokens and confirm they supplement native colors.
+- Test an interrupted first download and a subsequent successful retry.
+
+Tree-sitter supplies editing structure, not semantic validation. The compiler remains authoritative for correctness and safe edits. Formatting, class-creation dialogs, and PhpStorm-specific generated-PHP indexing are not supplied by this adapter.
+
+Generated build outputs and caches are ignored. Keep the lockfile and generated grammar sources checked in.

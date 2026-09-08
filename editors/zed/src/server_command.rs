@@ -12,6 +12,7 @@ pub(crate) fn resolve(
     mut readable: impl FnMut(&str) -> bool,
     mut which: impl FnMut(&str) -> Option<String>,
     shell_env: impl FnOnce() -> Vec<(String, String)>,
+    install_server: impl FnOnce() -> Result<(String, String)>,
 ) -> Result<Command> {
     let mut arguments = None;
     let mut extra_env = None;
@@ -58,13 +59,14 @@ pub(crate) fn resolve(
         });
     }
 
-    Err(
-        "++PHP language server not found. Build it with 'php scripts/build.php server' \
-         in ppphp-language-server, then set lsp.ppphp-ls.binary.path to Node.js and \
-         binary.arguments to [the absolute path to dist/server.cjs, \"--stdio\"]. \
-         Alternatively, put a ppphp-ls executable on the project host's PATH."
-            .into(),
-    )
+    let (node, bundle) = install_server()?;
+    let mut args = vec![bundle];
+    args.extend(arguments.unwrap_or_else(|| vec!["--stdio".into()]));
+    Ok(Command {
+        command: node,
+        args,
+        env: merge_env(shell_env(), extra_env),
+    })
 }
 
 fn merge_env(
@@ -82,6 +84,39 @@ fn merge_env(
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    fn resolve(
+        binary: Option<CommandSettings>,
+        root: &str,
+        readable: impl FnMut(&str) -> bool,
+        which: impl FnMut(&str) -> Option<String>,
+        shell_env: impl FnOnce() -> Vec<(String, String)>,
+    ) -> Result<Command> {
+        super::resolve(binary, root, readable, which, shell_env, || {
+            Err("managed release unavailable".into())
+        })
+    }
+
+    #[test]
+    fn ordinary_projects_use_a_managed_host_runtime_and_versioned_server() {
+        let mut config = binary(None, Some(vec!["--stdio", "--trace"]));
+        config.env = Some(HashMap::from([("EXAMPLE".into(), "override".into())]));
+        let command = super::resolve(
+            Some(config),
+            "/ordinary-project",
+            |_| false,
+            |_| None,
+            || vec![("EXAMPLE".into(), "old".into())],
+            || Ok(("/zed/node".into(), "/zed/cache/server.cjs".into())),
+        )
+        .unwrap();
+        assert_eq!(command.command, "/zed/node");
+        assert_eq!(
+            command.args,
+            ["/zed/cache/server.cjs", "--stdio", "--trace"]
+        );
+        assert_eq!(command.env, [("EXAMPLE".into(), "override".into())]);
+    }
 
     fn binary(path: Option<&str>, arguments: Option<Vec<&str>>) -> CommandSettings {
         CommandSettings {
@@ -215,7 +250,7 @@ mod tests {
     #[test]
     fn missing_server_and_missing_runtime_have_actionable_errors() {
         let missing = resolve(None, "/project", |_| false, |_| None, Vec::new).unwrap_err();
-        assert!(missing.contains("php scripts/build.php server"));
+        assert!(missing.contains("managed release unavailable"));
         let missing_node = resolve(None, "/project", |_| true, |_| None, Vec::new).unwrap_err();
         assert!(missing_node.contains("Node.js"));
         assert!(resolve(

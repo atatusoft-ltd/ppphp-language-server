@@ -63,7 +63,7 @@ try {
         $canonicalVersion,
     );
 
-    foreach (['editors/zed/extension.toml', 'editors/zed/Cargo.toml'] as $file) {
+    foreach (['editors/zed/extension.toml', 'editors/zed/Cargo.toml', 'grammars/ppphp/Cargo.toml'] as $file) {
         preg_match('/^version\s*=\s*"([^"]+)"/m', read_text($repositoryRoot, $file), $versionMatch);
         expect_equal("{$file} version", $versionMatch[1] ?? null, $canonicalVersion);
     }

@@ -17,6 +17,8 @@ if (count($argv) > 2) {
 try {
     match ($target) {
         'server' => build_server($repositoryRoot),
+        'server-release' => package_server($repositoryRoot),
+        'zed-grammar' => generate_zed_grammar($repositoryRoot),
         'vscode-extension' => build_vscode_extension($repositoryRoot),
         'vscode' => package_vscode($repositoryRoot),
         'phpstorm' => build_phpstorm($repositoryRoot),
@@ -180,12 +182,62 @@ function build_phpstorm(string $root): void
     require_artifact($artifacts[0], 'PhpStorm plugin');
 }
 
+function package_server(string $root): void
+{
+    run_command([PHP_BINARY, $root . '/scripts/check_release_version.php'], $root);
+    build_server($root);
+    $version = trim(file_get_contents($root . '/VERSION'));
+    $directory = $root . '/build/server-release';
+    remove_generated_directory($directory, $root . '/build');
+    ensure_directory($directory);
+    $name = "ppphp-language-server-{$version}.cjs";
+    copy_required_file($root . '/packages/language-server/dist/server.cjs', $directory . '/' . $name);
+    copy_required_file($root . '/LICENSE', $directory . '/LICENSE');
+    $digest = hash_file('sha256', $directory . '/' . $name);
+    if ($digest === false || file_put_contents($directory . '/SHA256SUMS', "{$digest}  {$name}\n") === false) {
+        throw new RuntimeException('could not checksum the language-server release');
+    }
+    require_artifact($directory . '/' . $name, 'versioned language-server release');
+    // Exercise the packaged bytes in an empty project, outside this checkout.
+    // The Node process must not depend on repository-relative modules or paths.
+    $previous = getenv('PPPHP_TEST_SERVER_BUNDLE');
+    putenv('PPPHP_TEST_SERVER_BUNDLE=' . $directory . '/' . $name);
+    try {
+        run_tool('npm', ['exec', '--', 'vitest', 'run', '--root', 'packages/language-server',
+            'test/zed-stdio.test.ts'], $root);
+    } finally {
+        putenv($previous === false ? 'PPPHP_TEST_SERVER_BUNDLE' : 'PPPHP_TEST_SERVER_BUNDLE=' . $previous);
+    }
+    fwrite(STDOUT, "Publish this asset on GitHub release v{$version} before publishing the Zed extension.\n");
+}
+
+function generate_zed_grammar(string $root): void
+{
+    ensure_node_dependencies($root);
+    $cli = $root . '/node_modules/.bin/tree-sitter' . (PHP_OS_FAMILY === 'Windows' ? '.cmd' : '');
+    run_tool($cli, ['generate'], $root . '/grammars/ppphp');
+}
+
+function zed_target_directory(string $root): string
+{
+    if (PHP_OS_FAMILY === 'Windows') {
+        $localData = getenv('LOCALAPPDATA');
+        if ($localData === false || $localData === '') {
+            throw new RuntimeException('LOCALAPPDATA is required for short Windows Cargo build paths');
+        }
+        // Covers zed-check, zed, editors, and all: native build-script objects
+        // must not be linked below a long checkout or WSL UNC source directory.
+        return $localData . '/ppphp/zed-build/target';
+    }
+    return $root . '/editors/zed/target';
+}
+
 function check_zed(string $root): void
 {
     $editor = $root . '/editors/zed';
     run_command([PHP_BINARY, $root . '/scripts/check_release_version.php'], $root);
     run_tool('cargo', ['fmt', '--all', '--', '--check'], $editor);
-    run_tool('cargo', ['test', '--locked'], $editor);
+    run_tool('cargo', ['test', '--locked', '--target-dir', zed_target_directory($root)], $editor);
 }
 
 function build_zed(string $root): void
@@ -197,7 +249,7 @@ function build_zed(string $root): void
     remove_stale_artifacts($artifact);
     // Use one explicit location for both Cargo and the artifact copy, regardless
     // of build.target-dir in local/global Cargo configuration.
-    $targetDirectory = $editor . '/target';
+    $targetDirectory = zed_target_directory($root);
     run_tool(
         'cargo',
         [
@@ -309,7 +361,7 @@ function run_tool(
  */
 function tool_command(string $tool, array $arguments): array
 {
-    return PHP_OS_FAMILY === 'Windows'
+    return PHP_OS_FAMILY === 'Windows' && $tool !== 'cargo'
         ? windows_command($tool, $arguments)
         : [$tool, ...$arguments];
 }
@@ -532,12 +584,14 @@ Usage:
 
 Targets:
   server             Build the editor-neutral language-server bundle
+  server-release     Package a versioned standalone server and checksum
   vscode-extension   Build the unpackaged VS Code extension and bundled server
   vscode             Build the installable VS Code VSIX
   phpstorm           Build and test the installable PhpStorm plugin ZIP
   zed                Test and build the Zed Wasm extension and local server
   zed-check          Check Rust formatting, adapter tests, and grammar queries
   zed-dev            Stage dev-extension source (short local path on Windows)
+  zed-grammar        Regenerate the native ++PHP Tree-sitter parser
   editors            Build all editor artifacts
   all                Build all editor artifacts
   help               Show this help

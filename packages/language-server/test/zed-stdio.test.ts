@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -41,15 +41,20 @@ it("serves the Zed stdio/configuration contract with the shared server", async (
   const root = await mkdtemp(path.join(tmpdir(), "ppphp zed stdio-"));
   try {
     const bundle = path.join(root, "server.cjs");
-    await build({
-      entryPoints: [fileURLToPath(new URL("../src/launcher.ts", import.meta.url))],
-      outfile: bundle,
-      bundle: true,
-      platform: "node",
-      target: "node22",
-      format: "cjs",
-      logLevel: "silent",
-    });
+    const packagedBundle = process.env.PPPHP_TEST_SERVER_BUNDLE;
+    if (packagedBundle) {
+      await copyFile(packagedBundle, bundle);
+    } else {
+      await build({
+        entryPoints: [fileURLToPath(new URL("../src/launcher.ts", import.meta.url))],
+        outfile: bundle,
+        bundle: true,
+        platform: "node",
+        target: "node22",
+        format: "cjs",
+        logLevel: "silent",
+      });
+    }
     const child = spawn(process.execPath, [bundle, "--stdio"], {
       cwd: root,
       stdio: ["pipe", "pipe", "pipe"],

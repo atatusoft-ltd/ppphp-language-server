@@ -6,3 +6,6 @@ editors/phpstorm/gradle/wrapper/gradle-wrapper.jar
 package-lock.json
 editors/zed/target/
 editors/zed/grammars/
+
+grammars/ppphp/vendor/
+grammars/ppphp/src/

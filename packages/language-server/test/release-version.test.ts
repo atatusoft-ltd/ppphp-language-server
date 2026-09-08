@@ -18,6 +18,10 @@ function fixture(tooling = "2026.3.1", compiler = "2026.3.1-rc-2") {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), typeof value === "string" ? value : JSON.stringify(value));
   };
+  put(
+    "grammars/ppphp/Cargo.toml",
+    `[package]\nname = "tree-sitter-ppphp"\nversion = "${tooling}"\n`,
+  );
   put("VERSION", tooling);
   put("COMPILER_VERSION", compiler);
   for (const folder of ["", "packages/language-server", "editors/vscode", "res/textmate/ppphp"]) {
