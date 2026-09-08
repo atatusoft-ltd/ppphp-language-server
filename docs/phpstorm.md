@@ -9,7 +9,7 @@ For a feature overview, see the [++PHP plugin](../editors/phpstorm/README.md). T
 3. Open your project folder and install the compiler in its terminal:
 
    ```shell
-   composer require --dev atatusoft-ltd/ppphp-src
+   composer require --dev atatusoft/ppphp
    ```
 
 4. For a new ++PHP project, create its configuration:
@@ -22,11 +22,13 @@ For a feature overview, see the [++PHP plugin](../editors/phpstorm/README.md). T
 
 For PHP and Composer prerequisites and the complete build workflow, see the [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md). For an existing checkout, run `composer install` to restore its dependencies instead of adding the compiler again.
 
+Before installing or migrating the Composer package, check the [compiler installation guide](compiler-installation.md) for publication prerequisites and migration steps.
+
 The compiler is discovered at `vendor/bin/ppphp` in your project, then on `PATH`. Open the folder containing `ppphp.json` so project-wide operations use the correct source boundaries.
 
 ### Installing a release candidate
 
-Composer selects stable packages by default. If you intentionally install a prerelease plugin, check its version in **Settings → Plugins** and use the matching compiler command in its [release-candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Choose the installed plugin's release entry, not simply the newest candidate: a stable compiler may not implement a prerelease plugin's editor protocol.
+Composer selects stable packages by default. To use a compiler candidate, check the installed plugin's version in **Settings → Plugins** and consult its [compiler compatibility and candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Choose that release entry, not simply the newest compiler candidate. Compiler candidates do not change the plugin's release channel.
 
 ## Everyday editing
 
@@ -67,7 +69,7 @@ Live diagnostics cover the compiler's own findings in unsaved buffers. Run `vend
 - **No highlighting?** Check that the filename ends in `.ppphp` and is associated with **++PHP**, not PHP or plain text. Restart PhpStorm after installing or updating the plugin.
 - **Language server unavailable?** Check the configured local Node.js runtime. Desktop-launched IDEs may not inherit your shell's version-manager environment.
 - **Compiler unavailable?** Run `vendor/bin/ppphp --version` in the project terminal and check the PHP executable visible to the IDE. `PPPHP_COMPILER_PATH` can select a compiler, and `PPPHP_PHP_PATH` can select PHP; use absolute paths. On Windows, PHP must be available as `php.exe` unless explicitly configured.
-- **Unsaved diagnostics unavailable?** Update the project's compiler with `composer update atatusoft-ltd/ppphp-src` and inspect the reported error. For a prerelease plugin, follow its matching installation notes above.
+- **Unsaved diagnostics unavailable?** Update the project's compiler with `composer update atatusoft/ppphp` and inspect the reported error. If the project still requires the former package name, follow the [migration steps](compiler-installation.md#migrating-from-the-former-package-name) first. For a compiler candidate, follow the matching installation notes above.
 - **Undefined types from PHP files?** Rebuild the project and check that its generated output and build manifest exist. Do not add the entire build directory to the PHP include path as a workaround.
 - **PHPStan says “Cannot run program”?** Check PhpStorm's PHP interpreter and PHPStan executable settings. This is a separate quality-tool launch failure, not evidence that ++PHP live diagnostics ran.
 - **Blank code-style previews or startup errors?** See the [PhpStorm troubleshooting guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm-troubleshooting.md).
