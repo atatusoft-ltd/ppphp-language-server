@@ -23,14 +23,14 @@
 (simple_parameter name: (variable_name) @variable.parameter)
 
 [
-  "abstract" "as" "break" "case" "catch" "class" "clone" "const" "continue"
+  "abstract" "and" "as" "break" "case" "catch" "class" "clone" "const" "continue"
   "declare" "default" "do" "echo" "else" "elseif" "enddeclare"
   "endfor" "endforeach" "endif" "endswitch" "endwhile" "enum" "extends"
   "final" "finally" "fn" "for" "foreach" "function" "global" "goto" "if"
   "implements" "include" "include_once" "instanceof" "insteadof" "interface"
-  "list" "match" "namespace" "new" "print" "private" "protected"
+  "list" "match" "namespace" "new" "or" "print" "private" "protected"
   "public" "readonly" "require" "require_once" "return" "static" "switch"
-  "throw" "trait" "try" "unset" "use" "while" "yield" "yield from"
+  "throw" "trait" "try" "unset" "use" "while" "xor" "yield" "yield from"
 ] @keyword
 
 [

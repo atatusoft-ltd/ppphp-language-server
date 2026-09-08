@@ -137,6 +137,15 @@ fn generic_types_and_typed_locals_have_native_highlights_without_lsp() {
 }
 
 #[test]
+fn php_word_operators_have_native_highlights_without_semantic_tokens() {
+    let source = "<?php\n$result = $a and $b or $c xor $d;\n$result = $a AND $b OR $c XOR $d;\n";
+    let highlights = captures(QUERIES[0].1, source);
+    for operator in ["and", "or", "xor", "AND", "OR", "XOR"] {
+        assert!(highlights.contains(&("keyword".into(), operator.into())));
+    }
+}
+
+#[test]
 fn ordinary_php_constructs_keep_parsing_with_the_ppphp_grammar() {
     let language = tree_sitter_ppphp::LANGUAGE.into();
     let mut parser = Parser::new();

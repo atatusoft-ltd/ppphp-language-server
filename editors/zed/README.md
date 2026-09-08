@@ -117,7 +117,7 @@ php scripts/build.php zed-dev
 
 Select the printed directory in **zed: install dev extension**, normally `%LOCALAPPDATA%\ppphp\zed-dev`. Re-run `zed-dev` after changing source, then rebuild the dev extension. It refreshes source and preserves Zed's build caches. On Linux/macOS, this staging command uses `build/zed-dev`.
 
-The repository's `zed-check`, `zed`, `editors`, and `all` targets use a short native Cargo target directory on Windows as well. Build the server on the machine hosting the project.
+The repository's `zed-check`, `zed`, `editors`, and `all` targets use a short native Cargo target directory on Windows as well. UNC checkouts are temporarily mapped to a Windows drive for the complete build so npm and Gradle also retain the working directory. The mapping is released on completion or failure. Build the server on the machine hosting the project. Keep Windows and WSL `node_modules` installations separate: Windows npm cannot reuse Linux workspace links.
 
 For installation errors, run **zed: open log**. See [Zed extension development](https://zed.dev/docs/extensions/developing-extensions) for grammar build prerequisites.
 

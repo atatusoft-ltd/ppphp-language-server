@@ -69,13 +69,26 @@ jobs:
         with:
           php-version: "8.4"
           coverage: none
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
       - name: Set up Rust
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt
           rustup default stable
           rustup target add wasm32-wasip2
-      - name: Check adapter and grammar on Windows
-        run: php scripts/build.php zed-check
+      - name: Build Zed from a Windows UNC checkout
+        shell: pwsh
+        run: |
+          $checkout = (Get-Location).Path
+          $uncRoot = '\\localhost\' + $checkout.Substring(0, 1) + '$' + $checkout.Substring(2)
+          if (-not (Test-Path -LiteralPath $uncRoot)) {
+            throw "The runner's administrative share is unavailable: $uncRoot"
+          }
+          php "$uncRoot\scripts\build.php" zed
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Stage and compile the dev extension
         shell: pwsh
         run: |

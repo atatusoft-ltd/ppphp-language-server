@@ -15,6 +15,10 @@ if (count($argv) > 2) {
 }
 
 try {
+    if (PHP_OS_FAMILY === 'Windows' && str_starts_with($repositoryRoot, '\\\\')) {
+        run_windows_unc_build($repositoryRoot, $target);
+        exit(0);
+    }
     match ($target) {
         'server' => build_server($repositoryRoot),
         'server-release' => package_server($repositoryRoot),
@@ -32,6 +36,51 @@ try {
 } catch (Throwable $error) {
     fwrite(STDERR, "build: {$error->getMessage()}\n");
     exit(1);
+}
+
+/**
+ * cmd.exe and npm lifecycle scripts cannot use a UNC current directory. Re-enter
+ * PHP through pushd's temporary drive so every child (including npm and Gradle)
+ * receives a drive-qualified repository path. popd releases it even on failure.
+ */
+function run_windows_unc_build(string $root, string $target): void
+{
+    if (preg_match('/\A[a-z-]+\z/D', $target) !== 1) {
+        usage_error('invalid build target');
+    }
+    $temporary = tempnam(sys_get_temp_dir(), 'ppphp-build-');
+    if ($temporary === false) {
+        throw new RuntimeException('could not create the Windows build launcher');
+    }
+    $batch = $temporary . '.cmd';
+    try {
+        if (!rename($temporary, $batch)) {
+            throw new RuntimeException('could not prepare the Windows build launcher');
+        }
+        $quote = static function (string $path): string {
+            if (strpbrk($path, "\"\r\n\0") !== false) {
+                throw new RuntimeException('unsupported character in Windows build path');
+            }
+            return '"' . str_replace('%', '%%', $path) . '"';
+        };
+        $source = "@echo off\r\nsetlocal DisableDelayedExpansion\r\nchcp 65001 >nul\r\n"
+            . 'pushd ' . $quote($root) . "\r\n"
+            . "if errorlevel 1 exit /b 1\r\n"
+            . $quote(PHP_BINARY) . ' scripts\\build.php ' . $target . "\r\n"
+            . "set \"PPPHP_BUILD_EXIT=%ERRORLEVEL%\"\r\n"
+            . "popd\r\nexit /b %PPPHP_BUILD_EXIT%\r\n";
+        if (file_put_contents($batch, $source) === false) {
+            throw new RuntimeException('could not write the Windows build launcher');
+        }
+        fwrite(STDOUT, "Using a temporary Windows drive for the UNC checkout.\n");
+        run_command(windows_command($batch, []), sys_get_temp_dir());
+    } finally {
+        foreach ([$temporary, $batch] as $path) {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
 }
 
 function build_server(string $root): void
@@ -372,6 +421,26 @@ function tool_command(string $tool, array $arguments): array
  */
 function windows_command(string $executable, array $arguments): array
 {
+    // Resolve PATH shims before cmd.exe so npm can locate its adjacent runtime
+    // from the script's absolute path, including under a temporary UNC drive.
+    if (!str_contains($executable, '/') && !str_contains($executable, '\\')) {
+        $extensions = pathinfo($executable, PATHINFO_EXTENSION) !== ''
+            ? ['']
+            : explode(';', getenv('PATHEXT') ?: '.COM;.EXE;.BAT;.CMD');
+        foreach (explode(';', getenv('PATH') ?: '') as $directory) {
+            $directory = trim($directory, '" ');
+            if ($directory === '') {
+                continue;
+            }
+            foreach ($extensions as $extension) {
+                $candidate = $directory . '\\' . $executable . $extension;
+                if (is_file($candidate)) {
+                    $executable = $candidate;
+                    break 2;
+                }
+            }
+        }
+    }
     $commandProcessor = getenv('COMSPEC');
     if ($commandProcessor === false || $commandProcessor === '') {
         $commandProcessor = 'cmd.exe';
