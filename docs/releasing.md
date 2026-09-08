@@ -29,7 +29,9 @@ Do not insert the release value into evergreen documentation or product descript
 5. Run `php scripts/build.php vscode`, then smoke-test highlighting and language-server startup.
 6. Run `php scripts/build.php phpstorm`, then run the complete structure validation, configuration validation, and Plugin Verifier suite.
 7. Install both local packages and smoke-test `.ppphp` recognition, highlighting, diagnostics, completion, hover, and symbols.
-8. Inspect the built VSIX and plugin ZIP, not only source manifests. Confirm that their release versions match `VERSION`, the VSIX publisher is `AtatusoftLtd`, and the VSIX does not acquire a pre-release flag from compiler compatibility metadata. Create a `v*` tag only after all checks pass.
+8. Inspect the built VSIX and plugin ZIP, not only source manifests. Confirm that their release versions match `VERSION`, the VSIX publisher is `AtatusoftLtd`, and the VSIX does not acquire a pre-release flag from compiler compatibility metadata.
+9. Run `php scripts/build.php zed`, install `editors/zed` as a Zed dev extension, and complete its [smoke checklist](../editors/zed/README.md#verification-and-limits). The Zed manifest, Rust package, and Cargo lockfile must match `VERSION`. The registry supports this monorepo through `path = "editors/zed"`; follow the distribution steps below.
+10. Create a `v*` tag only after all checks pass and every tooling manifest and artifact reports the version in `VERSION`.
 
 Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or binary remains an explicit maintainer action.
 
@@ -47,3 +49,24 @@ Install the built plugin in a supported PhpStorm version on Windows and open the
 - unsaved edits and saves both refresh diagnostics;
 - definition, completion, hover, symbols, and class-family rename work; and
 - restarting PhpStorm leaves startup and indexing clean.
+
+## Zed distribution
+
+A registry installation must work without a checkout, custom server path, Rust, or npm. The grammar supplies type/generic colors independently of the server. The Rust adapter uses Zed's Node.js runtime and downloads the matching standalone server on the project host.
+
+1. Build `php scripts/build.php server-release`. It produces `build/server-release/ppphp-language-server-<VERSION>.cjs`, `SHA256SUMS`, and `LICENSE`. The bundle includes its npm runtime dependencies. CI retains these files and the Wasm as `ppphp-zed-release-inputs`.
+2. Build and validate the extension on Windows and Linux. The native Windows targets must also work from a long/UNC checkout. Commit grammar changes first, then pin the same grammar commit in `extension.toml` and the Rust test dependency.
+3. After approval to publish, create the tag matching `VERSION` and publish a GitHub release on this repository. Upload the exact versioned server filename, checksum, and license. Do not replace a published asset with changed bytes; increment the tooling release instead.
+4. Verify the public download from a clean host before submitting the extension to the registry. The adapter's URL is `https://github.com/atatusoft-ltd/ppphp-language-server/releases/download/v<VERSION>/ppphp-language-server-<VERSION>.cjs`. A missing asset is a publication blocker.
+5. Submit a PR to [Zed's extension registry](https://github.com/zed-industries/extensions) adding this repository as the `extensions/ppphp-lsp` submodule at the validated release commit, with the following entry. Replace the version placeholder with `VERSION`:
+
+```toml
+[ppphp-lsp]
+submodule = "extensions/ppphp-lsp"
+path = "editors/zed"
+version = "<VERSION>"
+```
+
+The registry builds and distributes the extension Wasm and grammar. A separate extension repository is unnecessary; the registry already supports monorepo `path` entries. End users install **++PHP** in Zed. Updates move the registry submodule/version and publish a new matching server asset; cached older versions remain available offline.
+
+Complete the [clean-profile smoke checklist](../editors/zed/README.md#verification-and-limits) against the published asset before announcing availability. CI artifacts and a successful development install do not by themselves constitute a registry release.

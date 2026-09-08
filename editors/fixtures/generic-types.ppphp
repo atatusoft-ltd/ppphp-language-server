@@ -1,0 +1,23 @@
+<?php
+
+namespace Example;
+
+class Box<T: Model>
+{
+    public function map<U>(Box<T> $value): array<string, Box<U>> throws Failure
+    {
+        array<string, Box<Product>> $items = [];
+        readonly ?Box<Product> $selected = null;
+        Box<Product>|Product $choice = new Product();
+
+        foreach ($items as string $key => Box<Product> $item) {
+            echo $key;
+        }
+
+        $less = $left < $right;
+        $shifted = $left >> 1;
+        $text = "Box<NotAType>";
+        // array<string, NotAType> $commented = [];
+        return [];
+    }
+}

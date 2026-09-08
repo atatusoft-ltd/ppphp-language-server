@@ -5,3 +5,8 @@
 *.png binary
 *.vsix binary
 *.zip binary
+
+grammars/ppphp/src/parser.c linguist-generated=true
+grammars/ppphp/src/grammar.json linguist-generated=true
+grammars/ppphp/src/node-types.json linguist-generated=true
+grammars/ppphp/vendor/* linguist-vendored=true

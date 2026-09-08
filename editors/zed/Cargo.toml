@@ -1,0 +1,18 @@
+[package]
+name = "ppphp-zed"
+version = "2026.3.2"
+edition = "2021"
+publish = false
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "=0.7.0"
+sha2 = "=0.10.9"
+
+[dev-dependencies]
+toml = "0.8"
+tree-sitter = "0.25"
+tree-sitter-ppphp = { git = "https://github.com/atatusoft-ltd/ppphp-language-server.git", rev = "6c9c37826a52f0cc1ac4514e9eac9296cba6d3d7" }

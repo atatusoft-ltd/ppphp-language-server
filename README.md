@@ -1,6 +1,8 @@
 # ++PHP Language Server
 
-Editor tooling for ++PHP source files. This repository contains one editor-neutral Language Server Protocol (LSP) implementation plus thin integrations for Visual Studio Code and PhpStorm.
+Editor tooling for ++PHP source files. This repository contains one editor-neutral Language Server Protocol (LSP) implementation plus thin integrations for Visual Studio Code, PhpStorm, and Zed.
+
+The [Zed extension](editors/zed/README.md) can be built and installed locally. It adds native ++PHP type/generic highlighting and an automatically installed shared LSP. The release workflow supports Zed registry distribution without a checkout or development tools; the registry package is not published yet.
 
 ## Current capabilities
 
@@ -37,9 +39,11 @@ In mixed PhpStorm projects, native PHP code can resolve declarations authored in
   - configured explicitly in the editor or through `PPPHP_COMPILER_PATH`
 - For the PhpStorm plugin build: a Java runtime compatible with the [build configuration](editors/phpstorm/build.gradle.kts); the checked-in Gradle wrapper supplies Gradle itself
 
+- For Zed development: Rust installed through rustup, with the `wasm32-wasip2` target; see the [Zed guide](editors/zed/README.md)
+
 ## Local development
 
-Repository automation is deliberately written in PHP. TypeScript is confined to the Node-based language server and VS Code client, while Kotlin is confined to the JetBrains plugin.
+Repository automation is deliberately written in PHP. TypeScript is confined to the Node-based language server and VS Code client, Kotlin is confined to the JetBrains plugin, and Rust to the Zed adapter.
 
 ```shell
 npm ci
@@ -47,11 +51,12 @@ npm run check
 php scripts/build.php help
 ```
 
-Build either editor package, or both:
+Build an editor artifact, or all of them:
 
 ```shell
 php scripts/build.php vscode
 php scripts/build.php phpstorm
+php scripts/build.php zed
 php scripts/build.php editors
 ```
 
@@ -98,6 +103,7 @@ res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
 editors/phpstorm/          JetBrains LSP, TextMate, and ++PHP PSI integration
+editors/zed/               Rust/Wasm adapter and PHP Tree-sitter baseline
 docs/                      Architecture, roadmap, and editor-support tracking
 scripts/                   PHP build orchestration and repository guardrails
 ```

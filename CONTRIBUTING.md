@@ -19,6 +19,7 @@ Use the PHP build entrypoint for installable editor artifacts:
 ```shell
 php scripts/build.php vscode
 php scripts/build.php phpstorm
+php scripts/build.php zed
 php scripts/build.php editors
 ```
 

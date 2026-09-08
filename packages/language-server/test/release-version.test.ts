@@ -18,6 +18,10 @@ function fixture(tooling = "2026.3.1", compiler = "2026.3.1-rc-2") {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), typeof value === "string" ? value : JSON.stringify(value));
   };
+  put(
+    "grammars/ppphp/Cargo.toml",
+    `[package]\nname = "tree-sitter-ppphp"\nversion = "${tooling}"\n`,
+  );
   put("VERSION", tooling);
   put("COMPILER_VERSION", compiler);
   for (const folder of ["", "packages/language-server", "editors/vscode", "res/textmate/ppphp"]) {
@@ -35,6 +39,9 @@ function fixture(tooling = "2026.3.1", compiler = "2026.3.1-rc-2") {
     ),
   });
   put("editors/phpstorm/gradle.properties", `pluginVersion=${tooling}\n`);
+  put("editors/zed/extension.toml", `version = "${tooling}"\n`);
+  put("editors/zed/Cargo.toml", `[package]\nname = "ppphp-zed"\nversion = "${tooling}"\n`);
+  put("editors/zed/Cargo.lock", `[[package]]\nname = "ppphp-zed"\nversion = "${tooling}"\n`);
   put("CHANGELOG.md", `# Changelog\n\n## [Unreleased]\n\n## [${tooling}] - 2026-09-08\n`);
   put("editors/vscode/CHANGELOG.md", `# Changelog\n\n## ${tooling} - 2026-09-08\n`);
   mkdirSync(path.join(root, "scripts"));
@@ -75,6 +82,19 @@ it("detects compiler compatibility and top-level lockfile drift", () => {
   value.put("package-lock.json", { version: "2026.3.1-rc-2" });
   expect(value.run().stderr).toContain("package-lock.json version");
 });
+it.each(["editors/zed/extension.toml", "editors/zed/Cargo.toml", "editors/zed/Cargo.lock"])(
+  "rejects compiler suffixes and tooling version drift in %s",
+  (file) => {
+    for (const invalid of ["2026.3.1-rc-2", "2026.3.2"]) {
+      const value = fixture();
+      const metadata = readFileSync(path.join(value.root, file), "utf8");
+      value.put(file, metadata.replace('version = "2026.3.1"', `version = "${invalid}"`));
+      const result = value.run();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(file);
+    }
+  },
+);
 it.each(["CHANGELOG.md", "editors/vscode/CHANGELOG.md"])(
   "requires a dated tooling release entry in %s",
   (changelog) => {

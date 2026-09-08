@@ -1,0 +1,99 @@
+name: Zed extension
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zed-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zed:
+    name: Adapter, grammar queries, and Wasm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: "8.4"
+          coverage: none
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Set up Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+          rustup target add wasm32-wasip2
+      - name: Verify generated grammar
+        run: |
+          php scripts/build.php zed-grammar
+          git diff --exit-code -- grammars/ppphp/src
+      - name: Build and check Zed
+        run: php scripts/build.php zed
+      - name: Package standalone server
+        run: php scripts/build.php server-release
+      - name: Upload release inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ppphp-zed-release-inputs
+          path: |
+            build/server-release/*
+            editors/zed/extension.wasm
+          if-no-files-found: error
+
+  windows-dev:
+    name: Windows dev extension
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: "8.4"
+          coverage: none
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Set up Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+          rustup target add wasm32-wasip2
+      - name: Build Zed from a Windows UNC checkout
+        shell: pwsh
+        run: |
+          $checkout = (Get-Location).Path
+          $uncRoot = '\\localhost\' + $checkout.Substring(0, 1) + '$' + $checkout.Substring(2)
+          if (-not (Test-Path -LiteralPath $uncRoot)) {
+            throw "The runner's administrative share is unavailable: $uncRoot"
+          }
+          php "$uncRoot\scripts\build.php" zed
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Stage and compile the dev extension
+        shell: pwsh
+        run: |
+          php scripts/build.php zed-dev
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $extension = Join-Path $env:LOCALAPPDATA 'ppphp\zed-dev'
+          Set-Location $extension
+          cargo build --locked --target wasm32-wasip2 --target-dir "$extension\target"

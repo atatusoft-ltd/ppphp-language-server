@@ -1,0 +1,63 @@
+[
+  {
+    "token_type": "namespace",
+    "style": ["constructor", "type"]
+  },
+  {
+    "token_type": "class",
+    "style": ["constructor", "type"]
+  },
+  {
+    "token_type": "interface",
+    "style": ["constructor", "type"]
+  },
+  {
+    "token_type": "enum",
+    "style": ["constructor", "type"]
+  },
+  {
+    "token_type": "typeParameter",
+    "style": ["constructor", "type"]
+  },
+  {
+    "token_type": "parameter",
+    "style": ["variable"]
+  },
+  {
+    "token_type": "variable",
+    "style": ["variable"]
+  },
+  {
+    "token_type": "property",
+    "style": ["property"]
+  },
+  {
+    "token_type": "enumMember",
+    "style": ["constant"]
+  },
+  {
+    "token_type": "function",
+    "style": ["function"]
+  },
+  {
+    "token_type": "method",
+    "style": ["function"]
+  },
+  {
+    "token_type": "keyword",
+    "style": ["keyword"]
+  },
+  {
+    "token_type": "type",
+    "token_modifiers": ["defaultLibrary"],
+    "style": ["type.builtin", "type"]
+  },
+  {
+    "token_type": "type",
+    "style": ["constructor", "type"]
+  },
+  {
+    "token_type": "decorator",
+    "style": ["attribute"]
+  }
+]

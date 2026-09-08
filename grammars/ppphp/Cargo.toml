@@ -1,0 +1,16 @@
+[package]
+name = "tree-sitter-ppphp"
+version = "2026.3.2"
+edition = "2021"
+license = "MIT"
+publish = false
+build = "bindings/rust/build.rs"
+
+[lib]
+path = "bindings/rust/lib.rs"
+
+[dependencies]
+tree-sitter-language = "0.1"
+
+[build-dependencies]
+cc = "1"

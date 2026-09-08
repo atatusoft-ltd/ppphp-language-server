@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Zed extension with native ++PHP type/generic grammar, managed versioned server downloads with checksum verification, workspace settings, semantic-token mappings, Windows build support, and standalone release packaging.
+
 ## [2026.3.2] - 2026-09-08
 
 The numeric tooling version advances because `2026.3.1` has already been published to the VS Code Marketplace; compiler compatibility remains unchanged.
