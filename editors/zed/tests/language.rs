@@ -101,11 +101,11 @@ fn generic_types_and_typed_locals_have_native_highlights_without_lsp() {
 
     let highlights = captures(QUERIES[0].1, source);
     for (kind, text) in [
-        ("type", "Box"),
-        ("type", "T"),
-        ("type", "U"),
-        ("type", "Model"),
-        ("type", "Product"),
+        ("constructor", "Box"),
+        ("constructor", "T"),
+        ("constructor", "U"),
+        ("constructor", "Model"),
+        ("constructor", "Product"),
         ("type.builtin", "array"),
         ("type.builtin", "string"),
         ("punctuation.bracket", "<"),
@@ -118,7 +118,7 @@ fn generic_types_and_typed_locals_have_native_highlights_without_lsp() {
             "missing {kind}: {text}"
         );
     }
-    assert!(!highlights.contains(&("type".into(), "NotAType".into())));
+    assert!(!highlights.contains(&("constructor".into(), "NotAType".into())));
 
     // Generic angle brackets participate in matching; comparison and shift
     // operators in the same document must remain ordinary operators.
@@ -134,6 +134,53 @@ fn generic_types_and_typed_locals_have_native_highlights_without_lsp() {
             assert_ne!(capture.node.start_byte(), shift);
         }
     }
+}
+
+#[test]
+fn named_types_use_the_same_theme_role_as_php() {
+    let source = "<?php\nnamespace Acme\\Demo;\nuse Acme\\Domain\\Product;\nclass Catalog {\n  function load(Product $item): array { array<string, Product> $items = []; return $items; }\n}\n";
+    let highlights = captures(QUERIES[0].1, source);
+    for name in ["Acme", "Demo", "Domain", "Product", "Catalog"] {
+        assert!(highlights.contains(&("constructor".into(), name.into())));
+        assert!(!highlights.contains(&("type".into(), name.into())));
+    }
+    for builtin in ["array", "string"] {
+        assert!(highlights.contains(&("type.builtin".into(), builtin.into())));
+    }
+    let rules: zed_extension_api::serde_json::Value = zed_extension_api::serde_json::from_str(
+        include_str!("../languages/ppphp/semantic_token_rules.json"),
+    )
+    .unwrap();
+    for role in [
+        "namespace",
+        "class",
+        "interface",
+        "enum",
+        "typeParameter",
+        "type",
+    ] {
+        let rule = rules
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|rule| rule["token_type"] == role && rule.get("token_modifiers").is_none())
+            .unwrap();
+        assert_eq!(rule["style"][0], "constructor");
+    }
+}
+
+#[test]
+fn fully_qualified_types_and_variable_sigils_keep_php_type_and_operator_roles() {
+    let source = "<?php\nfunction load(string $sku, \\Vendor\\Domain\\Product $item): \\Vendor\\Domain\\Product { return $item; }\n";
+    let highlights = captures(QUERIES[0].1, source);
+    for name in ["Vendor", "Domain", "Product", "\\Vendor\\Domain\\Product"] {
+        assert!(highlights.contains(&("type".into(), name.into())));
+    }
+    assert!(highlights.contains(&("operator".into(), "$".into())));
+    assert!(highlights.contains(&("type.builtin".into(), "string".into())));
+    assert!(!highlights
+        .iter()
+        .any(|(role, _)| role == "variable.parameter"));
 }
 
 #[test]

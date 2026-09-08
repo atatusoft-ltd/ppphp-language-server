@@ -8,7 +8,7 @@ The registry entry is not published yet. Before publication, maintainers must pu
 
 Once published, users install **++PHP** from Zed's extension registry and open their project. They do not need this repository, Rust, npm, a manually built server, or absolute executable paths.
 
-Zed distributes the compiled extension and ++PHP Tree-sitter grammar. Native highlighting covers built-in and named types, nested generics, generic parameters and bounds, typed locals, `throws`, and `when`. These colors work immediately, including when the language server or compiler is unavailable.
+Zed distributes the compiled extension and ++PHP Tree-sitter grammar. Native highlighting covers built-in and named types, nested generics, generic parameters and bounds, typed locals, `throws`, and `when`. Named types use the same theme role as PHP, including generic parameters and arguments; built-in types retain PHP's built-in type role. These colors work immediately, including when the language server or compiler is unavailable.
 
 On first language-server startup, the adapter obtains Node.js through Zed and downloads the standalone `server.cjs` for the extension's exact tooling version from this repository's GitHub release. It verifies the download against the release's `SHA256SUMS`, stores it in the extension host's cache, and verifies the cached copy before reusing it offline. Upgrades use a separate version directory. Interrupted downloads are discarded.
 
@@ -117,7 +117,7 @@ php scripts/build.php zed-dev
 
 Select the printed directory in **zed: install dev extension**, normally `%LOCALAPPDATA%\ppphp\zed-dev`. Re-run `zed-dev` after changing source, then rebuild the dev extension. It refreshes source and preserves Zed's build caches. On Linux/macOS, this staging command uses `build/zed-dev`.
 
-The repository's `zed-check`, `zed`, `editors`, and `all` targets use a short native Cargo target directory on Windows as well. UNC checkouts are temporarily mapped to a Windows drive for the complete build so npm and Gradle also retain the working directory. The mapping is released on completion or failure. Build the server on the machine hosting the project. Keep Windows and WSL `node_modules` installations separate: Windows npm cannot reuse Linux workspace links.
+The repository's `zed-check`, `zed`, `editors`, and `all` targets use a short native Cargo target directory on Windows as well. UNC builds use a generated native source copy under `%LOCALAPPDATA%\ppphp\windows-build`, excluding the checkout's dependencies and build caches. This lets npm create native workspace links and keeps Windows build tools on local paths. Artifacts are printed at their absolute paths in that copy. Build the server on the machine hosting the project.
 
 For installation errors, run **zed: open log**. See [Zed extension development](https://zed.dev/docs/extensions/developing-extensions) for grammar build prerequisites.
 

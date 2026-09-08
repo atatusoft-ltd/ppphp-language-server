@@ -1,27 +1,27 @@
 [
   {
     "token_type": "namespace",
-    "style": ["type"]
+    "style": ["constructor", "type"]
   },
   {
     "token_type": "class",
-    "style": ["type"]
+    "style": ["constructor", "type"]
   },
   {
     "token_type": "interface",
-    "style": ["type"]
+    "style": ["constructor", "type"]
   },
   {
     "token_type": "enum",
-    "style": ["enum", "type"]
+    "style": ["constructor", "type"]
   },
   {
     "token_type": "typeParameter",
-    "style": ["type"]
+    "style": ["constructor", "type"]
   },
   {
     "token_type": "parameter",
-    "style": ["variable.parameter", "variable"]
+    "style": ["variable"]
   },
   {
     "token_type": "variable",
@@ -54,7 +54,7 @@
   },
   {
     "token_type": "type",
-    "style": ["type"]
+    "style": ["constructor", "type"]
   },
   {
     "token_type": "decorator",
