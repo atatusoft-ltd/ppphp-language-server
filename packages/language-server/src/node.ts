@@ -81,7 +81,7 @@ connection.onInitialize((params: InitializeParams) => {
   return {
     serverInfo: {
       name: "++PHP Language Server",
-      version: packageMetadata.ppphpToolchainVersion,
+      version: packageMetadata.version,
     },
     capabilities: {
       codeActionProvider: true,

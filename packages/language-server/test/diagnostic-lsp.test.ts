@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { expect, it, vi } from "vitest";
+import packageMetadata from "../package.json";
 import {
   createMessageConnection,
   StreamMessageReader,
@@ -78,11 +79,15 @@ it("publishes only current worker snapshots and preserves errors when analysis i
         textDocument: { uri, version },
         contentChanges: [{ text }],
       });
-    await connection.sendRequest("initialize", {
-      processId: process.pid,
-      rootUri,
-      capabilities: {},
-    });
+    const initialization = await connection.sendRequest<{ serverInfo: { version: string } }>(
+      "initialize",
+      {
+        processId: process.pid,
+        rootUri,
+        capabilities: {},
+      },
+    );
+    expect(initialization.serverInfo.version).toBe(packageMetadata.version);
     await connection.sendNotification("initialized", {});
     await connection.sendNotification("textDocument/didOpen", {
       textDocument: { uri, languageId: "ppphp", version: 1, text: "<?php good;" },

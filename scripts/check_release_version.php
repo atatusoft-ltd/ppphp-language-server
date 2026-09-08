@@ -8,14 +8,21 @@ $repositoryRoot = dirname(__DIR__);
 try {
     $canonicalVersion = trim(read_text($repositoryRoot, 'VERSION'));
     if (
+        preg_match('/^[1-9]\d{3}\.[1-4]\.[1-9]\d*$/D', $canonicalVersion) !== 1
+        || (float) explode('.', $canonicalVersion)[2] > 2147483647
+    ) {
+        fail('VERSION must use numeric tooling CalVer YYYY.Q.R without compiler channel suffixes.');
+    }
+    $compilerVersion = trim(read_text($repositoryRoot, 'COMPILER_VERSION'));
+    if (
         preg_match(
             '/^(?:dev-\d{4}\.[1-4]\.[1-9]\d*|\d{4}\.[1-4]\.[1-9]\d*(?:-rc-[1-9]\d*)?)$/D',
-            $canonicalVersion,
+            $compilerVersion,
         ) !== 1
     ) {
         fail(
-            'VERSION must use canonical ++PHP CalVer YYYY.Q.R[-channel[-N]], received '
-                . json_encode($canonicalVersion, JSON_THROW_ON_ERROR),
+            'COMPILER_VERSION must use canonical ++PHP compiler CalVer, received '
+                . json_encode($compilerVersion, JSON_THROW_ON_ERROR),
         );
     }
 
@@ -26,19 +33,20 @@ try {
         ['res/textmate/ppphp/package.json', true],
     ];
 
-    foreach ($manifestExpectations as [$file, $carriesCanonicalVersion]) {
+    foreach ($manifestExpectations as [$file, $carriesCompilerVersion]) {
         $manifest = read_json($repositoryRoot, $file);
         expect_equal("{$file} version", $manifest['version'] ?? null, $canonicalVersion);
-        if ($carriesCanonicalVersion) {
+        if ($carriesCompilerVersion) {
             expect_equal(
                 "{$file} ppphpToolchainVersion",
                 $manifest['ppphpToolchainVersion'] ?? null,
-                $canonicalVersion,
+                $compilerVersion,
             );
         }
     }
 
     $lockfile = read_json($repositoryRoot, 'package-lock.json');
+    expect_equal('package-lock.json version', $lockfile['version'] ?? null, $canonicalVersion);
     foreach (['', 'editors/vscode', 'packages/language-server'] as $packagePath) {
         expect_equal(
             'package-lock.json package ' . json_encode($packagePath, JSON_THROW_ON_ERROR) . ' version',
@@ -59,7 +67,7 @@ try {
         expect_equal('release tag', getenv('GITHUB_REF_NAME'), 'v' . $canonicalVersion);
     }
 
-    fwrite(STDOUT, "Version metadata is consistent: {$canonicalVersion}.\n");
+    fwrite(STDOUT, "Version metadata is consistent: tooling {$canonicalVersion}, compiler {$compilerVersion}.\n");
 } catch (JsonException | RuntimeException $error) {
     fail($error->getMessage());
 }

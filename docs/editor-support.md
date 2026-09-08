@@ -19,7 +19,7 @@ The target for each editor is the experience described in the website design. Th
 
 | Editor                       | Distribution                                                                             | Target status | Current status |
 | ---------------------------- | ---------------------------------------------------------------------------------------- | ------------- | -------------- |
-| Visual Studio Code           | Marketplace extension (`ext install ppphp.ppphp-vscode`)                                 | Available     | Source preview |
+| Visual Studio Code           | Marketplace extension (`ext install AtatusoftLtd.ppphp-vscode`)                          | Available     | Source preview |
 | PhpStorm / IntelliJ          | JetBrains Marketplace plugin (`++PHP`)                                                   | Available     | Source preview |
 | Neovim                       | Tree-sitter grammar plus an `nvim-lspconfig` entry for `vim.lsp.enable("ppphp")`         | Beta          | Planned        |
 | Sublime Text                 | Syntax definition and LSP settings distributed through Package Control                   | Beta          | Planned        |
