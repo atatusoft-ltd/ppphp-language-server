@@ -8,13 +8,17 @@ The changes below are prepared for tooling release `2026.3.1`.
 
 ### Installing a release candidate
 
-The editor packages target compiler candidate `2026.3.1-rc-2` for their editor protocol. The RC suffix identifies the compiler, not the extension or plugin release. Install the compiler candidate explicitly in your project:
+The editor packages target compiler candidate `2026.3.1-rc-2` for their editor protocol. The RC suffix identifies the compiler, not the extension or plugin release.
+
+Publication prerequisite: the renamed Composer package `atatusoft/ppphp` is not yet published. The following command applies once this candidate is available under that name; it is not currently a working installation route. Existing checkouts can restore their locked dependencies with `composer install` in the meantime. Do not remove the old requirement until the intended replacement release is available.
 
 ```shell
-composer require --dev atatusoft-ltd/ppphp-src:2026.3.1-rc-2
+composer require --dev atatusoft/ppphp:2026.3.1-rc-2
 ```
 
 This opts into this candidate only; the unversioned installation command selects stable packages. See the [compiler's release notes](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/releases/2026.3.1-rc-2.md) for its prerequisites and release-specific behavior.
+
+Projects requiring the former package must follow the [package migration steps](docs/compiler-installation.md#migrating-from-the-former-package-name) first, using the candidate command above in place of the stable command. RC-1 remains published under `atatusoft-ltd/ppphp-src`; its historical installation commands, tags, and assets are unchanged. The compiler's GitHub repository also remains unchanged.
 
 ### Added
 
@@ -34,6 +38,8 @@ This opts into this candidate only; the unversioned installation command selects
 - Reproducible local checks, pinned CI actions, dependency updates, and contribution/security policies.
 
 ### Fixed
+
+- Current compiler installation and update instructions use the canonical Composer package `atatusoft/ppphp`, with migration and publication prerequisites documented. Compiler discovery continues to use the package-independent `vendor/bin/ppphp` proxy.
 
 - Extension, plugin and language-server release versions no longer inherit compiler RC suffixes. Compiler compatibility retains its exact identity separately. The VS Code publisher ID now matches the registered Marketplace publisher.
 

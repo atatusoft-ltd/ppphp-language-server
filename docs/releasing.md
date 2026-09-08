@@ -22,7 +22,7 @@ Do not insert the release value into evergreen documentation or product descript
 
 ## Release checklist
 
-1. Confirm the compatible ++PHP compiler version and diagnostic protocol. For a release candidate, include its exact compiler installation command in that release's notes and keep the editor READMEs' release-candidate links pointing to those instructions.
+1. Confirm the compatible ++PHP compiler version and diagnostic protocol. Verify the intended release is actually installable from the canonical Composer package `atatusoft/ppphp` before publishing editor packages that direct users to it. For a release candidate, include its exact compiler installation command in that release's notes and keep the editor READMEs' release-candidate links pointing to those instructions. Clear publication-blocker notes in the changelog and both editor setup guides only after verifying availability; candidate publication alone does not make the unversioned stable install command usable. Preserve historical instructions for releases under the former package name.
 2. Update `VERSION`, package and editor version fields, the lockfile, and dated release notes/changelogs for a tooling release. Update `COMPILER_VERSION` and its `ppphpToolchainVersion` fields only when the targeted compiler changes. Do not rewrite evergreen copy.
 3. Run `npm install --package-lock-only --ignore-scripts` to refresh the lockfile.
 4. Run `npm run check`.

@@ -1,10 +1,69 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   compilerProcessEnvironment,
   describeCompilerFailure,
   executeCompiler,
+  resolveCompiler,
   resolveCompilerInvocation,
 } from "../src/compiler-process.js";
+
+describe("compiler discovery", () => {
+  let workspace: string;
+
+  beforeEach(() => {
+    workspace = mkdtempSync(path.join(tmpdir(), "ppphp-compiler-discovery-"));
+    vi.stubEnv("PPPHP_COMPILER_PATH", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it.each(["atatusoft-ltd/ppphp-src", "atatusoft/ppphp"])(
+    "discovers the Composer proxy for %s without depending on the package directory",
+    (packageName) => {
+      const vendor = path.join(workspace, "vendor");
+      const packageBin = path.join(vendor, packageName, "bin");
+      const proxyBin = path.join(vendor, "bin");
+      mkdirSync(packageBin, { recursive: true });
+      mkdirSync(proxyBin, { recursive: true });
+      writeFileSync(path.join(packageBin, "ppphp"), "<?php // Compiler fixture\n");
+      writeFileSync(
+        path.join(proxyBin, "ppphp"),
+        `<?php require __DIR__ . '/../${packageName}/bin/ppphp';\n`,
+      );
+      const proxy = path.join(proxyBin, process.platform === "win32" ? "ppphp.bat" : "ppphp");
+      if (process.platform === "win32") writeFileSync(proxy, '@php "%~dp0ppphp" %*\n');
+
+      expect(resolveCompiler(undefined, workspace)).toBe(proxy);
+      // Windows executes the extensionless Composer PHP proxy, not the batch shell.
+      const invocation = resolveCompilerInvocation(proxy, ["--version"]);
+      expect(invocation.unavailableReason).toBeUndefined();
+      expect(invocation.compiler).toBe(proxy);
+      expect(invocation.usesPhpRuntime).toBe(process.platform === "win32");
+    },
+  );
+
+  it("preserves explicit configuration and environment override precedence", () => {
+    const bin = path.join(workspace, "vendor", "bin");
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(path.join(bin, process.platform === "win32" ? "ppphp.bat" : "ppphp"), "");
+    const environmentCompiler = path.join(workspace, "environment-compiler");
+    const configuredCompiler = path.join(workspace, "configured-compiler");
+    vi.stubEnv("PPPHP_COMPILER_PATH", environmentCompiler);
+
+    expect(resolveCompiler(configuredCompiler, workspace)).toBe(configuredCompiler);
+    expect(resolveCompiler(undefined, workspace)).toBe(environmentCompiler);
+  });
+
+  it("falls back to PATH when no project proxy or override exists", () => {
+    expect(resolveCompiler(undefined, workspace)).toBe("ppphp");
+  });
+});
 
 describe("compiler process execution", () => {
   it("does not launch already-cancelled work", async () => {

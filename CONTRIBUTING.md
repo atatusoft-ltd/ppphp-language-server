@@ -51,7 +51,7 @@ php scripts/sync_language_resources.php
 
 Product descriptions, headings, introductions, examples, component labels, and editor READMEs describe ++PHP without release numbers or channel labels. Keep compatibility in machine-readable manifests and installation prerequisites; link to those sources instead of duplicating their constraints. Exact releases belong in dated release notes and changelogs, not evergreen product copy.
 
-The default public install command is `composer require --dev atatusoft-ltd/ppphp-src`. Pinned prerelease commands belong only under an explicit **Installing a release candidate** section or in that release's notes. A release bump must not require rewriting product descriptions or READMEs. The release consistency check validates metadata, not marketing prose.
+The default public install command is `composer require --dev atatusoft/ppphp`. Pinned prerelease commands belong only under an explicit **Installing a release candidate** section or in that release's notes. Preserve historical commands for releases published under the former Composer name; the GitHub repository remains `atatusoft-ltd/ppphp-src`. See the [compiler installation guide](docs/compiler-installation.md) for migration. A release bump must not require rewriting product descriptions or READMEs. The release consistency check validates metadata, not marketing prose.
 
 Adapt copy to its host. The JetBrains plugin is named **++PHP**; supported IDEs belong in compatibility metadata, not the product title. Its Marketplace overview comes from the HTML plugin description, not the VS Code README. Keep setup details in the user guide and maintain gallery/contact fields separately; see the [JetBrains listing handoff](docs/jetbrains-marketplace.md).
 
