@@ -1,0 +1,23 @@
+<?php
+
+namespace DebuggerSpike;
+
+final class Quote
+{
+    public function calculate(int $quantity): int throws \RuntimeException
+    {
+        int $unitPrice = 100; // BREAK:price
+        int $subtotal = $unitPrice * $quantity; // BREAK:subtotal
+        int $tax = LegacyTax::calculate($subtotal); // BREAK:call
+        int $discount = when ($quantity >= 3) { // BREAK:when
+            return 25; // BREAK:discount
+        } else {
+            return 0;
+        };
+        int $total = $subtotal + $tax - $discount; // BREAK:total
+        if ($quantity === 0) {
+            throw new \RuntimeException('Quantity must be positive'); // BREAK:throw
+        }
+        return $total; // BREAK:return
+    }
+}

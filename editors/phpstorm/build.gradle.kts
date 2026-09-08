@@ -48,6 +48,24 @@ sourceSets {
     }
 }
 
+// Opt-in real-runtime experiment; excluded from normal tests and shipped artifacts.
+if (providers.gradleProperty("debuggerSpike").orNull == "true") {
+    val spikeTemp = providers.environmentVariable("PPPHP_SPIKE_TEMP").get()
+    intellijPlatform.sandboxContainer.set(file("$spikeTemp/phpstorm-sandbox"))
+    intellijPlatform.pluginVerification.verificationReportsDirectory.set(file("$spikeTemp/phpstorm-verification"))
+    kotlin.sourceSets.named("test") {
+        kotlin.srcDir("../../tools/debugger-spike/phpstorm")
+    }
+    tasks.withType<Test>().configureEach {
+        // IDE logs and test captures must remain outside user workspaces.
+        systemProperty("idea.log.path", "$spikeTemp/phpstorm-log")
+        reports.junitXml.outputLocation = file("$spikeTemp/phpstorm-test-results")
+        reports.html.outputLocation = file("$spikeTemp/phpstorm-test-report")
+        binaryResultsDirectory.set(file("$spikeTemp/phpstorm-test-binary"))
+        testLogging.showStandardStreams = true
+    }
+}
+
 intellijPlatform {
     pluginConfiguration {
         id = "com.atatusoft.ppphp"

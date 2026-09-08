@@ -1,0 +1,8 @@
+{
+  "source": ["src"],
+  "output": "build",
+  "cache": ".ppphp-cache",
+  "targetPhpVersion": "8.4",
+  "stubs": [],
+  "exclude": ["build", ".ppphp-cache"]
+}
