@@ -90,6 +90,8 @@ Editor-launched compiler processes default to a **512 MiB** PHP memory limit. VS
 
 On Windows, the language server invokes Composer's argument-safe PHP proxy directly instead of executing `ppphp.bat` through a shell. PHP is resolved as `php.exe` on `PATH`; set `PPPHP_PHP_PATH` to an absolute PHP executable path when PhpStorm does not inherit that path.
 
+Every editor compiler launch also receives `PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES` with the selected limit. This per-child setting communicates the editor's choice to the compiler's native memory policy; PHP script calls retain the matching `-d memory_limit` argument for startup and older compilers. The parent editor environment is not modified. Custom shell wrappers receive the setting too, but must preserve it when launching a compiler that supports it.
+
 Both editor integrations use the host's standard definition action. Cmd+Click works on macOS, Ctrl+Click on Windows and Linux, and the editors' keyboard/menu **Go to Definition** commands remain available. Resolution covers imports, project classes and functions, typed locals and parameters, inherited methods and properties, and typed call/property chains.
 
 Class-family declarations and references use each editor's standard rename action: **Rename Symbol** in VS Code and **Refactor | Rename** in PhpStorm. Project-wide rename requires `ppphp.json` at the workspace root so the language server can honor its source, output, cache, and exclusion boundaries.

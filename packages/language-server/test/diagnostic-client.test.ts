@@ -35,6 +35,7 @@ async function log(root: string) {
           id?: number;
           version?: number;
           memoryLimit?: string;
+          memoryLimitEnvironment?: string;
         },
     );
 }
@@ -66,13 +67,16 @@ describe("retained diagnostic client", () => {
     const target = await project();
     const value = client();
     await run(value, target);
-    await run(value, target, 2, undefined, 3000, 768);
-    await run(value, target, 3, undefined, 3000, 768);
+    await run(value, target, 2, undefined, 3000, 256);
+    await run(value, target, 3, undefined, 3000, 256);
     expect(
       (await log(target.root))
         .filter((event) => event.type === "start")
-        .map((event) => event.memoryLimit),
-    ).toEqual(["512M", "768M"]);
+        .map((event) => [event.memoryLimit, event.memoryLimitEnvironment]),
+    ).toEqual([
+      ["512M", "512"],
+      ["256M", "256"],
+    ]);
   });
 
   it("preserves a custom limit in the single-shot fallback", async () => {
@@ -83,8 +87,11 @@ describe("retained diagnostic client", () => {
     expect(
       (await log(target.root))
         .filter((event) => event.type === "start")
-        .map((event) => event.memoryLimit),
-    ).toEqual(["1024M", "1024M"]);
+        .map((event) => [event.memoryLimit, event.memoryLimitEnvironment]),
+    ).toEqual([
+      ["1024M", "1024"],
+      ["1024M", "1024"],
+    ]);
   });
   it("validates fragmented UTF-8/CRLF framing and reuses one serial worker", async () => {
     const target = await project("fragmented");

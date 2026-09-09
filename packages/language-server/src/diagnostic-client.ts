@@ -3,7 +3,7 @@ import { realpath, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
-  compilerProcessEnvironment,
+  compilerLaunchEnvironment,
   executeCompiler,
   resolveCompilerInvocation,
   type CompilerExecutionResult,
@@ -53,7 +53,7 @@ export class DiagnosticClient {
     try {
       await this.reaping;
       if (isCancelled()) return cancelled;
-      const environment = compilerProcessEnvironment();
+      const environment = compilerLaunchEnvironment(memoryLimitMegabytes);
       const invocation = resolveCompilerInvocation(
         command,
         args,

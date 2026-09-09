@@ -34,9 +34,10 @@ export interface CompilerInvocation {
 }
 
 export const DEFAULT_COMPILER_MEMORY_LIMIT_MEGABYTES = 512;
+export const COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE = "PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES";
 
 export function compilerMemoryLimitMegabytes(
-  value: unknown = Number(process.env.PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES),
+  value: unknown = Number(process.env[COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE]),
 ): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 2147483647
     ? value
@@ -72,7 +73,7 @@ export function executeCompiler(
       resolve(cancelled);
       return;
     }
-    const environment = compilerProcessEnvironment();
+    const environment = compilerLaunchEnvironment(memoryLimitMegabytes);
     const invocation = resolveCompilerInvocation(
       command,
       args,
@@ -294,5 +295,31 @@ export function compilerProcessEnvironment(
   });
 
   result[pathKey] = directories.join(delimiter);
+  return result;
+}
+
+/** Per-child caller intent, shared with the compiler's native CLI memory policy. */
+export function compilerLaunchEnvironment(
+  memoryLimitMegabytes?: number,
+  environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
+  const result = compilerProcessEnvironment(environment, platform);
+  const key = COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE;
+  const inheritedKey =
+    platform === "win32"
+      ? (Object.keys(environment).find((candidate) => candidate.toUpperCase() === key) ?? key)
+      : key;
+  const limit = compilerMemoryLimitMegabytes(
+    memoryLimitMegabytes ?? Number(environment[inheritedKey]),
+  );
+  // Node de-duplicates Windows environment keys case-insensitively. Keep only
+  // the selected value, never a differently-cased inherited limit as well.
+  if (platform === "win32") {
+    for (const candidate of Object.keys(result)) {
+      if (candidate.toUpperCase() === key) delete result[candidate];
+    }
+  }
+  result[key] = String(limit);
   return result;
 }

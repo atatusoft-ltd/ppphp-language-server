@@ -7,7 +7,7 @@ $mode = trim(@file_get_contents($root . '/mode') ?: 'normal');
 $log = static function (array $entry) use ($root): void {
     file_put_contents($root . '/transport.log', json_encode(['pid' => getmypid(), ...$entry]) . "\n", FILE_APPEND);
 };
-$log(['type' => 'start', 'server' => $server, 'memoryLimit' => ini_get('memory_limit')]);
+$log(['type' => 'start', 'server' => $server, 'memoryLimit' => ini_get('memory_limit'), 'memoryLimitEnvironment' => getenv('PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES')]);
 $write = static function (array $frame) use ($mode): void {
     $json = json_encode($frame, JSON_UNESCAPED_UNICODE) . ($mode === 'fragmented' ? "\r\n" : "\n");
     if ($mode === 'fragmented') {
