@@ -1,5 +1,13 @@
 import { execFile, type ChildProcess } from "node:child_process";
-import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
+import {
+  accessSync,
+  closeSync,
+  constants,
+  existsSync,
+  openSync,
+  readSync,
+  statSync,
+} from "node:fs";
 import path from "node:path";
 
 export interface CompilerProcessSettings {
@@ -144,6 +152,8 @@ export function resolveCompilerInvocation(
   fileExists: (candidate: string) => boolean = existsSync,
   memoryLimitMegabytes?: number,
   cwd: string = process.cwd(),
+  pathExecutable: (candidate: string) => boolean = (candidate) =>
+    isExecutableFile(candidate, platform),
 ): CompilerInvocation {
   const paths = platform === "win32" ? path.win32 : path.posix;
   const pathKey = Object.keys(environment).find((key) => key.toLowerCase() === "path") ?? "PATH";
@@ -159,7 +169,12 @@ export function resolveCompilerInvocation(
             ? [base + ".exe", base + ".com", base + ".bat", base + ".cmd", base]
             : [base];
         });
-  const located = candidates.find(fileExists) ?? compiler;
+  // Explicit PHP paths need not have an executable bit, but PATH lookup must
+  // skip non-executable files/directories just as normal process launch would.
+  const located = qualified ? candidates[0] : candidates.find(pathExecutable);
+  if (located === undefined) {
+    return { command: compiler, arguments: [...args], compiler, usesPhpRuntime: false };
+  }
   const extension = paths.extname(located).toLowerCase();
   const isWindowsScript = platform === "win32" && (extension === ".bat" || extension === ".cmd");
   const isPhpScript =
@@ -202,6 +217,16 @@ export function resolveCompilerInvocation(
     usesPhpRuntime: true,
     phpScript: script,
   };
+}
+
+function isExecutableFile(file: string, platform: NodeJS.Platform): boolean {
+  try {
+    if (!statSync(file).isFile()) return false;
+    accessSync(file, platform === "win32" ? constants.F_OK : constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Recognize Composer proxies/symlinks without treating arbitrary wrappers as PHP. */

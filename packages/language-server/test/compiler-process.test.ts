@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -159,6 +159,9 @@ describe("compiler process execution", () => {
       "win32",
       { Path: "C:\\tools;C:\\Composer bin", PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES: "768" },
       (file) => ["C:\\Composer bin\\ppphp.bat", "C:\\Composer bin\\ppphp"].includes(file),
+      undefined,
+      "C:\\workspace",
+      (file) => file === "C:\\Composer bin\\ppphp.bat",
     );
     expect(result.command).toBe("php.exe");
     expect(result.arguments).toEqual([
@@ -252,6 +255,7 @@ describe("compiler process execution", () => {
       const script = path.join(root, "compiler.php");
       const proxy = path.join(root, "ppphp");
       writeFileSync(script, '#!/usr/bin/env php\n<?php echo ini_get("memory_limit");');
+      chmodSync(script, 0o755);
       symlinkSync(script, proxy);
       const result = resolveCompilerInvocation(
         "ppphp",
@@ -268,6 +272,49 @@ describe("compiler process execution", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it.skipIf(process.platform === "win32")(
+    "skips non-executable files and directories on PATH",
+    () => {
+      const root = mkdtempSync(path.join(tmpdir(), "ppphp-path-permissions-"));
+      try {
+        const blocked = path.join(root, "blocked");
+        const directory = path.join(root, "directory");
+        const valid = path.join(root, "valid");
+        for (const folder of [blocked, directory, valid]) mkdirSync(folder);
+        writeFileSync(path.join(blocked, "ppphp"), "<?php echo 'unintended compiler';");
+        chmodSync(path.join(blocked, "ppphp"), 0o644);
+        mkdirSync(path.join(directory, "ppphp"));
+        const compiler = path.join(valid, "ppphp");
+        writeFileSync(compiler, "#!/usr/bin/env php\n<?php echo 'real compiler';");
+        chmodSync(compiler, 0o755);
+        const invocation = resolveCompilerInvocation("ppphp", ["check"], process.platform, {
+          PATH: [blocked, directory, valid].join(path.delimiter),
+        });
+        expect(invocation.phpScript).toBe(compiler);
+        expect(invocation.arguments).toEqual(["-d", "memory_limit=512M", compiler, "check"]);
+
+        // No executable match must not fall back to interpreting a same-named cwd file.
+        const unresolved = resolveCompilerInvocation(
+          "ppphp",
+          ["check"],
+          process.platform,
+          { PATH: blocked },
+          undefined,
+          undefined,
+          blocked,
+        );
+        expect(unresolved).toEqual({
+          command: "ppphp",
+          arguments: ["check"],
+          compiler: "ppphp",
+          usesPhpRuntime: false,
+        });
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("does not reinterpret a custom shell wrapper as PHP", () => {
     const root = mkdtempSync(path.join(tmpdir(), "ppphp-wrapper-"));
