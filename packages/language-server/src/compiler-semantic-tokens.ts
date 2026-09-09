@@ -52,6 +52,8 @@ export async function classifySemanticTokens(
     workspaceRoot,
     settings.timeoutMilliseconds,
     buildSemanticTokensRequest(document, filePath),
+    undefined,
+    settings.compilerMemoryLimitMegabytes,
   );
 
   if (execution.failure) {

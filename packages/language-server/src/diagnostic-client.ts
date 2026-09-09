@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { realpath, stat } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import {
   compilerProcessEnvironment,
@@ -23,7 +24,15 @@ export class DiagnosticClient {
   private active = false;
   private generation = 0;
 
-  readonly execute: typeof executeCompiler = async (command, args, cwd, timeout, input, signal) => {
+  readonly execute: typeof executeCompiler = async (
+    command,
+    args,
+    cwd,
+    timeout,
+    input,
+    signal,
+    memoryLimitMegabytes,
+  ) => {
     const cancelled: CompilerExecutionResult = {
       stdout: "",
       stderr: "",
@@ -45,9 +54,25 @@ export class DiagnosticClient {
       await this.reaping;
       if (isCancelled()) return cancelled;
       const environment = compilerProcessEnvironment();
-      const invocation = resolveCompilerInvocation(command, args, process.platform, environment);
+      const invocation = resolveCompilerInvocation(
+        command,
+        args,
+        process.platform,
+        environment,
+        existsSync,
+        memoryLimitMegabytes,
+        cwd,
+      );
       if (invocation.unavailableReason || input === undefined) {
-        return await executeCompiler(command, args, cwd, timeout, input, signal);
+        return await executeCompiler(
+          command,
+          args,
+          cwd,
+          timeout,
+          input,
+          signal,
+          memoryLimitMegabytes,
+        );
       }
       const identity = await workerIdentity(invocation, cwd, environment, timeout);
       if (isCancelled()) return cancelled;
@@ -93,10 +118,26 @@ export class DiagnosticClient {
         }
       }
       if (isCancelled()) return cancelled;
-      return await executeCompiler(command, args, cwd, timeout, input, signal);
+      return await executeCompiler(
+        command,
+        args,
+        cwd,
+        timeout,
+        input,
+        signal,
+        memoryLimitMegabytes,
+      );
     } catch {
       if (isCancelled()) return cancelled;
-      return await executeCompiler(command, args, cwd, timeout, input, signal);
+      return await executeCompiler(
+        command,
+        args,
+        cwd,
+        timeout,
+        input,
+        signal,
+        memoryLimitMegabytes,
+      );
     } finally {
       this.active = false;
     }
@@ -122,7 +163,7 @@ async function workerIdentity(
 ): Promise<string> {
   const executable = await executablePath(invocation.command, cwd, environment);
   const compiler = invocation.usesPhpRuntime
-    ? path.resolve(cwd, invocation.arguments[0]!)
+    ? path.resolve(cwd, invocation.phpScript!)
     : executable;
   const files = new Set([executable, compiler]);
   // Composer proxies and symlinks can remain unchanged across package upgrades.

@@ -79,11 +79,14 @@ See [docs/editor-support.md](docs/editor-support.md) for the editors and IDEs ++
 VS Code exposes these workspace/resource settings:
 
 - `ppphp.compiler.path`
+- `ppphp.compiler.memoryLimitMegabytes`
 - `ppphp.completion.importSorting`
 - `ppphp.diagnostics.compiler.enabled`
 - `ppphp.diagnostics.compiler.timeoutMilliseconds`
 
 Clients that return no ++PHP configuration use safe defaults. For an explicit compiler override, set `PPPHP_COMPILER_PATH`. The PhpStorm plugin uses the project's local Node.js runtime configured in the IDE, then falls back to `PATH`. `PPPHP_NODE_PATH` or the JVM option `-Dppphp.language.server.node.path=/absolute/path/to/node` can explicitly override both.
+
+Editor-launched compiler processes default to a **512 MiB** PHP memory limit. VS Code exposes `ppphp.compiler.memoryLimitMegabytes`; PhpStorm exposes **Settings → Languages & Frameworks → ++PHP → Compiler memory limit (MiB)**. Other LSP clients can return `compiler.memoryLimitMegabytes` as a positive integer in the `ppphp` configuration section. The limit applies to each compiler process, including retained diagnostics workers, without changing `php.ini` or independent terminal commands. Custom shell wrappers retain control of their own PHP invocation; select the underlying PHP compiler script to use this limit.
 
 On Windows, the language server invokes Composer's argument-safe PHP proxy directly instead of executing `ppphp.bat` through a shell. PHP is resolved as `php.exe` on `PATH`; set `PPPHP_PHP_PATH` to an absolute PHP executable path when PhpStorm does not inherit that path.
 

@@ -1,9 +1,10 @@
 import { execFile, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
 import path from "node:path";
 
 export interface CompilerProcessSettings {
   compilerPath?: string;
+  compilerMemoryLimitMegabytes?: number;
   timeoutMilliseconds: number;
 }
 
@@ -20,7 +21,18 @@ export interface CompilerInvocation {
   arguments: string[];
   compiler: string;
   usesPhpRuntime: boolean;
+  phpScript?: string;
   unavailableReason?: string;
+}
+
+export const DEFAULT_COMPILER_MEMORY_LIMIT_MEGABYTES = 512;
+
+export function compilerMemoryLimitMegabytes(
+  value: unknown = Number(process.env.PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES),
+): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 2147483647
+    ? value
+    : DEFAULT_COMPILER_MEMORY_LIMIT_MEGABYTES;
 }
 
 export function resolveCompiler(configuredPath: string | undefined, workspaceRoot: string): string {
@@ -44,6 +56,7 @@ export function executeCompiler(
   timeoutMilliseconds: number,
   input?: string,
   signal?: AbortSignal,
+  memoryLimitMegabytes?: number,
 ): Promise<CompilerExecutionResult> {
   return new Promise((resolve) => {
     const cancelled = { stdout: "", stderr: "", notFound: false, cancelled: true };
@@ -52,7 +65,15 @@ export function executeCompiler(
       return;
     }
     const environment = compilerProcessEnvironment();
-    const invocation = resolveCompilerInvocation(command, args, process.platform, environment);
+    const invocation = resolveCompilerInvocation(
+      command,
+      args,
+      process.platform,
+      environment,
+      existsSync,
+      memoryLimitMegabytes,
+      cwd,
+    );
     if (invocation.unavailableReason) {
       resolve({
         stdout: "",
@@ -121,10 +142,28 @@ export function resolveCompilerInvocation(
   platform: NodeJS.Platform = process.platform,
   environment: NodeJS.ProcessEnv = process.env,
   fileExists: (candidate: string) => boolean = existsSync,
+  memoryLimitMegabytes?: number,
+  cwd: string = process.cwd(),
 ): CompilerInvocation {
-  const extension = path.extname(compiler).toLowerCase();
+  const paths = platform === "win32" ? path.win32 : path.posix;
+  const pathKey = Object.keys(environment).find((key) => key.toLowerCase() === "path") ?? "PATH";
+  const qualified = paths.isAbsolute(compiler) || compiler.includes("/") || compiler.includes("\\");
+  const candidates = qualified
+    ? [paths.resolve(cwd, compiler)]
+    : (environment[pathKey] ?? "")
+        .split(platform === "win32" ? ";" : ":")
+        .filter(Boolean)
+        .flatMap((directory) => {
+          const base = paths.resolve(cwd, directory, compiler);
+          return platform === "win32" && !paths.extname(compiler)
+            ? [base + ".exe", base + ".com", base + ".bat", base + ".cmd", base]
+            : [base];
+        });
+  const located = candidates.find(fileExists) ?? compiler;
+  const extension = paths.extname(located).toLowerCase();
   const isWindowsScript = platform === "win32" && (extension === ".bat" || extension === ".cmd");
-  const isPhpScript = extension === ".php" || extension === ".phar";
+  const isPhpScript =
+    extension === ".php" || extension === ".phar" || (extension === "" && isPhpSource(located));
 
   if (!isWindowsScript && !isPhpScript) {
     return {
@@ -135,7 +174,7 @@ export function resolveCompilerInvocation(
     };
   }
 
-  const script = isWindowsScript ? compiler.slice(0, -extension.length) : compiler;
+  const script = isWindowsScript ? located.slice(0, -extension.length) : located;
   if (!fileExists(script)) {
     return {
       command: compiler,
@@ -151,10 +190,34 @@ export function resolveCompilerInvocation(
   const configuredPhp = environment.PPPHP_PHP_PATH?.trim();
   return {
     command: configuredPhp || (platform === "win32" ? "php.exe" : "php"),
-    arguments: [script, ...args],
+    arguments: [
+      "-d",
+      `memory_limit=${compilerMemoryLimitMegabytes(
+        memoryLimitMegabytes ?? Number(environment.PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES),
+      )}M`,
+      script,
+      ...args,
+    ],
     compiler,
     usesPhpRuntime: true,
+    phpScript: script,
   };
+}
+
+/** Recognize Composer proxies/symlinks without treating arbitrary wrappers as PHP. */
+function isPhpSource(file: string): boolean {
+  let descriptor: number | undefined;
+  try {
+    if (!statSync(file).isFile()) return false;
+    descriptor = openSync(file, "r");
+    const buffer = Buffer.alloc(2048);
+    const length = readSync(descriptor, buffer, 0, buffer.length, 0);
+    return /^(?:#![^\r\n]*\r?\n)?\s*<\?php\b/.test(buffer.toString("utf8", 0, length));
+  } catch {
+    return false;
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
 }
 
 export function describeCompilerFailure(

@@ -71,6 +71,14 @@
           "scope": "resource",
           "description": "Absolute path to the ppphp compiler. When empty, workspace vendor/bin/ppphp and then PATH are searched."
         },
+        "ppphp.compiler.memoryLimitMegabytes": {
+          "type": "integer",
+          "default": 512,
+          "minimum": 1,
+          "maximum": 2147483647,
+          "scope": "resource",
+          "description": "PHP memory limit in MiB for each compiler process, including live diagnostics and navigation. Does not change php.ini."
+        },
         "ppphp.completion.importSorting": {
           "type": "string",
           "enum": [

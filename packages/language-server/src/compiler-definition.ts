@@ -138,6 +138,8 @@ async function resolveCompilerSymbolAtPosition(
     workspaceRoot,
     settings.timeoutMilliseconds,
     request,
+    undefined,
+    settings.compilerMemoryLimitMegabytes,
   );
 
   if (execution.failure) {

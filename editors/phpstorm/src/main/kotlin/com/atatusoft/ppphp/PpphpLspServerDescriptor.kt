@@ -52,6 +52,9 @@ class PpphpLspServerDescriptor(project: Project, private val pluginRoot: Path) :
             PhpCodeStyleSettings.ImportSorting.DONT_SORT -> "none"
         }
         return mapOf(
+            "compiler" to mapOf(
+                "memoryLimitMegabytes" to PpphpCompilerSettings.getInstance(project).memoryLimitMegabytes,
+            ),
             "completion" to mapOf("importSorting" to protocolSorting),
         )
     }
@@ -71,6 +74,11 @@ internal object PpphpLanguageServerRuntime {
         val server = findBundledServer(pluginRoot)
 
         return GeneralCommandLine(node.toString(), server.toString(), *arguments).also { commandLine ->
+            // Native rename helpers use the same project limit as the LSP worker.
+            commandLine.withEnvironment(
+                PpphpCompilerSettings.MEMORY_ENVIRONMENT_VARIABLE,
+                PpphpCompilerSettings.getInstance(project).memoryLimitMegabytes.toString(),
+            )
             workingDirectory
                 ?.let(Path::of)
                 ?.takeIf(Files::isDirectory)

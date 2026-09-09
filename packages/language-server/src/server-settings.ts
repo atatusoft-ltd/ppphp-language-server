@@ -1,4 +1,5 @@
 import type { CompilerSettings } from "./compiler-diagnostics.js";
+import { compilerMemoryLimitMegabytes } from "./compiler-process.js";
 
 export type ImportSorting = "alphabetic" | "length" | "none";
 
@@ -8,6 +9,7 @@ export interface ServerSettings extends CompilerSettings {
 
 export const DEFAULT_SETTINGS: ServerSettings = {
   enabled: true,
+  compilerMemoryLimitMegabytes: compilerMemoryLimitMegabytes(),
   importSorting: "alphabetic",
   timeoutMilliseconds: 10_000,
 };
@@ -24,6 +26,7 @@ export function compilerSettingsFromConfiguration(configuration: unknown): Serve
   const timeout = diagnosticCompiler?.timeoutMilliseconds;
 
   return {
+    compilerMemoryLimitMegabytes: compilerMemoryLimitMegabytes(compiler?.memoryLimitMegabytes),
     compilerPath:
       typeof configuredPath === "string" && configuredPath.trim() !== ""
         ? configuredPath
