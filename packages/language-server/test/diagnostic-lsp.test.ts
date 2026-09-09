@@ -82,6 +82,7 @@ it("publishes only current worker snapshots and preserves errors when analysis i
               pid: number;
               server?: boolean;
               memoryLimit?: string;
+              memoryLimitEnvironment?: string;
             },
         );
     const waitFor = (assert: () => unknown) => vi.waitFor(assert, { timeout: 5000, interval: 10 });
@@ -140,12 +141,14 @@ it("publishes only current worker snapshots and preserves errors when analysis i
     const starts = (await events()).filter((event) => event.type === "start" && event.server);
     expect(starts).toHaveLength(1);
     expect(starts[0]?.memoryLimit).toBe("512M");
+    expect(starts[0]?.memoryLimitEnvironment).toBe("512");
 
     configuration = { compiler: { memoryLimitMegabytes: 768 } };
     await connection.sendNotification("workspace/didChangeConfiguration", { settings: {} });
     await waitFor(async () => {
       const updated = (await events()).filter((event) => event.type === "start" && event.server);
       expect(updated.map((event) => event.memoryLimit)).toEqual(["512M", "768M"]);
+      expect(updated.map((event) => event.memoryLimitEnvironment)).toEqual(["512", "768"]);
     });
     await change(8, "<?php still repaired;");
     await waitFor(() =>

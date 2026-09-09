@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   compilerProcessEnvironment,
+  compilerLaunchEnvironment,
+  COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE,
   describeCompilerFailure,
   executeCompiler,
   resolveCompiler,
@@ -233,21 +235,71 @@ describe("compiler process execution", () => {
     expect(environment).toEqual({ Path: "C:\\PHP;C:\\Node" });
   });
 
-  it.each([undefined, 768])(
+  it.each([undefined, 256, 768])(
     "sets the real PHP limit for extensionless Composer scripts (%s)",
     async (limit) => {
       const root = mkdtempSync(path.join(tmpdir(), "ppphp-memory-"));
       try {
         const script = path.join(root, "ppphp");
-        writeFileSync(script, '#!/usr/bin/env php\n<?php echo ini_get("memory_limit");\n');
+        writeFileSync(
+          script,
+          '#!/usr/bin/env php\n<?php echo json_encode([ini_get("memory_limit"), getenv("PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES")]);\n',
+        );
         const result = await executeCompiler(script, [], root, 5000, undefined, undefined, limit);
         expect(result.failure).toBeUndefined();
-        expect(result.stdout).toBe(`${limit ?? 512}M`);
+        expect(JSON.parse(result.stdout)).toEqual([`${limit ?? 512}M`, String(limit ?? 512)]);
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
     },
   );
+
+  it("isolates concurrent child limits from an inherited setting", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "ppphp-memory-isolation-"));
+    const key = COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE;
+    const previous = process.env[key];
+    try {
+      process.env[key] = "2048";
+      const script = path.join(root, "compiler.php");
+      writeFileSync(
+        script,
+        '<?php echo json_encode([ini_get("memory_limit"), getenv("PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES")]);',
+      );
+      const results = await Promise.all(
+        [256, 768].map((limit) =>
+          executeCompiler(script, [], root, 5000, undefined, undefined, limit),
+        ),
+      );
+      expect(results.map((result) => JSON.parse(result.stdout))).toEqual([
+        ["256M", "256"],
+        ["768M", "768"],
+      ]);
+      expect(process.env[key]).toBe("2048");
+    } finally {
+      if (previous === undefined) delete process.env[key];
+      else process.env[key] = previous;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("normalizes per-child memory intent without changing the input environment", () => {
+    const key = COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE;
+    const inherited = { PATH: "/bin", [key]: "1024" };
+    expect(compilerLaunchEnvironment(undefined, inherited)[key]).toBe("1024");
+    expect(compilerLaunchEnvironment(256, inherited)[key]).toBe("256");
+    expect(compilerLaunchEnvironment(0, inherited)[key]).toBe("512");
+    expect(compilerLaunchEnvironment(undefined, { [key]: "invalid" })[key]).toBe("512");
+    expect(inherited).toEqual({ PATH: "/bin", [key]: "1024" });
+  });
+
+  it("replaces differently cased Windows memory settings with one canonical key", () => {
+    const key = COMPILER_MEMORY_LIMIT_ENVIRONMENT_VARIABLE;
+    const inherited = { Path: "C:\\PHP", [key.toLowerCase()]: "1024" };
+    expect(compilerLaunchEnvironment(undefined, inherited, "win32")[key]).toBe("1024");
+    const selected = compilerLaunchEnvironment(256, inherited, "win32");
+    expect(selected).toEqual({ Path: "C:\\PHP", [key]: "256" });
+    expect(inherited[key.toLowerCase()]).toBe("1024");
+  });
 
   it("finds extensionless PHP scripts on PATH and follows symlinks", () => {
     const root = mkdtempSync(path.join(tmpdir(), "ppphp-path-memory-"));

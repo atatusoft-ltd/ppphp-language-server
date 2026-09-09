@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Fixed
 
+- Editor memory settings are passed explicitly to the compiler's native memory policy as well as PHP startup, including retained workers and fallback calls. Per-project limits remain isolated from inherited settings and other projects.
 - Editor-launched compiler processes now default to a 512 MiB PHP memory limit, configurable in VS Code and PhpStorm settings. The limit covers live diagnostics, fallback checks, navigation and rename, including extensionless Composer proxies, without requiring edits to `php.ini`. Changed limits retire retained diagnostics workers automatically.
 
 ## [2026.3.2] - 2026-09-08
