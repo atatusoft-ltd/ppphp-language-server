@@ -36,6 +36,8 @@
     <depends optional="true" config-file="ppphp-lsp.xml">com.intellij.modules.lsp</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <projectConfigurable parentId="language" id="ppphp.compiler" displayName="++PHP"
+            instance="com.atatusoft.ppphp.PpphpCompilerConfigurable" />
         <fileType name="++PHP" implementationClass="com.atatusoft.ppphp.PpphpFileType" fieldName="INSTANCE" language="++PHP" extensions="ppphp" />
         <lang.syntaxHighlighterFactory language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpSyntaxHighlighterFactory" />
         <lang.parserDefinition language="++PHP" implementationClass="com.atatusoft.ppphp.PpphpParserDefinition" />

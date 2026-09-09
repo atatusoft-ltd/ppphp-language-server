@@ -17,6 +17,7 @@ describe("language-server host settings", () => {
       }),
     ).toEqual({
       compilerPath: "/tools/ppphp",
+      compilerMemoryLimitMegabytes: 512,
       enabled: false,
       importSorting: "alphabetic",
       timeoutMilliseconds: 2_500,
@@ -38,6 +39,19 @@ describe("language-server host settings", () => {
       compilerSettingsFromConfiguration({ completion: { importSorting: "unexpected" } })
         .importSorting,
     ).toBe(DEFAULT_SETTINGS.importSorting);
+  });
+
+  it("accepts a positive whole-number compiler memory limit", () => {
+    expect(
+      compilerSettingsFromConfiguration({ compiler: { memoryLimitMegabytes: 1024 } })
+        .compilerMemoryLimitMegabytes,
+    ).toBe(1024);
+    for (const value of [0, -1, 1.5, "1024", NaN, Infinity, 2147483648, null]) {
+      expect(
+        compilerSettingsFromConfiguration({ compiler: { memoryLimitMegabytes: value } })
+          .compilerMemoryLimitMegabytes,
+      ).toBe(512);
+    }
   });
 
   it("preserves the host path and adds existing desktop fallback directories", () => {

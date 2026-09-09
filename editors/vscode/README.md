@@ -55,9 +55,12 @@ Open VS Code Settings and search for `ppphp`. These settings can also be configu
 | Setting                                          | Default      | Purpose                                                                                                                     |
 | ------------------------------------------------ | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | `ppphp.compiler.path`                            | Empty        | Use an absolute compiler path instead of automatic discovery.                                                               |
+| `ppphp.compiler.memoryLimitMegabytes`            | `512`        | PHP memory limit in MiB for each compiler process. Changes also restart live diagnostics workers.                           |
 | `ppphp.completion.importSorting`                 | `alphabetic` | Order added imports alphabetically, by qualified-name `length`, or append them with `none`. Existing imports are preserved. |
 | `ppphp.diagnostics.compiler.enabled`             | `true`       | Enable live compiler diagnostics.                                                                                           |
 | `ppphp.diagnostics.compiler.timeoutMilliseconds` | `10000`      | Limit the duration of a compiler diagnostic request.                                                                        |
+
+The memory setting applies to editor-launched compiler calls, including diagnostics and navigation. It does not change `php.ini` or commands you run separately in a terminal. If you use a custom shell wrapper, point `ppphp.compiler.path` at its underlying PHP compiler script for this setting to apply.
 
 For example, to order added imports by length:
 

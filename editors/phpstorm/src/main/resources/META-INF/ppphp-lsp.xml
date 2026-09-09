@@ -2,4 +2,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <platform.lsp.serverSupportProvider implementation="com.atatusoft.ppphp.PpphpLspServerSupportProvider" />
     </extensions>
+    <projectListeners>
+        <listener class="com.atatusoft.ppphp.PpphpCompilerSettingsChangeListener"
+            topic="com.atatusoft.ppphp.PpphpCompilerSettingsListener" />
+    </projectListeners>
 </idea-plugin>

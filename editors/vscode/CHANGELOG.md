@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Default editor-launched compiler processes to a 512 MiB PHP memory limit. Adjust `ppphp.compiler.memoryLimitMegabytes` in Settings; live workers restart automatically and no `php.ini` edit is needed.
+
 ## 2026.3.2 - 2026-09-08
 
 - Advance the numeric tooling release without changing compiler compatibility.

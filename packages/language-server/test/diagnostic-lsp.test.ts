@@ -49,6 +49,11 @@ it("publishes only current worker snapshots and preserves errors when analysis i
     };
     const published: { uri: string; version?: number; diagnostics: unknown[] }[] = [];
     const messages: string[] = [];
+    let configuration = {};
+    connection.onRequest("workspace/configuration", ({ items }: { items: unknown[] }) =>
+      items.map(() => configuration),
+    );
+    connection.onRequest("client/registerCapability", () => null);
     connection.onNotification("textDocument/publishDiagnostics", (result) => {
       published.push(result);
     });
@@ -71,7 +76,13 @@ it("publishes only current worker snapshots and preserves errors when analysis i
         .filter(Boolean)
         .map(
           (line) =>
-            JSON.parse(line) as { type: string; version?: number; pid: number; server?: boolean },
+            JSON.parse(line) as {
+              type: string;
+              version?: number;
+              pid: number;
+              server?: boolean;
+              memoryLimit?: string;
+            },
         );
     const waitFor = (assert: () => unknown) => vi.waitFor(assert, { timeout: 5000, interval: 10 });
     const change = (version: number, text: string) =>
@@ -84,7 +95,9 @@ it("publishes only current worker snapshots and preserves errors when analysis i
       {
         processId: process.pid,
         rootUri,
-        capabilities: {},
+        capabilities: {
+          workspace: { configuration: true, didChangeConfiguration: { dynamicRegistration: true } },
+        },
       },
     );
     expect(initialization.serverInfo.version).toBe(packageMetadata.version);
@@ -126,8 +139,22 @@ it("publishes only current worker snapshots and preserves errors when analysis i
     );
     const starts = (await events()).filter((event) => event.type === "start" && event.server);
     expect(starts).toHaveLength(1);
+    expect(starts[0]?.memoryLimit).toBe("512M");
+
+    configuration = { compiler: { memoryLimitMegabytes: 768 } };
+    await connection.sendNotification("workspace/didChangeConfiguration", { settings: {} });
+    await waitFor(async () => {
+      const updated = (await events()).filter((event) => event.type === "start" && event.server);
+      expect(updated.map((event) => event.memoryLimit)).toEqual(["512M", "768M"]);
+    });
+    await change(8, "<?php still repaired;");
+    await waitFor(() =>
+      expect(published.find((item) => item.version === 8)?.diagnostics).toEqual([]),
+    );
+    const allStarts = (await events()).filter((event) => event.type === "start" && event.server);
+    expect(allStarts).toHaveLength(2);
     await connection.sendRequest("shutdown");
-    for (const event of starts) expect(() => process.kill(event.pid, 0)).toThrow();
+    for (const event of allStarts) expect(() => process.kill(event.pid, 0)).toThrow();
     await connection.sendNotification("exit");
     await closed;
   } finally {

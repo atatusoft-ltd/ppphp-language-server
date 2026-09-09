@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,7 +44,8 @@ describe("compiler discovery", () => {
       const invocation = resolveCompilerInvocation(proxy, ["--version"]);
       expect(invocation.unavailableReason).toBeUndefined();
       expect(invocation.compiler).toBe(proxy);
-      expect(invocation.usesPhpRuntime).toBe(process.platform === "win32");
+      expect(invocation.usesPhpRuntime).toBe(true);
+      expect(invocation.arguments.slice(0, 2)).toEqual(["-d", "memory_limit=512M"]);
     },
   );
 
@@ -127,12 +128,15 @@ describe("compiler process execution", () => {
     expect(invocation).toEqual({
       command: "C:\\PHP 8.4\\php.exe",
       arguments: [
+        "-d",
+        "memory_limit=512M",
         "C:\\workspace with spaces\\vendor\\bin\\ppphp",
         "check",
         "C:\\workspace with spaces\\src\\Example.ppphp",
       ],
       compiler: "C:\\workspace with spaces\\vendor\\bin\\ppphp.bat",
       usesPhpRuntime: true,
+      phpScript: "C:\\workspace with spaces\\vendor\\bin\\ppphp",
     });
   });
 
@@ -147,6 +151,48 @@ describe("compiler process execution", () => {
 
     expect(invocation.unavailableReason).toContain("has no argument-safe Composer proxy");
   });
+
+  it("resolves Windows PATH wrappers before selecting the PHP proxy", () => {
+    const result = resolveCompilerInvocation(
+      "ppphp",
+      ["check"],
+      "win32",
+      { Path: "C:\\tools;C:\\Composer bin", PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES: "768" },
+      (file) => ["C:\\Composer bin\\ppphp.bat", "C:\\Composer bin\\ppphp"].includes(file),
+      undefined,
+      "C:\\workspace",
+      (file) => file === "C:\\Composer bin\\ppphp.bat",
+    );
+    expect(result.command).toBe("php.exe");
+    expect(result.arguments).toEqual([
+      "-d",
+      "memory_limit=768M",
+      "C:\\Composer bin\\ppphp",
+      "check",
+    ]);
+  });
+
+  it.each(["php", "phar"])(
+    "uses the invocation cwd and configured limit for relative .%s paths",
+    (extension) => {
+      const result = resolveCompilerInvocation(
+        `./tools/compiler.${extension}`,
+        ["check", "space & name.ppphp"],
+        "linux",
+        { PPPHP_COMPILER_MEMORY_LIMIT_MEGABYTES: "768" },
+        () => true,
+        1024,
+        "/workspace with spaces",
+      );
+      expect(result.arguments).toEqual([
+        "-d",
+        "memory_limit=1024M",
+        `/workspace with spaces/tools/compiler.${extension}`,
+        "check",
+        "space & name.ppphp",
+      ]);
+    },
+  );
 
   it("keeps native executables argument based", () => {
     expect(
@@ -185,5 +231,99 @@ describe("compiler process execution", () => {
     const environment = compilerProcessEnvironment({ Path: "C:\\PHP;C:\\Node" }, "win32");
 
     expect(environment).toEqual({ Path: "C:\\PHP;C:\\Node" });
+  });
+
+  it.each([undefined, 768])(
+    "sets the real PHP limit for extensionless Composer scripts (%s)",
+    async (limit) => {
+      const root = mkdtempSync(path.join(tmpdir(), "ppphp-memory-"));
+      try {
+        const script = path.join(root, "ppphp");
+        writeFileSync(script, '#!/usr/bin/env php\n<?php echo ini_get("memory_limit");\n');
+        const result = await executeCompiler(script, [], root, 5000, undefined, undefined, limit);
+        expect(result.failure).toBeUndefined();
+        expect(result.stdout).toBe(`${limit ?? 512}M`);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("finds extensionless PHP scripts on PATH and follows symlinks", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "ppphp-path-memory-"));
+    try {
+      const script = path.join(root, "compiler.php");
+      const proxy = path.join(root, "ppphp");
+      writeFileSync(script, '#!/usr/bin/env php\n<?php echo ini_get("memory_limit");');
+      chmodSync(script, 0o755);
+      symlinkSync(script, proxy);
+      const result = resolveCompilerInvocation(
+        "ppphp",
+        ["check"],
+        process.platform,
+        { PATH: root },
+        undefined,
+        1024,
+        root,
+      );
+      expect(result.phpScript).toBe(proxy);
+      expect(result.arguments).toEqual(["-d", "memory_limit=1024M", proxy, "check"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "skips non-executable files and directories on PATH",
+    () => {
+      const root = mkdtempSync(path.join(tmpdir(), "ppphp-path-permissions-"));
+      try {
+        const blocked = path.join(root, "blocked");
+        const directory = path.join(root, "directory");
+        const valid = path.join(root, "valid");
+        for (const folder of [blocked, directory, valid]) mkdirSync(folder);
+        writeFileSync(path.join(blocked, "ppphp"), "<?php echo 'unintended compiler';");
+        chmodSync(path.join(blocked, "ppphp"), 0o644);
+        mkdirSync(path.join(directory, "ppphp"));
+        const compiler = path.join(valid, "ppphp");
+        writeFileSync(compiler, "#!/usr/bin/env php\n<?php echo 'real compiler';");
+        chmodSync(compiler, 0o755);
+        const invocation = resolveCompilerInvocation("ppphp", ["check"], process.platform, {
+          PATH: [blocked, directory, valid].join(path.delimiter),
+        });
+        expect(invocation.phpScript).toBe(compiler);
+        expect(invocation.arguments).toEqual(["-d", "memory_limit=512M", compiler, "check"]);
+
+        // No executable match must not fall back to interpreting a same-named cwd file.
+        const unresolved = resolveCompilerInvocation(
+          "ppphp",
+          ["check"],
+          process.platform,
+          { PATH: blocked },
+          undefined,
+          undefined,
+          blocked,
+        );
+        expect(unresolved).toEqual({
+          command: "ppphp",
+          arguments: ["check"],
+          compiler: "ppphp",
+          usesPhpRuntime: false,
+        });
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("does not reinterpret a custom shell wrapper as PHP", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "ppphp-wrapper-"));
+    try {
+      const wrapper = path.join(root, "ppphp");
+      writeFileSync(wrapper, '#!/bin/sh\nexec php /custom/compiler "$@"\n');
+      expect(resolveCompilerInvocation(wrapper, ["check"]).usesPhpRuntime).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

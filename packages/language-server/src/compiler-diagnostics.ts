@@ -91,6 +91,7 @@ export async function checkDocument(
       settings.timeoutMilliseconds,
       input,
       signal,
+      settings.compilerMemoryLimitMegabytes,
     );
     if (execution.cancelled) return { diagnostics: [] };
     if (execution.failure) throw new Error(execution.failure);
@@ -164,6 +165,9 @@ export async function checkFile(
     args,
     workspaceRoot,
     settings.timeoutMilliseconds,
+    undefined,
+    undefined,
+    settings.compilerMemoryLimitMegabytes,
   );
   if (execution.failure) {
     return { diagnostics: [], unavailableReason: execution.failure };

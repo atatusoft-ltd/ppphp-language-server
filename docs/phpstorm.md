@@ -27,6 +27,12 @@ Composer selects stable packages by default. To use a compiler candidate, check 
 
 ## Everyday editing
 
+### Compiler memory
+
+Editor-launched compiler processes use a **512 MiB** PHP memory limit by default. Change it for your project under **Settings → Languages & Frameworks → ++PHP → Compiler memory limit (MiB)**. Applying a change automatically restarts ++PHP analysis; navigation and rename use the same value.
+
+This is a limit for each compiler process, not reserved memory or a total IDE budget. It does not change `php.ini`, native PHP tooling, or commands you run separately in a terminal. Custom shell wrappers manage their own PHP launch settings; use `PPPHP_COMPILER_PATH` to select the underlying PHP compiler script if needed.
+
 ### Imports and refactoring
 
 Use the intention menu (**Alt+Enter** in the default keymap) on a fully qualified type for **Use import**. On an unresolved short type name, choose **Import class** and select the intended namespace from the **Class to import** popup, or choose **Create class** to open a prefilled declaration dialog.

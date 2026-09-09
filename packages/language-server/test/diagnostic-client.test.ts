@@ -34,6 +34,7 @@ async function log(root: string) {
           server?: boolean;
           id?: number;
           version?: number;
+          memoryLimit?: string;
         },
     );
 }
@@ -43,6 +44,7 @@ function run(
   version = 1,
   signal?: AbortSignal,
   timeout = 3000,
+  memoryLimitMegabytes?: number,
 ) {
   return value.execute(
     target.compiler,
@@ -51,6 +53,7 @@ function run(
     timeout,
     JSON.stringify({ version: 1, document: { path: "a.ppphp", version, contents: "<?php bad;" } }),
     signal,
+    memoryLimitMegabytes,
   );
 }
 afterEach(async () => {
@@ -59,6 +62,30 @@ afterEach(async () => {
 });
 
 describe("retained diagnostic client", () => {
+  it("restarts retained workers when the memory limit changes", async () => {
+    const target = await project();
+    const value = client();
+    await run(value, target);
+    await run(value, target, 2, undefined, 3000, 768);
+    await run(value, target, 3, undefined, 3000, 768);
+    expect(
+      (await log(target.root))
+        .filter((event) => event.type === "start")
+        .map((event) => event.memoryLimit),
+    ).toEqual(["512M", "768M"]);
+  });
+
+  it("preserves a custom limit in the single-shot fallback", async () => {
+    const target = await project("unsupported");
+    expect(
+      JSON.parse((await run(client(), target, 1, undefined, 3000, 1024)).stdout).document.version,
+    ).toBe(1);
+    expect(
+      (await log(target.root))
+        .filter((event) => event.type === "start")
+        .map((event) => event.memoryLimit),
+    ).toEqual(["1024M", "1024M"]);
+  });
   it("validates fragmented UTF-8/CRLF framing and reuses one serial worker", async () => {
     const target = await project("fragmented");
     const value = client();
