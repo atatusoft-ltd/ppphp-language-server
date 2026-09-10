@@ -205,7 +205,9 @@ class PpphpCodeStyleSettingsTest : BasePlatformTestCase() {
             phpFields,
             ppphpFields.filterKeys(phpFields::containsKey),
         )
-        assertEquals(PHP_2026_FORWARD_FIELDS, ppphpFields.keys - phpFields.keys)
+        // Forward-compatible fields are extras only on SDKs that do not expose them yet.
+        // On newer SDKs they must pass the same type/default checks as every native field.
+        assertEquals(PHP_2026_FORWARD_FIELDS - phpFields.keys, ppphpFields.keys - phpFields.keys)
         for (phpField in PhpCodeStyleSettings::class.java.fields) {
             if (Modifier.isStatic(phpField.modifiers)) continue
             val ppphpField = PpphpCodeStyleSettings::class.java.getField(phpField.name)
