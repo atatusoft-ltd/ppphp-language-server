@@ -3,8 +3,12 @@ package com.atatusoft.ppphp
 import com.intellij.application.options.CodeStyleAbstractConfigurable
 import com.intellij.application.options.CodeStyleAbstractPanel
 import com.intellij.application.options.IndentOptionsEditor
-import com.intellij.application.options.TabbedLanguageCodeStylePanel
+import com.intellij.application.options.OptionsContainingConfigurable
+import com.intellij.application.options.codeStyle.CodeStyleSchemesModel
 import com.intellij.lang.Language
+import com.intellij.openapi.editor.colors.EditorColorsScheme
+import com.intellij.openapi.editor.highlighter.EditorHighlighter
+import com.intellij.openapi.fileTypes.FileType
 import com.intellij.psi.codeStyle.CodeStyleConfigurable
 import com.intellij.psi.codeStyle.CodeStyleSettings
 import com.intellij.psi.codeStyle.CodeStyleSettingsCustomizable
@@ -14,20 +18,18 @@ import com.intellij.psi.codeStyle.CustomCodeStyleSettings
 import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
 import com.jetbrains.php.lang.PhpLanguage
 import com.jetbrains.php.lang.formatter.PhpCodeStyleSettings
-import com.jetbrains.php.lang.formatter.ui.PhpConversionCodeStylePanel
-import com.jetbrains.php.lang.formatter.ui.PhpDocCodeStylePanel
-import com.jetbrains.php.lang.formatter.ui.PhpGenerationCodeStylePanel
 import com.jetbrains.php.lang.formatter.ui.PhpLanguageCodeStyleSettingsProvider
 import com.jetbrains.php.lang.psi.elements.PhpModifier
 import com.jetbrains.php.refactoring.PhpNameStyle
 import java.lang.reflect.Modifier
+import javax.swing.JComponent
 
 /**
  * Gives ++PHP its own scheme values while reusing PhpStorm's PHP formatter UI contract.
  *
  * PhpStorm's provider exposes PHP-only options against [PhpCodeStyleSettings]. This adapter
- * changes only the settings owner passed to the ++PHP panels; option names, groups, labels,
- * choices, previews, and defaults continue to come from the bundled PHP plugin.
+ * supplies isolated settings to PHP's public configurable factory; option names, groups,
+ * labels, choices, previews, and defaults continue to come from the bundled PHP plugin.
  */
 class PpphpLanguageCodeStyleSettingsProvider : LanguageCodeStyleSettingsProvider() {
     private val phpProvider = PhpLanguageCodeStyleSettingsProvider()
@@ -78,27 +80,75 @@ class PpphpLanguageCodeStyleSettingsProvider : LanguageCodeStyleSettingsProvider
         languageName,
     ) {
         override fun createPanel(settings: CodeStyleSettings): CodeStyleAbstractPanel =
-            PpphpCodeStyleMainPanel(currentSettings, settings)
+            PpphpPhpCodeStylePanel(currentSettings, settings)
     }
 }
 
-private class PpphpCodeStyleMainPanel(
+/**
+ * Compose the PHP configurable through its public factory, never subclass PHP UI classes.
+ * Those classes are implementation details and became final in newer PHP plugins.
+ * The native panel owns its tabs, previews and lifecycle; only isolated settings are bridged.
+ */
+internal class PpphpPhpCodeStylePanel(
     currentSettings: CodeStyleSettings,
     settings: CodeStyleSettings,
-) : TabbedLanguageCodeStylePanel(PpphpLanguage.INSTANCE, currentSettings, settings) {
-    override fun initTabs(settings: CodeStyleSettings) {
-        super.initTabs(settings)
-        addTab(PpphpPhpDocCodeStylePanel(settings))
-        addTab(PpphpPhpConversionCodeStylePanel(settings))
-        addTab(PpphpPhpGenerationCodeStylePanel(settings))
+) : CodeStyleAbstractPanel(PpphpLanguage.INSTANCE, currentSettings, settings) {
+    private val bridgeSettings = PpphpPhpPanelSettings.create(settings)
+    private val configurable = PhpLanguageCodeStyleSettingsProvider().createConfigurable(
+        PpphpPhpPanelSettings.create(currentSettings), bridgeSettings,
+    ) as CodeStyleAbstractConfigurable
+
+    internal val delegatePanel: CodeStyleAbstractPanel
+
+    init {
+        configurable.createComponent()
+        delegatePanel = requireNotNull(configurable.panel)
+        addPanelToWatch(delegatePanel.panel)
     }
+
+    override fun getPanel(): JComponent = requireNotNull(delegatePanel.panel)
+
+    override fun apply(settings: CodeStyleSettings) {
+        delegatePanel.apply(bridgeSettings)
+        PpphpPhpPanelSettings.apply(bridgeSettings, settings)
+    }
+
+    override fun isModified(settings: CodeStyleSettings): Boolean =
+        delegatePanel.isModified(PpphpPhpPanelSettings.create(settings))
+
+    override fun resetImpl(settings: CodeStyleSettings) {
+        PpphpPhpPanelSettings.refresh(settings, bridgeSettings)
+        delegatePanel.reset(bridgeSettings)
+    }
+
+    override fun setModel(model: CodeStyleSchemesModel) {
+        super.setModel(model)
+        delegatePanel.setModel(model)
+    }
+
+    override fun onSomethingChanged() = delegatePanel.onSomethingChanged()
+
+    override fun getOptionIndexer(): OptionsContainingConfigurable = delegatePanel.optionIndexer
+
+    override fun highlightOptions(searchString: String) = delegatePanel.highlightOptions(searchString)
+
+    override fun dispose() {
+        configurable.disposeUIResources()
+        super.dispose()
+    }
+
+    // The composed native panel supplies its own preview editors.
+    override fun getRightMargin(): Int = 0
+    override fun createHighlighter(scheme: EditorColorsScheme): EditorHighlighter? = null
+    override fun getFileType(): FileType = PpphpFileType.INSTANCE
+    override fun getPreviewText(): String? = null
 }
 
 /**
  * Independent copies of PhpStorm's PHP-specific code-style fields.
  *
- * Field names and JVM types deliberately match [PhpCodeStyleSettings]. Generic tabs are mapped
- * directly to these fields; PHP's specialized tabs use a private bridge and copy values back.
+ * Field names and JVM types deliberately match [PhpCodeStyleSettings]. The native configurable
+ * uses a private bridge; only the ++PHP common and custom settings are copied back on Apply.
  */
 class PpphpCodeStyleSettings(container: CodeStyleSettings) :
     CustomCodeStyleSettings("PpphpCodeStyleSettings", container) {
@@ -297,63 +347,6 @@ private class PpphpSettingsCustomizable(
     }
 }
 
-private class PpphpPhpDocCodeStylePanel(
-    settings: CodeStyleSettings,
-    private val bridgeSettings: CodeStyleSettings = PpphpPhpPanelSettings.create(settings),
-) : PhpDocCodeStylePanel(bridgeSettings) {
-    override fun apply(settings: CodeStyleSettings) {
-        super.apply(bridgeSettings)
-        PpphpPhpPanelSettings.apply(bridgeSettings, settings)
-    }
-
-    override fun isModified(settings: CodeStyleSettings): Boolean {
-        return super.isModified(PpphpPhpPanelSettings.create(settings))
-    }
-
-    override fun resetImpl(settings: CodeStyleSettings) {
-        PpphpPhpPanelSettings.refresh(settings, bridgeSettings)
-        super.resetImpl(bridgeSettings)
-    }
-}
-
-private class PpphpPhpConversionCodeStylePanel(
-    settings: CodeStyleSettings,
-    private val bridgeSettings: CodeStyleSettings = PpphpPhpPanelSettings.create(settings),
-) : PhpConversionCodeStylePanel(bridgeSettings) {
-    override fun apply(settings: CodeStyleSettings) {
-        super.apply(bridgeSettings)
-        PpphpPhpPanelSettings.apply(bridgeSettings, settings)
-    }
-
-    override fun isModified(settings: CodeStyleSettings): Boolean {
-        return super.isModified(PpphpPhpPanelSettings.create(settings))
-    }
-
-    override fun resetImpl(settings: CodeStyleSettings) {
-        PpphpPhpPanelSettings.refresh(settings, bridgeSettings)
-        super.resetImpl(bridgeSettings)
-    }
-}
-
-private class PpphpPhpGenerationCodeStylePanel(
-    settings: CodeStyleSettings,
-    private val bridgeSettings: CodeStyleSettings = PpphpPhpPanelSettings.create(settings),
-) : PhpGenerationCodeStylePanel(bridgeSettings) {
-    override fun apply(settings: CodeStyleSettings) {
-        super.apply(bridgeSettings)
-        PpphpPhpPanelSettings.apply(bridgeSettings, settings)
-    }
-
-    override fun isModified(settings: CodeStyleSettings): Boolean {
-        return super.isModified(PpphpPhpPanelSettings.create(settings))
-    }
-
-    override fun resetImpl(settings: CodeStyleSettings) {
-        PpphpPhpPanelSettings.refresh(settings, bridgeSettings)
-        super.resetImpl(bridgeSettings)
-    }
-}
-
 private object PpphpPhpPanelSettings {
     fun create(settings: CodeStyleSettings): CodeStyleSettings =
         CodeStyleSettingsManager.getInstance().cloneSettings(settings).also { bridge ->
@@ -361,6 +354,7 @@ private object PpphpPhpPanelSettings {
     }
 
     fun refresh(source: CodeStyleSettings, bridge: CodeStyleSettings) {
+        copyCommonSettings(source, PpphpLanguage.INSTANCE, bridge, PhpLanguage.INSTANCE)
         PpphpPhpSettingsFields.copy(
             source = source.getCustomSettings(PpphpCodeStyleSettings::class.java),
             target = bridge.getCustomSettings(PhpCodeStyleSettings::class.java),
@@ -368,10 +362,23 @@ private object PpphpPhpPanelSettings {
     }
 
     fun apply(bridge: CodeStyleSettings, target: CodeStyleSettings) {
+        copyCommonSettings(bridge, PhpLanguage.INSTANCE, target, PpphpLanguage.INSTANCE)
         PpphpPhpSettingsFields.copy(
             source = bridge.getCustomSettings(PhpCodeStyleSettings::class.java),
             target = target.getCustomSettings(PpphpCodeStyleSettings::class.java),
         )
+    }
+
+    private fun copyCommonSettings(
+        source: CodeStyleSettings,
+        sourceLanguage: Language,
+        target: CodeStyleSettings,
+        targetLanguage: Language,
+    ) {
+        val from = source.getCommonSettings(sourceLanguage)
+        val to = target.getCommonSettings(targetLanguage)
+        if (to.indentOptions == null && from.indentOptions != null) to.initIndentOptions()
+        to.copyFrom(from)
     }
 }
 

@@ -4,11 +4,17 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [2026.3.3] - 2026-09-10
+
 ### Added
 
 - Zed extension with native ++PHP type/generic grammar, managed versioned server downloads with checksum verification, workspace settings, semantic-token mappings, Windows build support, and standalone release packaging.
 
 ### Fixed
+
+- JetBrains code-style settings use the native PHP configurable through composition instead of inheriting PHP implementation panels, avoiding the final-class incompatibilities found by Marketplace verification. Previews and independent PHP/++PHP settings are preserved.
+- Local Node.js discovery no longer uses the JetBrains API scheduled for removal.
+- JetBrains compatibility has explicit build bounds and a shared verification matrix covering PhpStorm and IntelliJ IDEA, including the EAP build that exposed the settings-panel failure. CI verifies the same packaged ZIP for each host.
 
 - Editor memory settings are passed explicitly to the compiler's native memory policy as well as PHP startup, including retained workers and fallback calls. Per-project limits remain isolated from inherited settings and other projects.
 - Editor-launched compiler processes now default to a 512 MiB PHP memory limit, configurable in VS Code and PhpStorm settings. The limit covers live diagnostics, fallback checks, navigation and rename, including extensionless Composer proxies, without requiring edits to `php.ini`. Changed limits retire retained diagnostics workers automatically.

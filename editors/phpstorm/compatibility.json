@@ -1,0 +1,17 @@
+{
+  "sdk": "2025.2.1",
+  "sinceBuild": "252.25557",
+  "untilBuild": "263.3889.75",
+  "ides": [
+    { "type": "PS", "version": "2025.2.1" },
+    { "type": "IU", "version": "2025.2.1" },
+    { "type": "PS", "version": "2025.3.6.1" },
+    { "type": "IU", "version": "2025.3.6.1" },
+    { "type": "PS", "version": "2026.1.5" },
+    { "type": "IU", "version": "2026.1.5" },
+    { "type": "PS", "version": "2026.2.2" },
+    { "type": "IU", "version": "2026.2.2" },
+    { "type": "PS", "version": "263.3889.75" },
+    { "type": "IU", "version": "263.3889.65" }
+  ]
+}

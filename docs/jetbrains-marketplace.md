@@ -18,6 +18,16 @@ This is the maintainer handoff for the JetBrains listing, not user-facing descri
 
 The repository README keeps its requested badges as repository navigation. Do not paste the badges or the entire installation manual into the Marketplace description. The short overview and feature list are followed by getting-started guidance and direct documentation/support links, which also work inside the IDE's Plugin Manager.
 
+## Compatibility gate
+
+`editors/phpstorm/compatibility.json` owns the SDK baseline, package build bounds and verification matrix. Both Gradle and CI read it. The PHP and JavaScript dependencies advertise PhpStorm and IntelliJ IDEA support, so verification must cover both products, not just the development SDK. Keep the upper bound explicit; extend it only after verifying the new target.
+
+The matrix includes the oldest supported SDK, maintained release branches and the EAP build used in Marketplace review. CI builds one ZIP and verifies those exact bytes in every matrix job. Binary incompatibilities, missing dependencies, invalid packages, APIs scheduled for removal and non-extendable API violations fail verification. A successful IDE startup does not replace binary verification or settings-panel lifecycle tests.
+
+The LSP API names deprecated by JetBrains remain intentionally in use for the older supported IDEs: JetBrains documents them as preserved and fully functional. Their replacements were introduced later than our baseline. Treat those warnings as compatibility debt, not as permission to suppress binary failures or silently raise the minimum IDE requirement. Review this decision when changing the baseline. See [JetBrains' LSP API refactoring contract](https://plugins.jetbrains.com/docs/intellij/language-server-protocol.html#lsp-api-refactoring).
+
+For a rejected submission, upload the newly versioned, qualified ZIP; do not reuse or overwrite the rejected version. Review the resulting Marketplace verifier report before claiming approval. No upload or support-email reply is performed by the build.
+
 ## Media checklist — required before publishing
 
 The gallery is managed in the Marketplace **Media** section, not by the README or `plugin.xml`. These maintainer-supplied captures are retained unedited as gallery candidates:

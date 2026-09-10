@@ -1,6 +1,6 @@
 id = "ppphp-lsp"
 name = "++PHP"
-version = "2026.3.2"
+version = "2026.3.3"
 schema_version = 1
 authors = ["Andrew Masiye <amasiye313@gmail.com>"]
 description = "++PHP language support with compiler diagnostics, completion, navigation, and semantic highlighting."

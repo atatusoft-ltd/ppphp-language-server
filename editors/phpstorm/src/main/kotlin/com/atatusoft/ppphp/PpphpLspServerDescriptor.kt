@@ -3,14 +3,15 @@ package com.atatusoft.ppphp
 import com.intellij.application.options.CodeStyle
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.javascript.nodejs.interpreter.NodeJsInterpreterManager
 import com.intellij.javascript.nodejs.interpreter.local.NodeJsLocalInterpreter
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
 import com.intellij.platform.lsp.api.customization.LspCustomization
+import com.intellij.util.EnvironmentUtil
 import com.jetbrains.php.lang.formatter.PhpCodeStyleSettings
 import org.eclipse.lsp4j.ConfigurationItem
 import java.nio.file.Files
@@ -100,7 +101,7 @@ internal object PpphpLanguageServerRuntime {
             System.getProperty("ppphp.language.server.node.path"),
             System.getenv("PPPHP_NODE_PATH"),
             findIdeNodeExecutable(project),
-            PathEnvironmentVariableUtil.findExecutableInPathOnAnyOS("node")?.toPath(),
+            NodeExecutableResolver.findOnPath(EnvironmentUtil.getValue("PATH"), SystemInfo.isWindows),
         )
 
     private fun findIdeNodeExecutable(project: Project): Path? {
@@ -112,6 +113,17 @@ internal object PpphpLanguageServerRuntime {
 }
 
 internal object NodeExecutableResolver {
+    /** Resolve the local Node binary without APIs scheduled for removal or a shell process. */
+    fun findOnPath(path: String?, windows: Boolean): Path? = path.orEmpty()
+        .split(if (windows) ';' else ':')
+        .asSequence()
+        .map { it.trim().removeSurrounding("\"") }
+        .filter(String::isNotEmpty)
+        .mapNotNull { runCatching { Path.of(it) }.getOrNull() }
+        .filter(Path::isAbsolute)
+        .map { it.resolve(if (windows) "node.exe" else "node") }
+        .firstOrNull { Files.isRegularFile(it) && (windows || Files.isExecutable(it)) }
+
     fun resolve(
         systemProperty: String?,
         environmentVariable: String?,
@@ -131,7 +143,7 @@ internal object NodeExecutableResolver {
             .filterNotNull()
             .firstOrNull(Files::isRegularFile)
             ?: throw ExecutionException(
-                "Could not find a Node.js executable for ++PHP tooling; Node.js 22 or newer is required. " +
+                "Could not find a Node.js executable for ++PHP tooling. " +
                     "Configure a local Node.js runtime in PhpStorm, set PPPHP_NODE_PATH, " +
                     "or set -Dppphp.language.server.node.path=/absolute/path/to/node.",
             )
