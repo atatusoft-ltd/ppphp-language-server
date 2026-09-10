@@ -22,6 +22,8 @@ export interface CompilerExecutionResult {
   notFound: boolean;
   failure?: string;
   cancelled?: boolean;
+  exitCode?: number;
+  signal?: string;
 }
 
 export interface CompilerInvocation {
@@ -115,12 +117,18 @@ export function executeCompiler(
           }
           const code = error && "code" in error ? error.code : undefined;
           const notFound = code === "ENOENT";
-          resolve({
+          const result: CompilerExecutionResult = {
             stdout,
             stderr,
             notFound,
+            exitCode: typeof code === "number" ? code : error ? undefined : 0,
+            signal: error?.signal ?? undefined,
             failure: describeCompilerFailure(error, invocation, timeoutMilliseconds),
-          });
+          };
+          // All compiler-backed features must distinguish process failure from
+          // a missing symbol, an empty token list or a clean diagnostic result.
+          result.failure ??= compilerOutputFailure(result);
+          resolve(result);
         },
       );
     } catch (error) {
@@ -143,6 +151,28 @@ export function executeCompiler(
       child.stdin?.end(input);
     }
   });
+}
+
+/** Explain failed output without exposing stack traces, source text or local paths. */
+export function compilerOutputFailure(result: CompilerExecutionResult): string | undefined {
+  if (result.failure) return result.failure;
+  const memory =
+    /(?:^|\n)(?:PHP )?Fatal error: Allowed memory size of (\d{1,16}) bytes exhausted\b/.exec(
+      `${result.stderr}\n${result.stdout}`,
+    );
+  if (memory) {
+    const bytes = Number(memory[1]);
+    const limit =
+      Number.isSafeInteger(bytes) && bytes % (1024 * 1024) === 0
+        ? `${bytes / (1024 * 1024)} MiB`
+        : `${memory[1]} bytes`;
+    return `The ++PHP compiler exhausted its ${limit} memory limit. Analysis could not finish; this is not a source-code error.`;
+  }
+  if (result.signal) return `The ++PHP compiler was terminated by ${result.signal}.`;
+  // Normal compiler findings/error envelopes may use exit codes 1 and 2.
+  if (result.exitCode !== undefined && result.exitCode > 2)
+    return `The ++PHP compiler exited with code ${result.exitCode} before completing the request.`;
+  return undefined;
 }
 
 export function resolveCompilerInvocation(
@@ -254,9 +284,13 @@ export function describeCompilerFailure(
   if (!error || typeof error !== "object") return undefined;
 
   const code = "code" in error ? error.code : undefined;
+  if (code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER")
+    return "The ++PHP compiler exceeded the editor output limit.";
   if ("killed" in error && error.killed === true) {
     return `The ++PHP compiler exceeded the ${timeoutMilliseconds}ms editor timeout.`;
   }
+  if ("signal" in error && typeof error.signal === "string")
+    return `The ++PHP compiler was terminated by ${error.signal}.`;
   if (typeof code === "number") return undefined;
   if (code === "ENOENT") {
     return invocation.usesPhpRuntime

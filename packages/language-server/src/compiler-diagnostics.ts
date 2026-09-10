@@ -9,6 +9,7 @@ import {
 } from "vscode-languageserver/node";
 import {
   executeCompiler,
+  compilerOutputFailure,
   resolveCompiler,
   type CompilerProcessSettings,
 } from "./compiler-process.js";
@@ -48,6 +49,7 @@ interface CompilerEnvelope {
 
 export interface CompilerRunResult {
   diagnostics: Diagnostic[];
+  cancelled?: boolean;
   projectIssues?: Array<{ severity: DiagnosticSeverity; message: string }>;
   unavailableReason?: string;
   coverageNote?: string;
@@ -93,13 +95,17 @@ export async function checkDocument(
       signal,
       settings.compilerMemoryLimitMegabytes,
     );
-    if (execution.cancelled) return { diagnostics: [] };
+    if (execution.cancelled) return { diagnostics: [], cancelled: true };
     if (execution.failure) throw new Error(execution.failure);
-    if (!execution.stdout.trim())
-      throw new Error(
-        "No editor:diagnostics response. Install a compiler supporting unsaved-buffer diagnostics.",
-      );
-    return parseEditorDiagnostics(execution.stdout, document, filePath, workspaceRoot);
+    try {
+      if (!execution.stdout.trim())
+        throw new Error("The ++PHP compiler returned no diagnostic response.");
+      return parseEditorDiagnostics(execution.stdout, document, filePath, workspaceRoot);
+    } catch (error) {
+      const failure = compilerOutputFailure(execution);
+      if (failure) throw new Error(failure, { cause: error });
+      throw error;
+    }
   } catch (error) {
     return {
       diagnostics: [],
@@ -119,7 +125,7 @@ export function parseEditorDiagnostics(
     parsed = JSON.parse(output);
   } catch {
     throw new Error(
-      "Invalid editor:diagnostics response. Update the configured ++PHP compiler to a version supporting unsaved-buffer diagnostics.",
+      "The ++PHP compiler returned an invalid editor:diagnostics response. Analysis could not finish.",
     );
   }
   const envelope = parsed as CompilerEnvelope & {

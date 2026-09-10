@@ -229,6 +229,39 @@ describe("compiler process execution", () => {
     );
   });
 
+  it("distinguishes output overflow and termination from launch errors", () => {
+    const invocation = resolveCompilerInvocation("ppphp", ["check"]);
+    expect(
+      describeCompilerFailure(
+        { code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER", killed: true },
+        invocation,
+        5000,
+      ),
+    ).toContain("output limit");
+    expect(describeCompilerFailure({ signal: "SIGKILL" }, invocation, 5000)).toContain(
+      "terminated by SIGKILL",
+    );
+  });
+
+  it.each(["check", "editor:diagnostics", "editor:definition", "editor:semantic-tokens"])(
+    "preserves fatal process causes for %s",
+    async (command) => {
+      const result = await executeCompiler(
+        process.execPath,
+        [
+          "-e",
+          "process.stderr.write('PHP Fatal error: Allowed memory size of 536870912 bytes exhausted in /private/secret.php\\n');process.exit(255)",
+          command,
+        ],
+        process.cwd(),
+        5000,
+      );
+      expect(result.exitCode).toBe(255);
+      expect(result.failure).toContain("exhausted its 512 MiB memory limit");
+      expect(result.failure).not.toContain("secret.php");
+    },
+  );
+
   it("preserves a case-insensitive Windows Path variable", () => {
     const environment = compilerProcessEnvironment({ Path: "C:\\PHP;C:\\Node" }, "win32");
 

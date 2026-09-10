@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2026.3.4 - 2026-09-10
+
+- Replace obsolete source errors with an explicit current-document analysis-unavailable warning when the compiler fails. Successful analysis clears it; repeated failures do not flood notifications.
+- Report compiler memory exhaustion and process failures accurately instead of suggesting an unsupported protocol. Compiler selection, project pins and memory settings remain unchanged.
+
 ## 2026.3.3 - 2026-09-10
 
 - Preserve the selected editor memory limit when the compiler applies its own defaults, without changing the parent editor environment.

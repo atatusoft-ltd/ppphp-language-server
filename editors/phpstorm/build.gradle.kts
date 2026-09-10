@@ -80,10 +80,11 @@ intellijPlatform {
         version = project.version.toString()
         changeNotes = """
             <ul>
-                <li>Fixed code-style settings compatibility with newer PHP plugins while preserving
-                    native previews and independent PHP/++PHP settings.</li>
-                <li>Replaced Node.js discovery APIs scheduled for removal.</li>
-                <li>Compiler calls use a configurable memory limit from the ++PHP project settings.</li>
+                <li>Failed analysis replaces obsolete source errors with a current-document
+                    analysis-unavailable warning. Successful analysis clears that warning.</li>
+                <li>Compiler memory exhaustion and process failures report their actual causes
+                    without misleading protocol-upgrade advice or raw fatal-error stacks.</li>
+                <li>Compiler selection, project pins and configured memory limits remain unchanged.</li>
             </ul>
         """.trimIndent()
 
