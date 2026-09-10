@@ -92,7 +92,8 @@ class PpphpCodeStyleSettingsTest : BasePlatformTestCase() {
             configurable.reset()
             val tabsField = TabbedLanguageCodeStylePanel::class.java.getDeclaredField("tabs")
                 .apply { isAccessible = true }
-            val tabs = tabsField.get(configurable.panel) as List<*>
+            val composed = configurable.panel as PpphpPhpCodeStylePanel
+            val tabs = tabsField.get(composed.delegatePanel) as List<*>
             val update = CodeStyleAbstractPanel::class.java
                 .getDeclaredMethod("updatePreview", Boolean::class.javaPrimitiveType)
                 .apply { isAccessible = true }
@@ -106,6 +107,64 @@ class PpphpCodeStyleSettingsTest : BasePlatformTestCase() {
                 assertTrue("Empty preview in ${tab!!.javaClass.name}", editor.document.text.contains("<?php"))
             }
             assertTrue("The standard formatting tabs must have previews", previewCount >= 4)
+        } finally {
+            configurable.disposeUIResources()
+        }
+    }
+
+    fun testNativeTabsApplyAndResetOnlyPpphpSettings() {
+        val settings = clonedProjectSettings()
+        val original = clonedProjectSettings()
+        val edited = clonedProjectSettings()
+        val edits = edited.getCustomSettings(PpphpCodeStyleSettings::class.java)
+        edits.PHPDOC_USE_FQCN = !edits.PHPDOC_USE_FQCN
+        edits.LOWER_CASE_KEYWORDS = !edits.LOWER_CASE_KEYWORDS
+        edits.VARIABLE_NAMING_STYLE = com.jetbrains.php.refactoring.PhpNameStyle.Style.SNAKE_CASE
+        edited.getCommonSettings(PpphpLanguage.INSTANCE).apply {
+            SPACE_BEFORE_METHOD_PARENTHESES = !SPACE_BEFORE_METHOD_PARENTHESES
+            initIndentOptions().INDENT_SIZE = 3
+        }
+        val configurable = PpphpLanguageCodeStyleSettingsProvider()
+            .createConfigurable(settings, clonedProjectSettings()) as CodeStyleAbstractConfigurable
+        try {
+            configurable.createComponent()
+            configurable.reset()
+            assertFalse(configurable.isModified)
+            configurable.reset(edited)
+            assertTrue(configurable.isModified)
+            configurable.apply()
+            assertFalse(configurable.isModified)
+
+            val actual = settings.getCustomSettings(PpphpCodeStyleSettings::class.java)
+            assertEquals(edits.PHPDOC_USE_FQCN, actual.PHPDOC_USE_FQCN)
+            assertEquals(edits.LOWER_CASE_KEYWORDS, actual.LOWER_CASE_KEYWORDS)
+            assertEquals(edits.VARIABLE_NAMING_STYLE, actual.VARIABLE_NAMING_STYLE)
+            assertEquals(3, settings.getCommonSettings(PpphpLanguage.INSTANCE).indentOptions!!.INDENT_SIZE)
+            assertEquals(
+                edited.getCommonSettings(PpphpLanguage.INSTANCE).SPACE_BEFORE_METHOD_PARENTHESES,
+                settings.getCommonSettings(PpphpLanguage.INSTANCE).SPACE_BEFORE_METHOD_PARENTHESES,
+            )
+            val originalPhp = original.getCustomSettings(PhpCodeStyleSettings::class.java)
+            val actualPhp = settings.getCustomSettings(PhpCodeStyleSettings::class.java)
+            for (field in PhpCodeStyleSettings::class.java.fields) {
+                if (!Modifier.isStatic(field.modifiers)) {
+                    assertEquals("PHP field changed: ${field.name}", field.get(originalPhp), field.get(actualPhp))
+                }
+            }
+            assertEquals(
+                original.getCommonSettings(PhpLanguage.INSTANCE).SPACE_BEFORE_METHOD_PARENTHESES,
+                settings.getCommonSettings(PhpLanguage.INSTANCE).SPACE_BEFORE_METHOD_PARENTHESES,
+            )
+            assertEquals(
+                original.getCommonSettings(PhpLanguage.INSTANCE).indentOptions!!.INDENT_SIZE,
+                settings.getCommonSettings(PhpLanguage.INSTANCE).indentOptions!!.INDENT_SIZE,
+            )
+            // Switching/resetting a scheme must not silently apply UI values to that scheme.
+            configurable.reset(original)
+            assertTrue(configurable.isModified)
+            configurable.reset()
+            assertFalse(configurable.isModified)
+            assertEquals(edits.PHPDOC_USE_FQCN, actual.PHPDOC_USE_FQCN)
         } finally {
             configurable.disposeUIResources()
         }
@@ -146,7 +205,9 @@ class PpphpCodeStyleSettingsTest : BasePlatformTestCase() {
             phpFields,
             ppphpFields.filterKeys(phpFields::containsKey),
         )
-        assertEquals(PHP_2026_FORWARD_FIELDS, ppphpFields.keys - phpFields.keys)
+        // Forward-compatible fields are extras only on SDKs that do not expose them yet.
+        // On newer SDKs they must pass the same type/default checks as every native field.
+        assertEquals(PHP_2026_FORWARD_FIELDS - phpFields.keys, ppphpFields.keys - phpFields.keys)
         for (phpField in PhpCodeStyleSettings::class.java.fields) {
             if (Modifier.isStatic(phpField.modifiers)) continue
             val ppphpField = PpphpCodeStyleSettings::class.java.getField(phpField.name)

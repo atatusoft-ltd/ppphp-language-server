@@ -1,6 +1,8 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import groovy.json.JsonSlurper
 
 plugins {
     java
@@ -10,6 +12,11 @@ plugins {
 
 group = "com.atatusoft.ppphp"
 version = providers.gradleProperty("pluginVersion").get()
+
+val compatibility = JsonSlurper().parse(file("compatibility.json")) as Map<*, *>
+val platformSdk = providers.gradleProperty("platformVersion").getOrElse(compatibility["sdk"] as String)
+val verificationType = providers.gradleProperty("verificationType")
+val verificationVersion = providers.gradleProperty("verificationVersion")
 
 repositories {
     mavenCentral()
@@ -23,9 +30,9 @@ dependencies {
 
     intellijPlatform {
         testFramework(TestFrameworkType.Platform)
-        phpstorm("2025.2.1")
+        phpstorm(platformSdk)
         // Present on PhpStorm's boot classpath, but omitted from the Gradle SDK view.
-        bundledLibrary("lib/app-client.jar")
+        if (platformSdk == "2025.2.1") bundledLibrary("lib/app-client.jar")
         bundledPlugin("JavaScript")
         bundledPlugin("com.jetbrains.php")
     }
@@ -71,17 +78,60 @@ intellijPlatform {
         id = "com.atatusoft.ppphp"
         name = "++PHP"
         version = project.version.toString()
+        changeNotes = """
+            <ul>
+                <li>Fixed code-style settings compatibility with newer PHP plugins while preserving
+                    native previews and independent PHP/++PHP settings.</li>
+                <li>Replaced Node.js discovery APIs scheduled for removal.</li>
+                <li>Compiler calls use a configurable memory limit from the ++PHP project settings.</li>
+            </ul>
+        """.trimIndent()
 
         ideaVersion {
-            sinceBuild = "252"
+            sinceBuild = compatibility["sinceBuild"] as String
+            untilBuild = compatibility["untilBuild"] as String
         }
     }
 
     pluginVerification {
+        failureLevel = listOf(
+            VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+            VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+            VerifyPluginTask.FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
+            VerifyPluginTask.FailureLevel.NON_EXTENDABLE_API_USAGES,
+        )
         ides {
-            create("PS", "2025.2.1")
-            create("PS", "2026.2.0.1")
+            if (verificationType.isPresent || verificationVersion.isPresent) {
+                require(verificationType.isPresent && verificationVersion.isPresent) {
+                    "Both verificationType and verificationVersion are required"
+                }
+                create(verificationType.get(), verificationVersion.get())
+            } else {
+                for (ide in compatibility["ides"] as List<*>) {
+                    val target = ide as Map<*, *>
+                    create(target["type"] as String, target["version"] as String)
+                }
+            }
         }
+    }
+}
+
+// CI verifies the exact ZIP produced by the build job, not a second local rebuild.
+tasks.named<VerifyPluginTask>("verifyPlugin") {
+    providers.gradleProperty("verificationArchive").orNull?.let {
+        archiveFile.set(file(it))
+    }
+}
+
+providers.environmentVariable("PPPHP_BUILD_REPORTS").orNull?.let { output ->
+    intellijPlatform.sandboxContainer.set(file("$output/sandbox"))
+    intellijPlatform.pluginVerification.verificationReportsDirectory.set(file("$output/verification"))
+    tasks.withType<Test>().configureEach {
+        systemProperty("idea.log.path", "$output/idea-log")
+        reports.junitXml.outputLocation.set(file("$output/test-results"))
+        reports.html.outputLocation.set(file("$output/test-report"))
+        binaryResultsDirectory.set(file("$output/test-binary"))
     }
 }
 

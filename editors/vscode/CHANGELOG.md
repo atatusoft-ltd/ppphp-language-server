@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2026.3.3 - 2026-09-10
+
 - Preserve the selected editor memory limit when the compiler applies its own defaults, without changing the parent editor environment.
 - Default editor-launched compiler processes to a 512 MiB PHP memory limit. Adjust `ppphp.compiler.memoryLimitMegabytes` in Settings; live workers restart automatically and no `php.ini` edit is needed.
 

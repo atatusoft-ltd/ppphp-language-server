@@ -18,6 +18,8 @@ jobs:
     name: Language server and VS Code
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      phpstorm-ides: ${{ steps.compatibility.outputs.ides }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,6 +37,12 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Read declared JetBrains verification matrix
+        id: compatibility
+        run: >-
+          php -r '$config = json_decode(file_get_contents("editors/phpstorm/compatibility.json"), true, flags: JSON_THROW_ON_ERROR);
+          echo "ides=", json_encode($config["ides"], JSON_THROW_ON_ERROR), PHP_EOL;'
+          >> "$GITHUB_OUTPUT"
       - name: Run checks
         run: npm run check
       - name: Package VS Code extension
@@ -72,8 +80,105 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Build and test PhpStorm plugin
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-phpstorm
         run: php scripts/build.php phpstorm
-      - name: Verify PhpStorm plugin compatibility
+      - name: Verify plugin structure and configuration
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-phpstorm
         run: >-
           ./editors/phpstorm/gradlew -p editors/phpstorm
-          verifyPluginStructure verifyPluginProjectConfiguration verifyPlugin
+          verifyPluginStructure verifyPluginProjectConfiguration
+      - name: Retain the tested plugin ZIP
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ppphp-jetbrains-plugin
+          path: editors/phpstorm/build/distributions/*.zip
+          if-no-files-found: error
+
+  jetbrains-compatibility:
+    name: JetBrains ${{ matrix.ide.type }} ${{ matrix.ide.version }}
+    needs: [node, phpstorm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        ide: ${{ fromJSON(needs.node.outputs.phpstorm-ides) }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Java
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Download the tested plugin ZIP
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: ppphp-jetbrains-plugin
+          path: ${{ runner.temp }}/ppphp-plugin
+      - name: Verify the packaged plugin against the advertised host
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-verifier
+          IDE_TYPE: ${{ matrix.ide.type }}
+          IDE_VERSION: ${{ matrix.ide.version }}
+        run: |
+          version=$(tr -d '\r\n' < VERSION)
+          ./editors/phpstorm/gradlew -p editors/phpstorm --no-problems-report verifyPlugin \
+            -PverificationType="$IDE_TYPE" -PverificationVersion="$IDE_VERSION" \
+            -PverificationArchive="$RUNNER_TEMP/ppphp-plugin/ppphp-phpstorm-$version.zip"
+      - name: Retain compatibility reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jetbrains-verifier-${{ matrix.ide.type }}-${{ matrix.ide.version }}
+          path: ${{ runner.temp }}/ppphp-verifier/verification
+          if-no-files-found: warn
+
+  phpstorm-eap-tests:
+    name: PhpStorm EAP settings and integration tests
+    needs: node
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: "8.4"
+          coverage: none
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Set up Java
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Exercise settings panels and editor integrations on the newest declared SDK
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-eap-tests
+        run: |
+          platform=$(php -r '$config = json_decode(file_get_contents("editors/phpstorm/compatibility.json"), true, flags: JSON_THROW_ON_ERROR); echo $config["untilBuild"];')
+          ./editors/phpstorm/gradlew -p editors/phpstorm --no-problems-report check -PplatformVersion="$platform"
+      - name: Retain native test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phpstorm-eap-tests
+          path: ${{ runner.temp }}/ppphp-eap-tests/test-results
+          if-no-files-found: warn

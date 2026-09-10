@@ -1,6 +1,6 @@
 [package]
 name = "tree-sitter-ppphp"
-version = "2026.3.2"
+version = "2026.3.3"
 edition = "2021"
 license = "MIT"
 publish = false
