@@ -53,8 +53,6 @@ jobs:
     needs: node
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-phpstorm
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,8 +80,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Build and test PhpStorm plugin
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-phpstorm
         run: php scripts/build.php phpstorm
       - name: Verify plugin structure and configuration
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-phpstorm
         run: >-
           ./editors/phpstorm/gradlew -p editors/phpstorm
           verifyPluginStructure verifyPluginProjectConfiguration
@@ -103,8 +105,6 @@ jobs:
       fail-fast: false
       matrix:
         ide: ${{ fromJSON(needs.node.outputs.phpstorm-ides) }}
-    env:
-      PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-verifier
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -124,6 +124,7 @@ jobs:
           path: ${{ runner.temp }}/ppphp-plugin
       - name: Verify the packaged plugin against the advertised host
         env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-verifier
           IDE_TYPE: ${{ matrix.ide.type }}
           IDE_VERSION: ${{ matrix.ide.version }}
         run: |
@@ -144,8 +145,6 @@ jobs:
     needs: node
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-eap-tests
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -171,6 +170,8 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Exercise settings panels and editor integrations on the newest declared SDK
+        env:
+          PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-eap-tests
         run: |
           platform=$(php -r '$config = json_decode(file_get_contents("editors/phpstorm/compatibility.json"), true, flags: JSON_THROW_ON_ERROR); echo $config["untilBuild"];')
           ./editors/phpstorm/gradlew -p editors/phpstorm --no-problems-report check -PplatformVersion="$platform"
