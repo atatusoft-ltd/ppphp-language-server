@@ -22,6 +22,14 @@ $write = static function (array $frame) use ($mode): void {
     }
 };
 $result = static function (array $request) use ($root): array {
+    if (str_contains($request['document']['contents'], 'unavailable')) {
+        if (str_contains($request['document']['contents'], 'slow-unavailable')) { usleep(300000); }
+        return ['version' => 1, 'error' => ['message' => 'Document analysis unavailable']];
+    }
+    if (trim(@file_get_contents($root . '/mode') ?: '') === 'out-of-memory') {
+        fwrite(STDERR, "PHP Fatal error: Allowed memory size of 536870912 bytes exhausted (tried to allocate 4096 bytes) in /private/project/Secret.php on line 17\n");
+        exit(255);
+    }
     if (trim(@file_get_contents($root . '/mode') ?: '') === 'broken-all') {
         return ['version' => 1, 'error' => ['message' => 'Test compiler unavailable']];
     }
@@ -39,6 +47,7 @@ $result = static function (array $request) use ($root): array {
 };
 if (!$server) {
     $request = json_decode(stream_get_contents(STDIN), true);
+    $log(['type' => 'request', 'server' => false, 'version' => $request['document']['version']]);
     $write($result($request));
     exit(0);
 }

@@ -53,6 +53,7 @@ const diagnosticScheduler = new DiagnosticScheduler(validateOpenDocuments, (erro
 const diagnosticClient = new DiagnosticClient();
 let reportedCoverageNote: string | undefined;
 let unavailableReason: string | undefined;
+const diagnosticFailures = new Map<string, string>();
 let reportedProjectIssues = new Set<string>();
 
 connection.onInitialize((params: InitializeParams) => {
@@ -248,6 +249,7 @@ documents.onDidSave(({ document }) => {
   diagnosticScheduler.schedule(0, document.uri);
 });
 documents.onDidClose(({ document }) => {
+  diagnosticFailures.delete(document.uri);
   diagnosticScheduler.schedule();
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
 });
@@ -285,9 +287,29 @@ async function validateOpenDocuments(
     );
     if (!isCurrent()) return;
     if (result.unavailableReason) {
-      reportUnavailable(result.unavailableReason);
+      // A failed check is neither a clean bill of health nor evidence that an
+      // older syntax error still exists. Replace it with a current-version
+      // infrastructure warning, shared by all LSP clients.
+      connection.sendDiagnostics({
+        uri: document.uri,
+        version: document.version,
+        diagnostics: [
+          {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+            severity: DiagnosticSeverity.Warning,
+            source: "++PHP tooling",
+            code: "analysis-unavailable",
+            message: `Analysis unavailable for this document. ${result.unavailableReason} Previous source diagnostics have been removed; this document has not been verified.`,
+          },
+        ],
+      });
+      const alreadyReported = [...diagnosticFailures.values()].includes(result.unavailableReason);
+      diagnosticFailures.set(document.uri, result.unavailableReason);
+      if (!alreadyReported) showUnavailable(result.unavailableReason);
       continue;
     }
+    if (result.cancelled) return;
+    diagnosticFailures.delete(document.uri);
     connection.sendDiagnostics({
       uri: document.uri,
       version: document.version,
@@ -357,14 +379,18 @@ function findWorkspaceRoot(filePath: string): string {
 function reportUnavailable(reason: string | undefined): void {
   if (reason && reason !== unavailableReason) {
     unavailableReason = reason;
-    connection.console.warn(reason);
-    // Some clients cannot display a modal request (or disconnect while it is
-    // pending). The log above remains available; notification failure must not
-    // crash the server while it is recovering from an analysis failure.
-    void connection.window
-      .showErrorMessage<MessageActionItem>(`++PHP tooling unavailable: ${reason}`)
-      .catch(() => undefined);
+    showUnavailable(reason);
   }
+}
+
+function showUnavailable(reason: string): void {
+  connection.console.warn(reason);
+  // Some clients cannot display a modal request (or disconnect while it is
+  // pending). The log above remains available; notification failure must not
+  // crash the server while it is recovering from an analysis failure.
+  void connection.window
+    .showErrorMessage<MessageActionItem>(`++PHP tooling unavailable: ${reason}`)
+    .catch(() => undefined);
 }
 
 documents.listen(connection);

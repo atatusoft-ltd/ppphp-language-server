@@ -28,7 +28,7 @@ Do not insert the release value into evergreen documentation or product descript
 4. Run `npm run check`.
 5. Run `php scripts/build.php vscode`, then smoke-test highlighting and language-server startup.
 6. Run `php scripts/build.php phpstorm`, then run the complete structure validation, configuration validation, and Plugin Verifier suite.
-7. Install both local packages and smoke-test `.ppphp` recognition, highlighting, diagnostics, completion, hover, and symbols.
+7. Install both local packages in isolated profiles and smoke-test `.ppphp` recognition, highlighting, diagnostics, completion, hover, and symbols. Include invalid → repaired → forced compiler failure → recovery, checking document versions and explicit analysis-unavailable status. Do not change the user's source, compiler pin or IDE settings to make a smoke test pass. For JetBrains, also exercise ordinary PHP/Composer and mixed-project startup, indexing, configuration changes and shutdown, and inspect asynchronous IDE errors. Binary verification and component tests do not replace these runtime checks.
 8. Inspect the built VSIX and plugin ZIP, not only source manifests. Confirm that their release versions match `VERSION`, the VSIX publisher is `AtatusoftLtd`, and the VSIX does not acquire a pre-release flag from compiler compatibility metadata.
 9. Run `php scripts/build.php zed`, install `editors/zed` as a Zed dev extension, and complete its [smoke checklist](../editors/zed/README.md#verification-and-limits). The Zed manifest, Rust package, and Cargo lockfile must match `VERSION`. The registry supports this monorepo through `path = "editors/zed"`; follow the distribution steps below.
 10. Create a `v*` tag only after all checks pass and every tooling manifest and artifact reports the version in `VERSION`.
@@ -36,6 +36,8 @@ Do not insert the release value into evergreen documentation or product descript
 Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or binary remains an explicit maintainer action.
 
 For JetBrains publication, complete the [listing and media checklist](jetbrains-marketplace.md). A README update alone does not prepare the Marketplace gallery or configure its contact fields.
+
+Record the tested commit, artifact checksum, selected compiler identity and separate outcomes for each gate. Distinguish a built artifact, a locally qualified upload candidate, an uploaded submission and Marketplace approval. After an authorized upload, inspect both binary-verifier and IDE-runtime results before announcing approval. A runtime exception requires investigation even if binary checks are green. A compiler fix merged to `main` but absent from the published compiler is a distribution gap, not a completed end-user fix.
 
 ## PhpStorm Windows and WSL smoke test
 

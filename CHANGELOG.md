@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [2026.3.4] - 2026-09-10
+
+### Fixed
+
+- Failed live analysis now replaces obsolete source errors with a current-document analysis-unavailable warning in every client of the shared server. Recovery clears the warning; repeated failures and sibling documents are tracked independently.
+- Compiler memory exhaustion, abnormal exits, termination and output overflow retain their actual causes instead of misleading protocol-upgrade advice. Raw fatal-error stacks are not shown in editor notifications.
+- Regression coverage includes retained-worker and single-shot failures, repeated failures, successful recovery, cancellation and stale results.
+
+### Verification and limitations
+
+- Investigated the Marketplace Composer listener exception and reproduced the native race on the exact PhpStorm EAP without ++PHP loaded. An unchanged-package Marketplace runtime rerun passed; this is not an upstream fix. See the [investigation and reproduction](docs/incidents/2026-09-10-diagnostics-and-marketplace.md).
+- Compiler compatibility metadata remains unchanged. This release does not fix the memory defect in an installed compiler candidate or silently change project pins. Compiler optimizations merged after that candidate still need their own authorized release.
+
 ## [2026.3.3] - 2026-09-10
 
 ### Added

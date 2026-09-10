@@ -28,6 +28,8 @@ The LSP API names deprecated by JetBrains remain intentionally in use for the ol
 
 For a rejected submission, upload the newly versioned, qualified ZIP; do not reuse or overwrite the rejected version. Review the resulting Marketplace verifier report before claiming approval. No upload or support-email reply is performed by the build.
 
+Binary verification, native component tests and a real IDE run are separate gates. Before declaring a package ready, exercise a clean ordinary Composer project and a mixed ++PHP project through startup, indexing, configuration changes and shutdown. Inspect the IDE error log, not just the exit code. After an authorized upload, read **both** the binary verifier and IDE runtime rows. If an IDE-run failure appears, inspect its TeamCity with-plugin and without-plugin artifacts and make a minimal reproduction; a single successful rerun does not establish that an intermittent fault is fixed. See the [September 10 investigation](incidents/2026-09-10-diagnostics-and-marketplace.md).
+
 ## Media checklist — required before publishing
 
 The gallery is managed in the Marketplace **Media** section, not by the README or `plugin.xml`. These maintainer-supplied captures are retained unedited as gallery candidates:
