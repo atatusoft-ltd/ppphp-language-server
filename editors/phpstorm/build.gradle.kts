@@ -6,7 +6,7 @@ import groovy.json.JsonSlurper
 
 plugins {
     java
-    kotlin("jvm") version "2.4.10"
+    kotlin("jvm") version "2.4.20"
     id("org.jetbrains.intellij.platform") version "2.18.1"
 }
 
