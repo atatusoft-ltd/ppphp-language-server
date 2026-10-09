@@ -37,6 +37,8 @@ Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or bi
 
 For JetBrains publication, complete the [listing and media checklist](jetbrains-marketplace.md). A README update alone does not prepare the Marketplace gallery or configure its contact fields.
 
+Build the distributable JetBrains ZIP against the minimum SDK declared in `editors/phpstorm/compatibility.json`. The IntelliJ Platform Gradle plugin derives Java and Kotlin JVM targets from the selected SDK. The EAP test job selects the newest declared SDK to exercise its APIs and runtime; its compiled test build is not the distributable ZIP. Avoid fixed JVM overrides that leave the two compilers targeting different Java versions when the test SDK changes.
+
 Record the tested commit, artifact checksum, selected compiler identity and separate outcomes for each gate. Distinguish a built artifact, a locally qualified upload candidate, an uploaded submission and Marketplace approval. After an authorized upload, inspect both binary-verifier and IDE-runtime results before announcing approval. A runtime exception requires investigation even if binary checks are green. A compiler fix merged to `main` but absent from the published compiler is a distribution gap, not a completed end-user fix.
 
 ## PhpStorm Windows and WSL smoke test

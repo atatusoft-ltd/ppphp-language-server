@@ -1,7 +1,6 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import groovy.json.JsonSlurper
 
 plugins {
@@ -38,16 +37,9 @@ dependencies {
     }
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.JVM_21
-    }
-}
+// The IntelliJ Platform plugin owns both Java and Kotlin JVM targets for the
+// selected SDK. Release builds use the minimum supported SDK; EAP tests select
+// their newer SDK without leaving Java and Kotlin on different JVM targets.
 
 sourceSets {
     test {

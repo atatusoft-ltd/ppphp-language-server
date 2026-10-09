@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file. The format 
 - Pin Zed's distributed grammar to the validated generated source. Regression coverage preserves ASCII keyword case-insensitivity without treating the Unicode Kelvin sign as an ASCII letter.
 - Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes. Compiler compatibility and project compiler selections remain unchanged.
 - Track npm dependency locks and shared build scripts in PhpStorm's bundled-server build inputs so dependency-only changes cannot reuse an obsolete server bundle.
+- Remove fixed JVM target overrides from the JetBrains build. The selected IDE SDK now drives both Java and Kotlin targets, preserving the minimum-SDK release build while allowing newer-SDK integration tests to compile consistently.
 
 ### Delivery
 
