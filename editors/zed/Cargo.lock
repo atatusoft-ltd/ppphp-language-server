@@ -766,8 +766,8 @@ checksum = "ca0d1bf6fdd806e43ae5198f82f527056d359def39e54e67a0f478ac09dac081"
 
 [[package]]
 name = "tree-sitter-ppphp"
-version = "2026.3.2"
-source = "git+https://github.com/atatusoft-ltd/ppphp-language-server.git?rev=6c9c37826a52f0cc1ac4514e9eac9296cba6d3d7#6c9c37826a52f0cc1ac4514e9eac9296cba6d3d7"
+version = "2026.4.1"
+source = "git+https://github.com/atatusoft-ltd/ppphp-language-server.git?rev=394febc5f7a74c7ad46b0d0262ba5ad9a4017fb0#394febc5f7a74c7ad46b0d0262ba5ad9a4017fb0"
 dependencies = [
  "cc",
  "tree-sitter-language",

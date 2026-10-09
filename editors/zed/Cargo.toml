@@ -15,4 +15,4 @@ sha2 = "=0.10.9"
 [dev-dependencies]
 toml = "0.8"
 tree-sitter = "0.25"
-tree-sitter-ppphp = { git = "https://github.com/atatusoft-ltd/ppphp-language-server.git", rev = "6c9c37826a52f0cc1ac4514e9eac9296cba6d3d7" }
+tree-sitter-ppphp = { git = "https://github.com/atatusoft-ltd/ppphp-language-server.git", rev = "394febc5f7a74c7ad46b0d0262ba5ad9a4017fb0" }

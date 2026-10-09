@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file. The format 
 
 - Regenerate the Tree-sitter parser and support headers with the locked generator. This removes Unicode Kelvin-sign folding in PHP keywords; keyword matching uses ASCII letters.
 - Verify generated grammar in the standard tooling checks without modifying the checkout, and exercise the same editing tests against both checkout and pinned distribution grammars.
+- Pin Zed's distributed grammar to the validated generated source. Regression coverage preserves ASCII keyword case-insensitivity without treating the Unicode Kelvin sign as an ASCII letter.
 - Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes. Compiler compatibility and project compiler selections remain unchanged.
 - Track npm dependency locks and shared build scripts in PhpStorm's bundled-server build inputs so dependency-only changes cannot reuse an obsolete server bundle.
 
