@@ -67,12 +67,15 @@ try {
         preg_match('/^version\s*=\s*"([^"]+)"/m', read_text($repositoryRoot, $file), $versionMatch);
         expect_equal("{$file} version", $versionMatch[1] ?? null, $canonicalVersion);
     }
-    preg_match(
-        '/\[\[package\]\]\s+name = "ppphp-zed"\s+version = "([^"]+)"/',
-        read_text($repositoryRoot, 'editors/zed/Cargo.lock'),
-        $cargoVersionMatch,
-    );
-    expect_equal('editors/zed/Cargo.lock ppphp-zed version', $cargoVersionMatch[1] ?? null, $canonicalVersion);
+    foreach (['editors/zed/Cargo.lock' => 'ppphp-zed',
+        'grammars/ppphp/Cargo.lock' => 'tree-sitter-ppphp'] as $file => $package) {
+        preg_match(
+            '/\[\[package\]\]\s+name = "' . preg_quote($package, '/') . '"\s+version = "([^"]+)"/',
+            read_text($repositoryRoot, $file),
+            $cargoVersionMatch,
+        );
+        expect_equal("{$file} {$package} version", $cargoVersionMatch[1] ?? null, $canonicalVersion);
+    }
 
     if (getenv('GITHUB_REF_TYPE') === 'tag') {
         expect_equal('release tag', getenv('GITHUB_REF_NAME'), 'v' . $canonicalVersion);

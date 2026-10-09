@@ -1,6 +1,6 @@
 [package]
 name = "tree-sitter-ppphp"
-version = "2026.3.4"
+version = "2026.4.1"
 edition = "2021"
 license = "MIT"
 publish = false
@@ -14,3 +14,14 @@ tree-sitter-language = "0.1"
 
 [build-dependencies]
 cc = "1"
+
+# Run the same editing contract against this checkout and Zed's release pin.
+# Keeping the second run in the adapter verifies the actual distributed grammar.
+[[test]]
+name = "editing"
+path = "../../editors/zed/tests/language.rs"
+
+[dev-dependencies]
+tree-sitter = "0.25"
+toml = "0.8"
+zed_extension_api = "=0.7.0"

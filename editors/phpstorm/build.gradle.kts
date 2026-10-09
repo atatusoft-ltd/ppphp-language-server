@@ -1,13 +1,12 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import groovy.json.JsonSlurper
 
 plugins {
     java
     kotlin("jvm") version "2.4.20"
-    id("org.jetbrains.intellij.platform") version "2.18.1"
+    id("org.jetbrains.intellij.platform") version "2.19.0"
 }
 
 group = "com.atatusoft.ppphp"
@@ -38,16 +37,9 @@ dependencies {
     }
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.JVM_21
-    }
-}
+// The IntelliJ Platform plugin owns both Java and Kotlin JVM targets for the
+// selected SDK. Release builds use the minimum supported SDK; EAP tests select
+// their newer SDK without leaving Java and Kotlin on different JVM targets.
 
 sourceSets {
     test {
@@ -80,10 +72,8 @@ intellijPlatform {
         version = project.version.toString()
         changeNotes = """
             <ul>
-                <li>Failed analysis replaces obsolete source errors with a current-document
-                    analysis-unavailable warning. Successful analysis clears that warning.</li>
-                <li>Compiler memory exhaustion and process failures report their actual causes
-                    without misleading protocol-upgrade advice or raw fatal-error stacks.</li>
+                <li>Update bundled language-protocol dependencies and plugin build tooling,
+                    including compatible dependency security fixes.</li>
                 <li>Compiler selection, project pins and configured memory limits remain unchanged.</li>
             </ul>
         """.trimIndent()
@@ -137,7 +127,7 @@ providers.environmentVariable("PPPHP_BUILD_REPORTS").orNull?.let { output ->
 }
 
 val repositoryRoot = layout.projectDirectory.dir("../..")
-val buildLanguageServer by tasks.registering(Exec::class) {
+val buildLanguageServer = tasks.register<Exec>("buildLanguageServer") {
     group = "build"
     description = "Builds the editor-neutral ++PHP language server."
     workingDir(repositoryRoot)
@@ -148,6 +138,9 @@ val buildLanguageServer by tasks.registering(Exec::class) {
     )
     inputs.files(fileTree(repositoryRoot.dir("packages/language-server/src")))
     inputs.file(repositoryRoot.file("packages/language-server/package.json"))
+    inputs.file(repositoryRoot.file("package.json"))
+    inputs.file(repositoryRoot.file("package-lock.json"))
+    inputs.file(repositoryRoot.file("scripts/build.php"))
     inputs.file(repositoryRoot.file("res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json"))
     outputs.file(repositoryRoot.file("packages/language-server/dist/server.cjs"))
 }

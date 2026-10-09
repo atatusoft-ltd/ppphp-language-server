@@ -1,6 +1,6 @@
 id = "ppphp-lsp"
 name = "++PHP"
-version = "2026.3.4"
+version = "2026.4.1"
 schema_version = 1
 authors = ["Andrew Masiye <amasiye313@gmail.com>"]
 description = "++PHP language support with compiler diagnostics, completion, navigation, and semantic highlighting."
@@ -14,5 +14,5 @@ language_ids = { "++PHP" = "ppphp" }
 # Native ++PHP syntax works without semantic tokens or a language server.
 [grammars.ppphp]
 repository = "https://github.com/atatusoft-ltd/ppphp-language-server.git"
-rev = "6c9c37826a52f0cc1ac4514e9eac9296cba6d3d7"
+rev = "394febc5f7a74c7ad46b0d0262ba5ad9a4017fb0"
 path = "grammars/ppphp"

@@ -1,6 +1,6 @@
 {
   "name": "@ppphp/language-server",
-  "version": "2026.3.4",
+  "version": "2026.4.1",
   "ppphpToolchainVersion": "2026.3.1-rc-2",
   "private": true,
   "description": "Language Server Protocol implementation for ++PHP.",
@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "vscode-languageserver": "10.1.1",
-    "vscode-languageserver-textdocument": "1.0.14"
+    "vscode-languageserver": "10.1.2",
+    "vscode-languageserver-textdocument": "1.0.15"
   }
 }

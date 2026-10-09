@@ -1,6 +1,6 @@
 {
   "name": "ppphp-language-server-workspace",
-  "version": "2026.3.4",
+  "version": "2026.4.1",
   "private": true,
   "description": "Editor tooling and a language server for ++PHP.",
   "license": "Apache-2.0",
@@ -18,7 +18,8 @@
     "check:zed": "php scripts/build.php zed-check",
     "build:server": "php scripts/build.php server",
     "build:vscode": "php scripts/build.php vscode-extension",
-    "check": "npm run check:tooling && npm run check:version && npm run check:editor && npm run sync:resources:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "check": "npm run check:tooling && npm run check:version && npm run check:editor && npm run check:grammar && npm run sync:resources:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "check:grammar": "php scripts/build.php zed-grammar-check",
     "check:editor": "php scripts/check_editor_language.php",
     "check:tooling": "php scripts/check_repository_tooling.php",
     "check:version": "php scripts/check_release_version.php",
@@ -34,16 +35,16 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@types/node": "26.5.0",
-    "@types/vscode": "1.136.0",
-    "@vitest/coverage-v8": "5.0.0",
-    "@vscode/vsce": "3.9.2",
+    "@types/node": "26.6.2",
+    "@types/vscode": "1.138.0",
+    "@vitest/coverage-v8": "5.0.1",
+    "@vscode/vsce": "4.0.0",
     "esbuild": "0.28.2",
-    "eslint": "10.10.0",
-    "prettier": "3.9.6",
+    "eslint": "10.11.0",
+    "prettier": "3.9.8",
     "tree-sitter-cli": "0.27.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.0",
-    "vitest": "5.0.0"
+    "typescript-eslint": "8.70.1",
+    "vitest": "5.0.1"
   }
 }

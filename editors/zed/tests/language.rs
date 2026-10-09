@@ -193,6 +193,26 @@ fn php_word_operators_have_native_highlights_without_semantic_tokens() {
 }
 
 #[test]
+fn keywords_keep_ascii_case_insensitivity_without_kelvin_sign_folding() {
+    let source = "<?php\nwhile (true) { break; BREAK; BrEaK; }\nbreaK();\n";
+    let language = tree_sitter_ppphp::LANGUAGE.into();
+    let mut parser = Parser::new();
+    parser.set_language(&language).unwrap();
+    let tree = parser.parse(source, None).unwrap();
+    assert!(
+        !tree.root_node().has_error(),
+        "{}",
+        tree.root_node().to_sexp()
+    );
+    let highlights = captures(QUERIES[0].1, source);
+    for keyword in ["break", "BREAK", "BrEaK"] {
+        assert!(highlights.contains(&("keyword".into(), keyword.into())));
+    }
+    assert!(highlights.contains(&("function".into(), "breaK".into())));
+    assert!(!highlights.contains(&("keyword".into(), "breaK".into())));
+}
+
+#[test]
 fn ordinary_php_constructs_keep_parsing_with_the_ppphp_grammar() {
     let language = tree_sitter_ppphp::LANGUAGE.into();
     let mut parser = Parser::new();

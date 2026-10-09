@@ -2,29 +2,32 @@
 
 This document is the single tracked list of editors and IDEs that ++PHP intends to support, the shape each integration should take, and where each one stands today. The target line-up follows the website design, which is the agreed target for the Tools page, so that the public page and the engineering plan cannot drift apart. Later candidates are planning inputs, not public commitments.
 
-Update this file whenever an integration changes status. The website Tools page must only present an integration as installable once it is listed here as **Available** with a published package.
+Update this file whenever an integration changes status. Publication and qualification are separate facts: a Marketplace listing does not prove that the current source or every supported platform has been tested. The website Tools page's readiness gate remains a published package with **Workflow-qualified** evidence; this document does not authorize changing that page or its launch promises.
 
-## Status vocabulary
+## Publication and qualification
 
-| Status         | Meaning                                                                                                                       |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Planned        | Agreed target. No source exists yet.                                                                                          |
-| Source preview | Source is public in this repository and can be built locally. No packaged release is published.                               |
-| Beta           | A packaged release is published through the editor's normal distribution channel, but coverage or stability is still limited. |
-| Available      | A packaged release is published and is expected to work for everyday ++PHP development.                                       |
+| Publication | Meaning                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Planned     | Agreed target. No adapter source exists yet.                                                                                 |
+| Source only | Source exists and can be built locally; the distribution is not published.                                                   |
+| Published   | A package is published through the editor's normal distribution channel. Later source changes are not necessarily published. |
+
+**Editor-qualified** and **Workflow-qualified** are engineering milestones defined under [Capability tiers](#capability-tiers), not release channels or product labels. Neither milestone follows automatically from publication. Qualification pending means the required evidence is incomplete, not that the published package is absent.
 
 ## Target line-up
 
-The target for each editor is the experience described in the website design. The "target status" column records the status the design presents for that editor at launch, so the gap between the design and reality is explicit.
+The target for each editor remains the experience described in the website design. The target qualification column expresses its required launch capabilities; current publication and qualification evidence are recorded independently so the gap between the target and reality is explicit.
 
-| Editor                       | Distribution                                                                             | Target status | Current status |
-| ---------------------------- | ---------------------------------------------------------------------------------------- | ------------- | -------------- |
-| Visual Studio Code           | Marketplace extension (`ext install AtatusoftLtd.ppphp-vscode`)                          | Available     | Source preview |
-| PhpStorm / IntelliJ          | JetBrains Marketplace plugin (`++PHP`)                                                   | Available     | Source preview |
-| Neovim                       | Tree-sitter grammar plus an `nvim-lspconfig` entry for `vim.lsp.enable("ppphp")`         | Beta          | Planned        |
-| Sublime Text                 | Syntax definition and LSP settings distributed through Package Control                   | Beta          | Planned        |
-| Zed                          | Rust/Wasm extension with native ++PHP grammar and managed standalone server installation | Beta          | Source preview |
-| Language server (standalone) | `ppphp-ls`, speaking LSP over stdio, installable on its own so any LSP client can use it | Available     | Source preview |
+| Editor                       | Distribution                                                                             | Target qualification | Publication | Qualification evidence                                             |
+| ---------------------------- | ---------------------------------------------------------------------------------------- | -------------------- | ----------- | ------------------------------------------------------------------ |
+| Visual Studio Code           | Marketplace extension (`ext install AtatusoftLtd.ppphp-vscode`)                          | Workflow-qualified   | Published   | Required platform and workflow evidence incomplete                 |
+| PhpStorm / IntelliJ          | JetBrains Marketplace plugin (`++PHP`)                                                   | Workflow-qualified   | Published   | Required platform and workflow evidence incomplete                 |
+| Neovim                       | Tree-sitter grammar plus an `nvim-lspconfig` entry for `vim.lsp.enable("ppphp")`         | Editor-qualified     | Planned     | Not started                                                        |
+| Sublime Text                 | Syntax definition and LSP settings distributed through Package Control                   | Editor-qualified     | Planned     | Not started                                                        |
+| Zed                          | Rust/Wasm extension with native ++PHP grammar and managed standalone server installation | Editor-qualified     | Source only | Source checks exist; published-install qualification pending       |
+| Language server (standalone) | `ppphp-ls`, speaking LSP over stdio, installable on its own so any LSP client can use it | Workflow-qualified   | Source only | Bundle checks exist; standalone installation qualification pending |
+
+The [VS Code listing](https://marketplace.visualstudio.com/items?itemName=AtatusoftLtd.ppphp-vscode) and [JetBrains listing](https://plugins.jetbrains.com/plugin/34151--php) have published packages, verified on 9 October 2026. This records publication only, not completion of the qualification gates or publication of subsequent source changes. Zed and standalone server publication remain separate release steps.
 
 ## Delivery strategy
 
@@ -32,13 +35,13 @@ The next goal is not the largest possible editor list. It is to make the shared 
 
 ### Phase 0: finish the two primary editors
 
-VS Code and PhpStorm remain the primary publication tracks. Zed now has a local source integration; normal-channel publication remains pending. Close their current gaps first: editor-neutral formatting for VS Code parity, build/check commands, real-editor smoke tests, signed publishing, upgrade testing, and actionable toolchain-version mismatch reporting.
+VS Code and PhpStorm remain the primary polish and update tracks. Both have Marketplace listings; Zed has a local source integration awaiting normal-channel publication. Close the remaining gaps first: editor-neutral formatting for VS Code parity, build/check commands, broader real-editor smoke tests, signing and release provenance, upgrade testing, and actionable toolchain-version mismatch reporting.
 
 Publish the existing VSIX to both Visual Studio Marketplace and [Open VSX](https://github.com/eclipse-openvsx/openvsx/wiki/Publishing-Extensions). This extends the same adapter to VSCodium and other Open VSX consumers without creating a third editor implementation.
 
 ### Phase 1: make the shared server independently usable
 
-Publish a versioned standalone distribution with a stable `ppphp-ls --stdio` entrypoint. The first distribution may be an npm package that declares its Node.js requirement; self-contained signed archives can follow if runtime installation proves to be a significant adoption barrier. Every distribution must also support `--version`, use the same CalVer as the compatible toolchain, and document project-local, configured-path, and `PATH` discovery in one consistent order.
+The versioned, bundled stdio server and checksum packaging are implemented and exercised outside the checkout. Publish those assets for Zed, then provide an installable `ppphp-ls --stdio` command for other clients. The npm package is currently private; a package or launcher remains future work. Every distribution must support `--version`, use the numeric tooling identity independently of the compiler's compatibility identity, and document project-local, configured-path, and `PATH` discovery.
 
 Before adding an adapter, add a client-neutral protocol smoke suite and exercise it on Linux, macOS, Windows, and WSL. The suite must initialize the server with both rich and minimal client capabilities and cover workspace configuration, diagnostics, completion, hover, symbols, definition, semantic tokens, code actions, rename, shutdown, and malformed or unavailable toolchain responses.
 
@@ -58,24 +61,24 @@ Helix is the next low-cost candidate after Zed. It can consume the same Tree-sit
 
 ## Work-in-progress limits
 
-- While VS Code and PhpStorm are below Beta, do not start production code for another editor. Shared standalone-server, grammar, protocol-test, and release work may proceed because it improves the primary editors too.
-- After both primary editors reach Beta, allow one new editor adapter and one shared-infrastructure track at a time.
-- After the first external adapter reaches Beta and the shared release pipeline is proven, at most two editor adapters may be active concurrently, and only with separate owners. Never put more than two new editors in one release wave.
+- Until VS Code and PhpStorm are both Editor-qualified, do not start production code for another editor. Publication alone does not open this gate. Shared standalone-server, grammar, protocol-test, and release work may proceed because it improves the primary editors too; the existing Zed source does not waive the gate for another adapter.
+- After both primary editors are Editor-qualified, allow one new editor adapter and one shared-infrastructure track at a time.
+- After the first external adapter is Editor-qualified and the shared release pipeline is proven, at most two editor adapters may be active concurrently, and only with separate owners. Never put more than two new editors in one release wave.
 - Add a language feature once in the compiler or language server, then map it into clients. Do not let editor schedules create independent semantic implementations.
 
 ## Per-editor scope
 
 ### Visual Studio Code
 
-Syntax highlighting for `.ppphp`, inline diagnostics, hover types, go to definition, and build on save. Today the extension in `editors/vscode` provides highlighting, compiler diagnostics on open and save, deterministic completion, hover help, document symbols, go to definition, class-family rename, and use-import actions. Build on save and a Marketplace listing remain open.
+Syntax highlighting for `.ppphp`, inline diagnostics, hover types, go to definition, and build on save. Today the extension in `editors/vscode` provides highlighting, compiler-core diagnostics on unsaved edits and save, deterministic completion, hover help, document symbols, go to definition, class-family rename, and use-import actions. A Marketplace listing exists; build on save and editor-neutral formatting remain open.
 
 ### PhpStorm / IntelliJ
 
-A native plugin with the `.ppphp` file type, structure view, refactoring across generics, and run configurations for `check` and `build`. Today the plugin in `editors/phpstorm` provides the file type, highlighting, diagnostics, completion, go to definition, formatting, code-style settings, file and class creation, and compiled-declaration resolution for mixed projects. Generic-aware refactoring beyond class-family rename, run configurations, and a JetBrains Marketplace listing remain open.
+A native plugin with the `.ppphp` file type, structure view, refactoring across generics, and run configurations for `check` and `build`. Today the plugin in `editors/phpstorm` provides the file type, highlighting, live diagnostics, completion, go to definition, formatting, code-style settings, PHPDoc Enter handling, file and class creation, and compiled-declaration resolution for mixed projects. A JetBrains Marketplace listing exists. Generic-aware refactoring beyond class-family rename, full formatter parity and run configurations remain open.
 
 ### Neovim
 
-A Tree-sitter grammar and an `nvim-lspconfig` entry so `vim.lsp.enable("ppphp")` works with Neovim's built-in LSP client. Depends on the standalone language server distribution and on a Tree-sitter grammar, neither of which exists yet. The repository-owned preview configuration must remain usable before any upstream entry is accepted.
+A Tree-sitter grammar and an `nvim-lspconfig` entry so `vim.lsp.enable("ppphp")` works with Neovim's built-in LSP client. The shared grammar and bundled server already exist; this adapter still needs published server installation, Neovim configuration and client-specific qualification. The repository-owned preview configuration must remain usable before any upstream entry is accepted.
 
 ### Sublime Text
 
@@ -103,7 +106,7 @@ The editor-neutral server in `packages/language-server` already speaks LSP over 
 - **Editor-neutral formatting.** Standard LSP formatting and range-formatting are the route to consistent formatting outside PhpStorm. The server must not advertise them until a token-preserving formatter contract is ready.
 - **Release metadata and update safety.** Generate package versions, compatibility ranges, server download URLs, checksums, and release notes from the repository's CalVer source of truth. Downloading adapters must verify checksums and never execute an unverified artifact.
 - **Shared protocol and grammar tests.** Keep golden LSP transcripts, capability-matrix tests, grammar corpus tests, package-install smoke tests, and three-platform CI independent of any single editor UI.
-- **Signed Marketplace and JetBrains Plugin Repository releases.** Required before VS Code or PhpStorm can move from Source preview to Beta or Available. See [releasing.md](releasing.md).
+- **Signed Marketplace and JetBrains Plugin Repository releases.** Required for VS Code and PhpStorm qualification, independently of whether a package is already published. See [releasing.md](releasing.md).
 
 The canonical TextMate grammar can also feed Shiki-based documentation. GitHub Linguist recognition is a separate upstream integration and should follow a stable extension, grammar, and public repository footprint rather than block editor delivery.
 
@@ -118,7 +121,7 @@ Every adapter is expected to declare which tier it implements instead of implyin
 | Workflow     | Compiler discovery, version mismatch guidance, check/build commands, logs, restart, and workspace configuration                                                          |
 | Host-native  | Creation dialogs, project indexing/exclusions, native formatting controls, run configurations, or other features that cannot be expressed portably through LSP           |
 
-Beta requires a published normal-channel package, Syntax and Standard LSP coverage, install/upgrade documentation, and smoke coverage on every supported operating system. Available additionally requires the Workflow tier, a tested rollback path, a named maintainer, and no undocumented loss of shared language-server capabilities. Host-native features are optional and must be shown as editor-specific in the capability matrix.
+Editor-qualified requires a published normal-channel package, Syntax and Standard LSP coverage, install/upgrade documentation, and smoke coverage on every supported operating system. Workflow-qualified additionally requires the Workflow tier, a tested rollback path, a named maintainer, and no undocumented loss of shared language-server capabilities. These requirements are unchanged; only publication is tracked separately. Host-native features are optional and must be shown as editor-specific in the capability matrix.
 
 ## Adding an editor
 

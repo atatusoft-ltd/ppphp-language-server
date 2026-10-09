@@ -39,9 +39,7 @@ jobs:
           rustup default stable
           rustup target add wasm32-wasip2
       - name: Verify generated grammar
-        run: |
-          php scripts/build.php zed-grammar
-          git diff --exit-code -- grammars/ppphp/src
+        run: php scripts/build.php zed-grammar-check
       - name: Build and check Zed
         run: php scripts/build.php zed
       - name: Package standalone server

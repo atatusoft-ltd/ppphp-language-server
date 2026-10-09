@@ -108,12 +108,13 @@ res/textmate/ppphp/        Canonical shared language and grammar resources
 res/images/                Canonical ++PHP emblem and packaged raster asset
 editors/vscode/            Visual Studio Code client and packaged resources
 editors/phpstorm/          JetBrains LSP, TextMate, and ++PHP PSI integration
-editors/zed/               Rust/Wasm adapter and PHP Tree-sitter baseline
+editors/zed/               Rust/Wasm adapter and ++PHP editing queries
+grammars/ppphp/            Native ++PHP Tree-sitter grammar and generated parser
 docs/                      Architecture, roadmap, and editor-support tracking
 scripts/                   PHP build orchestration and repository guardrails
 ```
 
-Edit grammar and language configuration files only under `res/textmate/ppphp/`, then run `php scripts/sync_language_resources.php`. The `npm run sync:resources` alias remains available for npm workflows. CI rejects stale generated VS Code copies.
+Edit TextMate grammar and language configuration files under `res/textmate/ppphp/`, then run `php scripts/sync_language_resources.php`. The `npm run sync:resources` alias remains available for npm workflows. The separate native Tree-sitter grammar lives under `grammars/ppphp/`; regenerate it with `php scripts/build.php zed-grammar` whenever its source or generator changes. Normal checks reject stale generated files for both grammar families.
 
 ## Contributing and security
 
