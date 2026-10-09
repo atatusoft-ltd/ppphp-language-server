@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2026.4.1 - 2026-10-09
+
+- Update the language-client and language-server protocol libraries and extension packaging tools, including compatible dependency security fixes.
+- Keep compiler compatibility, project compiler selection and memory settings unchanged.
+
 ## 2026.3.4 - 2026-09-10
 
 - Replace obsolete source errors with an explicit current-document analysis-unavailable warning when the compiler fails. Successful analysis clears it; repeated failures do not flood notifications.

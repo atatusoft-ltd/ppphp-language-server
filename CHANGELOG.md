@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [2026.4.1] - 2026-10-09
+
+### Fixed
+
+- Regenerate the Tree-sitter parser and support headers with the locked generator. This removes Unicode Kelvin-sign folding in PHP keywords; keyword matching uses ASCII letters.
+- Verify generated grammar in the standard tooling checks without modifying the checkout, and exercise the same editing tests against both checkout and pinned distribution grammars.
+- Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes. Compiler compatibility and project compiler selections remain unchanged.
+- Track npm dependency locks and shared build scripts in PhpStorm's bundled-server build inputs so dependency-only changes cannot reuse an obsolete server bundle.
+
+### Delivery
+
+- Prepared as a new numeric tooling release because the preceding packages are already published. Marketplace uploads, release tags, server-asset publication and Zed registry submission remain maintainer actions.
+
 ## [2026.3.4] - 2026-09-10
 
 ### Fixed

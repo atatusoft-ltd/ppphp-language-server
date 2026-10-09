@@ -80,10 +80,8 @@ intellijPlatform {
         version = project.version.toString()
         changeNotes = """
             <ul>
-                <li>Failed analysis replaces obsolete source errors with a current-document
-                    analysis-unavailable warning. Successful analysis clears that warning.</li>
-                <li>Compiler memory exhaustion and process failures report their actual causes
-                    without misleading protocol-upgrade advice or raw fatal-error stacks.</li>
+                <li>Update bundled language-protocol dependencies and plugin build tooling,
+                    including compatible dependency security fixes.</li>
                 <li>Compiler selection, project pins and configured memory limits remain unchanged.</li>
             </ul>
         """.trimIndent()
@@ -137,7 +135,7 @@ providers.environmentVariable("PPPHP_BUILD_REPORTS").orNull?.let { output ->
 }
 
 val repositoryRoot = layout.projectDirectory.dir("../..")
-val buildLanguageServer by tasks.registering(Exec::class) {
+val buildLanguageServer = tasks.register<Exec>("buildLanguageServer") {
     group = "build"
     description = "Builds the editor-neutral ++PHP language server."
     workingDir(repositoryRoot)
@@ -148,6 +146,9 @@ val buildLanguageServer by tasks.registering(Exec::class) {
     )
     inputs.files(fileTree(repositoryRoot.dir("packages/language-server/src")))
     inputs.file(repositoryRoot.file("packages/language-server/package.json"))
+    inputs.file(repositoryRoot.file("package.json"))
+    inputs.file(repositoryRoot.file("package-lock.json"))
+    inputs.file(repositoryRoot.file("scripts/build.php"))
     inputs.file(repositoryRoot.file("res/textmate/ppphp/syntaxes/ppphp.tmLanguage.json"))
     outputs.file(repositoryRoot.file("packages/language-server/dist/server.cjs"))
 }
