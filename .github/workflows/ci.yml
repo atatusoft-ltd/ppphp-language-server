@@ -90,7 +90,7 @@ jobs:
           ./editors/phpstorm/gradlew -p editors/phpstorm
           verifyPluginStructure verifyPluginProjectConfiguration
       - name: Retain the tested plugin ZIP
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ppphp-jetbrains-plugin
           path: editors/phpstorm/build/distributions/*.zip
@@ -134,7 +134,7 @@ jobs:
             -PverificationArchive="$RUNNER_TEMP/ppphp-plugin/ppphp-phpstorm-$version.zip"
       - name: Retain compatibility reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jetbrains-verifier-${{ matrix.ide.type }}-${{ matrix.ide.version }}
           path: ${{ runner.temp }}/ppphp-verifier/verification
@@ -177,7 +177,7 @@ jobs:
           ./editors/phpstorm/gradlew -p editors/phpstorm --no-problems-report check -PplatformVersion="$platform"
       - name: Retain native test reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: phpstorm-eap-tests
           path: ${{ runner.temp }}/ppphp-eap-tests/test-results
