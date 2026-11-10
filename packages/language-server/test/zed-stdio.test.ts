@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { copyFile, mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +10,7 @@ import {
   ConfigurationRequest,
   DidOpenTextDocumentNotification,
   DocumentSymbolRequest,
+  ExecuteCommandRequest,
   ExitNotification,
   HoverRequest,
   InitializeRequest,
@@ -21,7 +22,9 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
   createProtocolConnection,
+  type InitializeParams,
 } from "vscode-languageserver/node";
+import { INFER_COMPOSER_NAMESPACE_COMMAND } from "../src/composer-namespace.js";
 
 async function bounded<T>(operation: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -37,9 +40,29 @@ async function bounded<T>(operation: Promise<T>): Promise<T> {
   }
 }
 
-it("serves the Zed stdio/configuration contract with the shared server", async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "ppphp zed stdio-"));
+const clients = [
+  { name: "Zed", options: undefined, commands: [INFER_COMPOSER_NAMESPACE_COMMAND] },
+  { name: "VS Code", options: { advertiseComposerNamespaceCommand: false }, commands: undefined },
+];
+
+it.each(clients)(
+  "$name stdio and namespace inference",
+  ({ options, commands }) => checkEditorStdio(options, commands),
+  20000,
+);
+
+async function checkEditorStdio(
+  options: InitializeParams["initializationOptions"],
+  commands: string[] | undefined,
+): Promise<void> {
+  const root = await mkdtemp(path.join(tmpdir(), "ppphp editor stdio-"));
   try {
+    const directory = path.join(root, "src", "Nested");
+    await mkdir(directory, { recursive: true });
+    await writeFile(
+      path.join(root, "composer.json"),
+      JSON.stringify({ autoload: { "psr-4": { "Example\\": "src/" } } }),
+    );
     const bundle = path.join(root, "server.cjs");
     const packagedBundle = process.env.PPPHP_TEST_SERVER_BUNDLE;
     if (packagedBundle) {
@@ -96,6 +119,7 @@ it("serves the Zed stdio/configuration contract with the shared server", async (
         connection.sendRequest(InitializeRequest.type, {
           processId: null,
           rootUri: pathToFileURL(root).href,
+          initializationOptions: options,
           capabilities: {
             workspace: {
               configuration: true,
@@ -107,7 +131,16 @@ it("serves the Zed stdio/configuration contract with the shared server", async (
       expect(initialized.serverInfo?.name).toBe("++PHP Language Server");
       expect(initialized.capabilities.semanticTokensProvider).toBeDefined();
       expect(initialized.capabilities.documentFormattingProvider).toBeUndefined();
+      expect(initialized.capabilities.executeCommandProvider?.commands).toEqual(commands);
       await connection.sendNotification(InitializedNotification.type, {});
+      stage = "namespace inference";
+      const resolution = await bounded(
+        connection.sendRequest(ExecuteCommandRequest.type, {
+          command: INFER_COMPOSER_NAMESPACE_COMMAND,
+          arguments: [{ directoryUri: pathToFileURL(directory).href }],
+        }),
+      );
+      expect(resolution).toEqual({ namespace: "Example\\Nested", authoritative: true });
       const uri = pathToFileURL(path.join(root, "example.ppphp")).href;
       await connection.sendNotification(DidOpenTextDocumentNotification.type, {
         textDocument: {
@@ -155,4 +188,4 @@ it("serves the Zed stdio/configuration contract with the shared server", async (
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-}, 20000);
+}

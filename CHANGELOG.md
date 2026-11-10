@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+- Remove automatic registration of the Composer namespace command in VS Code to prevent startup collisions. Direct language-server inference, the PhpStorm CLI and command discovery for other clients remain available.
+
 ## [2026.4.1] - 2026-10-09
 
 ### Fixed

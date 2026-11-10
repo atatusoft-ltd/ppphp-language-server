@@ -57,7 +57,10 @@ const diagnosticFailures = new Map<string, string>();
 let reportedProjectIssues = new Set<string>();
 
 connection.onInitialize((params: InitializeParams) => {
-  const options = params.initializationOptions as { typeActions?: TypeActionCapabilities } | null;
+  const options = params.initializationOptions as {
+    typeActions?: TypeActionCapabilities;
+    advertiseComposerNamespaceCommand?: boolean;
+  } | null;
   typeActionCapabilities = {
     groupedImports: options?.typeActions?.groupedImports === true,
     classCreation: options?.typeActions?.classCreation === true,
@@ -89,7 +92,10 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: { triggerCharacters: ["<", "\\", "$", ":"] },
       definitionProvider: true,
       documentSymbolProvider: true,
-      executeCommandProvider: { commands: [INFER_COMPOSER_NAMESPACE_COMMAND] },
+      // Clients can decline command registration while retaining direct inference requests.
+      ...(options?.advertiseComposerNamespaceCommand === false
+        ? {}
+        : { executeCommandProvider: { commands: [INFER_COMPOSER_NAMESPACE_COMMAND] } }),
       hoverProvider: true,
       renameProvider: { prepareProvider: true },
       semanticTokensProvider: {

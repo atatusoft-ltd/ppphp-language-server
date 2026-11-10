@@ -22,6 +22,8 @@ export function activate(context: ExtensionContext): void {
   };
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ language: "ppphp", scheme: "file" }],
+    // Keep the inference endpoint out of the extension host's shared command registry.
+    initializationOptions: { advertiseComposerNamespaceCommand: false },
     synchronize: {
       configurationSection: "ppphp",
       fileEvents: [

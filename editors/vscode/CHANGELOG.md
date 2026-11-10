@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove automatic registration of the internal Composer namespace command so an existing command with the same ID cannot stop the language server from starting.
+
 ## 2026.4.1 - 2026-10-09
 
 - Update the language-client and language-server protocol libraries and extension packaging tools, including compatible dependency security fixes.
