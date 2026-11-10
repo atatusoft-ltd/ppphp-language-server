@@ -11,7 +11,8 @@ All notable changes to this project will be documented in this file. The format 
 - Regenerate the Tree-sitter parser and support headers with the locked generator. This removes Unicode Kelvin-sign folding in PHP keywords; keyword matching uses ASCII letters.
 - Verify generated grammar in the standard tooling checks without modifying the checkout, and exercise the same editing tests against both checkout and pinned distribution grammars.
 - Pin Zed's distributed grammar to the validated generated source. Regression coverage preserves ASCII keyword case-insensitivity without treating the Unicode Kelvin sign as an ASCII letter.
-- Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes. Compiler compatibility and project compiler selections remain unchanged.
+- Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes.
+- Target the published stable [++PHP compiler 2026.3.2](https://github.com/atatusoft-ltd/ppphp-src/releases/tag/2026.3.2) and guide new projects to the stable Composer installation. Existing compiler selections and project pins are preserved.
 - Track npm dependency locks and shared build scripts in PhpStorm's bundled-server build inputs so dependency-only changes cannot reuse an obsolete server bundle.
 - Remove fixed JVM target overrides from the JetBrains build. The selected IDE SDK now drives both Java and Kotlin targets, preserving the minimum-SDK release build while allowing newer-SDK integration tests to compile consistently.
 
