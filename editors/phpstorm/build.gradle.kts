@@ -6,7 +6,7 @@ import groovy.json.JsonSlurper
 plugins {
     java
     kotlin("jvm") version "2.4.20"
-    id("org.jetbrains.intellij.platform") version "2.19.0"
+    id("org.jetbrains.intellij.platform") version "2.20.1"
 }
 
 group = "com.atatusoft.ppphp"
