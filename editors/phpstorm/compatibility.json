@@ -1,7 +1,8 @@
 {
   "sdk": "2025.2.1",
+  "testSdk": "2026.3",
   "sinceBuild": "252.25557",
-  "untilBuild": "263.3889.75",
+  "untilBuild": "263.*",
   "ides": [
     { "type": "PS", "version": "2025.2.1" },
     { "type": "IU", "version": "2025.2.1" },
@@ -11,7 +12,7 @@
     { "type": "IU", "version": "2026.1.5" },
     { "type": "PS", "version": "2026.2.2" },
     { "type": "IU", "version": "2026.2.2" },
-    { "type": "PS", "version": "263.3889.75" },
-    { "type": "IU", "version": "263.3889.65" }
+    { "type": "PS", "version": "2026.3" },
+    { "type": "IU", "version": "2026.3" }
   ]
 }

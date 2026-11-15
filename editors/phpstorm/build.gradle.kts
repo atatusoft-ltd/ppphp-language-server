@@ -72,8 +72,8 @@ intellijPlatform {
         version = project.version.toString()
         changeNotes = """
             <ul>
-                <li>Update bundled language-protocol dependencies and plugin build tooling,
-                    including compatible dependency security fixes.</li>
+                <li>Support the current PhpStorm and IntelliJ IDEA release branch instead
+                    of limiting installation to an older preview build.</li>
                 <li>Compiler selection, project pins and configured memory limits remain unchanged.</li>
             </ul>
         """.trimIndent()

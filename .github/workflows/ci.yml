@@ -147,7 +147,7 @@ jobs:
           if-no-files-found: warn
 
   phpstorm-eap-tests:
-    name: PhpStorm EAP settings and integration tests
+    name: PhpStorm newest SDK settings and integration tests
     needs: node
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -179,7 +179,7 @@ jobs:
         env:
           PPPHP_BUILD_REPORTS: ${{ runner.temp }}/ppphp-eap-tests
         run: |
-          platform=$(php -r '$config = json_decode(file_get_contents("editors/phpstorm/compatibility.json"), true, flags: JSON_THROW_ON_ERROR); echo $config["untilBuild"];')
+          platform=$(php -r '$config = json_decode(file_get_contents("editors/phpstorm/compatibility.json"), true, flags: JSON_THROW_ON_ERROR); echo $config["testSdk"];')
           ./editors/phpstorm/gradlew -p editors/phpstorm --no-problems-report check -PplatformVersion="$platform"
       - name: Retain native test reports
         if: always()

@@ -1,7 +1,7 @@
 {
   "name": "ppphp-language",
   "displayName": "++PHP Language Basics",
-  "version": "2026.4.1",
+  "version": "2026.4.2",
   "ppphpToolchainVersion": "2026.3.2",
   "private": true,
   "engines": {

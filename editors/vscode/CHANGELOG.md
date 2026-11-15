@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2026.4.2 - 2026-11-15
 
 - Remove automatic registration of the internal Composer namespace command so an existing command with the same ID cannot stop the language server from starting.
 

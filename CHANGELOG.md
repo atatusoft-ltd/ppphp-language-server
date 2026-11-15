@@ -2,8 +2,9 @@
 
 All notable changes to this project will be documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use the quarterly CalVer described in [docs/releasing.md](docs/releasing.md).
 
-## [Unreleased]
+## [2026.4.2] - 2026-11-15
 
+- Extend JetBrains compatibility through the 2026.3 IDE release branch instead of capping it at an old preview build. Verify PhpStorm and IntelliJ IDEA's current release, and select the native-test SDK independently of the package bound.
 - Remove automatic registration of the Composer namespace command in VS Code to prevent startup collisions. Direct language-server inference, the PhpStorm CLI and command discovery for other clients remain available.
 
 ## [2026.4.1] - 2026-10-09
