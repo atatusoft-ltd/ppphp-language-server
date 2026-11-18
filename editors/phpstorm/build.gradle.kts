@@ -14,8 +14,14 @@ version = providers.gradleProperty("pluginVersion").get()
 
 val compatibility = JsonSlurper().parse(file("compatibility.json")) as Map<*, *>
 val platformSdk = providers.gradleProperty("platformVersion").getOrElse(compatibility["sdk"] as String)
+val localPlatformPath = providers.gradleProperty("localPlatformPath")
 val verificationType = providers.gradleProperty("verificationType")
 val verificationVersion = providers.gradleProperty("verificationVersion")
+val verificationPath = providers.gradleProperty("verificationPath")
+
+require(!verificationPath.isPresent || (!verificationType.isPresent && !verificationVersion.isPresent)) {
+    "Select either verificationPath or verificationType and verificationVersion"
+}
 
 repositories {
     mavenCentral()
@@ -29,9 +35,13 @@ dependencies {
 
     intellijPlatform {
         testFramework(TestFrameworkType.Platform)
-        phpstorm(platformSdk)
-        // Present on PhpStorm's boot classpath, but omitted from the Gradle SDK view.
-        if (platformSdk == "2025.2.1") bundledLibrary("lib/app-client.jar")
+        if (localPlatformPath.isPresent) {
+            local(localPlatformPath.get())
+        } else {
+            phpstorm(platformSdk)
+            // Present on PhpStorm's boot classpath, but omitted from the Gradle SDK view.
+            if (platformSdk == "2025.2.1") bundledLibrary("lib/app-client.jar")
+        }
         bundledPlugin("JavaScript")
         bundledPlugin("com.jetbrains.php")
     }
@@ -72,8 +82,8 @@ intellijPlatform {
         version = project.version.toString()
         changeNotes = """
             <ul>
-                <li>Update bundled language-protocol dependencies and plugin build tooling,
-                    including compatible dependency security fixes.</li>
+                <li>Support the current PhpStorm and IntelliJ IDEA release branch instead
+                    of limiting installation to an older preview build.</li>
                 <li>Compiler selection, project pins and configured memory limits remain unchanged.</li>
             </ul>
         """.trimIndent()
@@ -93,7 +103,9 @@ intellijPlatform {
             VerifyPluginTask.FailureLevel.NON_EXTENDABLE_API_USAGES,
         )
         ides {
-            if (verificationType.isPresent || verificationVersion.isPresent) {
+            if (verificationPath.isPresent) {
+                local(file(verificationPath.get()))
+            } else if (verificationType.isPresent || verificationVersion.isPresent) {
                 require(verificationType.isPresent && verificationVersion.isPresent) {
                     "Both verificationType and verificationVersion are required"
                 }

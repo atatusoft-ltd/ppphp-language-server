@@ -21,7 +21,7 @@ Completion uses known symbols, not generated guesses. The extension bundles its 
 ## Quick start
 
 1. Install **++PHP** by **Atatusoft Ltd** from the Extensions view in VS Code.
-2. Open your project folder and install the compiler using this extension release's [compatible compiler installation instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). For an existing checkout, run `composer install` in the integrated terminal to restore its locked dependencies instead.
+2. Open your project folder. For a new project, [install the stable compiler with Composer](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md#new-projects-and-updates). For an existing checkout, run `composer install` in the integrated terminal to restore its locked dependencies.
 3. For a new ++PHP project, create its configuration:
 
    ```shell
@@ -30,7 +30,7 @@ Completion uses known symbols, not generated guesses. The extension bundles its 
 
 4. Open a `.ppphp` file. The extension starts automatically; the language mode should show **++PHP**.
 
-For PHP and Composer prerequisites and the complete build workflow, see the [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md). For an existing checkout, run `composer install` to restore its dependencies instead of adding the compiler again.
+For PHP and Composer prerequisites and the complete build workflow, see the [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md).
 
 For stable installation, updates, or migration from the former Composer package name, see the [compiler installation guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md).
 
@@ -38,7 +38,7 @@ The project-local compiler at `vendor/bin/ppphp` is discovered automatically. Yo
 
 ### Installing a release candidate
 
-To use a compiler candidate, check the installed extension's version in the Extensions view and consult its [compiler compatibility and candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Choose that release entry, not simply the newest compiler candidate. Compiler candidates do not change the extension's release channel.
+If your project intentionally uses a compiler candidate, follow the [candidate installation guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md#installing-a-release-candidate).
 
 ## Using the extension
 
@@ -74,7 +74,7 @@ For example, to order added imports by length:
 
 - **No highlighting or suggestions?** Save the file with the `.ppphp` extension and check that its language mode is **++PHP**. Do not associate these files with the ordinary PHP language mode.
 - **Compiler unavailable?** Confirm that `vendor/bin/ppphp --version` runs from the project terminal. Check `ppphp.compiler.path` and the PHP executable visible to VS Code.
-- **Unsaved-buffer diagnostics unavailable?** Check [compiler compatibility and installation instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate) first. Use `composer update atatusoft/ppphp` to update within your existing constraint; an exact older candidate pin must be changed using the matching release's installation command. If the project still requires the former package name, follow the [migration steps](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md#migrating-from-the-former-package-name) instead. Do not treat a saved-file check as analysis of unsaved edits.
+- **Unsaved-buffer diagnostics unavailable?** Check the [compiler installation and update guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/compiler-installation.md). A saved-file check does not analyze unsaved edits.
 - **Need more detail?** Open **View → Output** and select **++PHP Language Server**. After changing the environment or installing tools, run **Developer: Reload Window** from the Command Palette.
 
 The extension does not currently provide formatting, debugging, signature help, or rename for functions, methods, properties, and variables. It requires a desktop extension host that can run the compiler; browser-only workspaces are not supported.

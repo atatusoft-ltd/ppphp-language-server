@@ -469,7 +469,7 @@ dependencies = [
 
 [[package]]
 name = "ppphp-zed"
-version = "2026.4.1"
+version = "2026.4.2"
 dependencies = [
  "sha2",
  "toml",

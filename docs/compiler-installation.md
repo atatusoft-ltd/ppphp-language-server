@@ -1,12 +1,12 @@
 # Installing the compiler for editor tooling
 
-Both editors use the same project-local ++PHP compiler. PHP and Composer prerequisites live in the compiler's [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md#requirements).
+The editor integrations use the same project-local ++PHP compiler. PHP and Composer prerequisites live in the compiler's [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md#requirements).
 
-The canonical Composer package is `atatusoft/ppphp`. Start with your tooling release's [compatible compiler installation instructions](../CHANGELOG.md#installing-a-release-candidate), which identify the available release and its install command. The sections below describe stable installation, updates, and migration; they do not replace those release-specific instructions.
+The canonical Composer package is `atatusoft/ppphp`. Use the stable compiler for new projects. The [tooling changelog](../CHANGELOG.md) records the compiler target for the current tooling release.
 
 ## New projects and updates
 
-When a compatible stable compiler is available, its normal installation command is:
+In the new project's terminal, install the stable compiler with Composer:
 
 ```shell
 composer require --dev atatusoft/ppphp
@@ -18,11 +18,15 @@ To update within your project's existing constraint:
 composer update atatusoft/ppphp
 ```
 
-For an existing checkout, use `composer install` to restore its locked dependencies. Do not change its package name or stability policy just to open it in an editor. If a compatible stable release is unavailable, consult the explicit **Installing a release candidate** section in the matching tooling release notes; do not lower the whole project's `minimum-stability`.
+For an existing checkout, use `composer install` to restore its locked dependencies. If the project pins an older candidate, change that constraint explicitly when the project is ready to adopt stable.
+
+## Installing a release candidate
+
+For a project that intentionally uses a compiler candidate, use the exact install command in its [matching release notes](../CHANGELOG.md#installing-a-release-candidate). Keep the project's existing `minimum-stability` setting. The compiler's channel does not change the editor package's channel.
 
 ## Migrating from the former package name
 
-For projects with `atatusoft-ltd/ppphp-src` in `require-dev`, first choose the replacement using the [release-specific instructions](../CHANGELOG.md#installing-a-release-candidate). If it is a candidate, use that exact candidate command as the second step below; the unversioned example applies only to a published stable release:
+For projects with `atatusoft-ltd/ppphp-src` in `require-dev`, run the following from the project directory when ready to adopt the stable compiler:
 
 ```shell
 composer remove --dev --no-update atatusoft-ltd/ppphp-src

@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use the quarterly CalVer described in [docs/releasing.md](docs/releasing.md).
 
-## [Unreleased]
+## [2026.4.2] - 2026-11-15
+
+- Recommend Marketplace installation and document PhpStorm's update-source selection for plugins installed from disk. Support native tests and binary verification against an already installed IDE without downloading a duplicate SDK.
+- Extend JetBrains compatibility through the 2026.3 IDE release branch instead of capping it at an old preview build. Verify PhpStorm and IntelliJ IDEA's current release, and select the native-test SDK independently of the package bound.
+- Remove automatic registration of the Composer namespace command in VS Code to prevent startup collisions. Direct language-server inference, the PhpStorm CLI and command discovery for other clients remain available.
 
 ## [2026.4.1] - 2026-10-09
 
@@ -11,7 +15,8 @@ All notable changes to this project will be documented in this file. The format 
 - Regenerate the Tree-sitter parser and support headers with the locked generator. This removes Unicode Kelvin-sign folding in PHP keywords; keyword matching uses ASCII letters.
 - Verify generated grammar in the standard tooling checks without modifying the checkout, and exercise the same editing tests against both checkout and pinned distribution grammars.
 - Pin Zed's distributed grammar to the validated generated source. Regression coverage preserves ASCII keyword case-insensitivity without treating the Unicode Kelvin sign as an ASCII letter.
-- Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes. Compiler compatibility and project compiler selections remain unchanged.
+- Update editor build tools and language-protocol dependencies together, including compatible transitive security fixes.
+- Target the published stable [++PHP compiler 2026.3.2](https://github.com/atatusoft-ltd/ppphp-src/releases/tag/2026.3.2) and guide new projects to the stable Composer installation. Existing compiler selections and project pins are preserved.
 - Track npm dependency locks and shared build scripts in PhpStorm's bundled-server build inputs so dependency-only changes cannot reuse an obsolete server bundle.
 - Remove fixed JVM target overrides from the JetBrains build. The selected IDE SDK now drives both Java and Kotlin targets, preserving the minimum-SDK release build while allowing newer-SDK integration tests to compile consistently.
 

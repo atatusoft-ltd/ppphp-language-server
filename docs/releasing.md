@@ -22,7 +22,7 @@ Do not insert the release value into evergreen documentation or product descript
 
 ## Release checklist
 
-1. Confirm the compatible ++PHP compiler version and diagnostic protocol. Verify the intended release is actually installable from the canonical Composer package `atatusoft/ppphp` before publishing editor packages that direct users to it. For a release candidate, include its exact compiler installation command in that release's notes and keep the editor READMEs' release-candidate links pointing to those instructions. Clear publication-blocker notes in the changelog and both editor setup guides only after verifying availability; candidate publication alone does not make the unversioned stable install command usable. Preserve historical instructions for releases under the former package name.
+1. Confirm the targeted compiler version and diagnostic protocol against the published Composer package `atatusoft/ppphp`. Point the editor quick starts to the shared [compiler installation guide](compiler-installation.md) for stable setup. Record the tested compiler version in the tooling release notes. Keep exact candidate commands in their matching release notes and preserve historical instructions for the former package name.
 2. Update `VERSION`, package and editor version fields, the lockfile, and dated release notes/changelogs for a tooling release. Update `COMPILER_VERSION` and its `ppphpToolchainVersion` fields only when the targeted compiler changes. Do not rewrite evergreen copy.
 3. Run `npm install --package-lock-only --ignore-scripts` to refresh the lockfile.
 4. Run `npm run check`.
@@ -37,7 +37,7 @@ Publishing a Marketplace extension, JetBrains plugin, tag, GitHub release, or bi
 
 For JetBrains publication, complete the [listing and media checklist](jetbrains-marketplace.md). A README update alone does not prepare the Marketplace gallery or configure its contact fields.
 
-Build the distributable JetBrains ZIP against the minimum SDK declared in `editors/phpstorm/compatibility.json`. The IntelliJ Platform Gradle plugin derives Java and Kotlin JVM targets from the selected SDK. The EAP test job selects the newest declared SDK to exercise its APIs and runtime; its compiled test build is not the distributable ZIP. Avoid fixed JVM overrides that leave the two compilers targeting different Java versions when the test SDK changes.
+Build the distributable JetBrains ZIP against the minimum SDK declared in `editors/phpstorm/compatibility.json`. The IntelliJ Platform Gradle plugin derives Java and Kotlin JVM targets from the selected SDK. The newest-SDK test job selects `testSdk`, a concrete PhpStorm version in the verification matrix, to exercise its APIs and runtime; its compiled test build is not the distributable ZIP. The package's `untilBuild` uses the verified release branch with a `.*` suffix and is independent of that test SDK. Avoid fixed JVM overrides that leave the two compilers targeting different Java versions when the test SDK changes.
 
 Record the tested commit, artifact checksum, selected compiler identity and separate outcomes for each gate. Distinguish a built artifact, a locally qualified upload candidate, an uploaded submission and Marketplace approval. After an authorized upload, inspect both binary-verifier and IDE-runtime results before announcing approval. A runtime exception requires investigation even if binary checks are green. A compiler fix merged to `main` but absent from the published compiler is a distribution gap, not a completed end-user fix.
 

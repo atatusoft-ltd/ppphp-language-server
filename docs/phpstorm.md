@@ -4,9 +4,9 @@ For a feature overview, see the [++PHP plugin](../editors/phpstorm/README.md). T
 
 ## Installation and setup
 
-1. Install the plugin ZIP through **Settings → Plugins → gear menu → Install Plugin from Disk…**, then restart PhpStorm. If you are building the plugin yourself, follow the [contributor build instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CONTRIBUTING.md#development-setup).
+1. Open **Settings → Plugins**, search Marketplace for **++PHP** by **Atatusoft**, install it, and restart PhpStorm if prompted. The [Marketplace listing](https://plugins.jetbrains.com/plugin/34151--php) shows compatible IDEs. If you are testing an unpublished package or building the plugin yourself, install its ZIP through **Settings → Plugins → gear menu → Install Plugin from Disk…** and follow the [contributor build instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CONTRIBUTING.md#development-setup).
 2. Configure a local Node.js runtime under **Settings → Languages & Frameworks → JavaScript Runtime**. Its supported range is recorded in the [language-server manifest](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/packages/language-server/package.json); IDE compatibility is declared by the plugin package.
-3. Open your project folder and install the compiler using this plugin release's [compatible compiler installation instructions](../CHANGELOG.md#installing-a-release-candidate). For an existing checkout, run `composer install` in the project terminal to restore its locked dependencies instead.
+3. Open your project folder. For a new project, [install the stable compiler with Composer](compiler-installation.md#new-projects-and-updates). For an existing checkout, run `composer install` in the project terminal to restore its locked dependencies.
 4. For a new ++PHP project, create its configuration:
 
    ```shell
@@ -15,7 +15,7 @@ For a feature overview, see the [++PHP plugin](../editors/phpstorm/README.md). T
 
 5. Open a `.ppphp` file. The plugin starts its language server automatically.
 
-For PHP and Composer prerequisites and the complete build workflow, see the [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md). For an existing checkout, run `composer install` to restore its dependencies instead of adding the compiler again.
+For PHP and Composer prerequisites and the complete build workflow, see the [getting-started guide](https://github.com/atatusoft-ltd/ppphp-src/blob/main/docs/getting-started.md).
 
 For stable installation, updates, or migration from the former Composer package name, see the [compiler installation guide](compiler-installation.md).
 
@@ -23,7 +23,13 @@ The compiler is discovered at `vendor/bin/ppphp` in your project, then on `PATH`
 
 ### Installing a release candidate
 
-Composer selects stable packages by default. To use a compiler candidate, check the installed plugin's version in **Settings → Plugins** and consult its [compiler compatibility and candidate installation notes](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CHANGELOG.md#installing-a-release-candidate). Choose that release entry, not simply the newest compiler candidate. Compiler candidates do not change the plugin's release channel.
+If your project intentionally uses a compiler candidate, follow the [candidate installation guide](compiler-installation.md#installing-a-release-candidate).
+
+### Plugin updates
+
+PhpStorm records the repository used to install each plugin and checks that source for updates. Installing a ZIP from disk can leave its update source unknown. If PhpStorm displays **Choose where to get updates from**, open **Settings → Plugins**, select **++PHP**, and choose **JetBrains Marketplace** in **Additional Info → Updates from** to receive the public plugin's updates. Choose a custom repository only if you intentionally use and trust that source.
+
+For local package testing, continue installing each new ZIP manually. Selecting Marketplace enables updates from the public release when a newer compatible version is available. See [JetBrains' plugin update-source guidance](https://www.jetbrains.com/help/phpstorm/managing-plugins.html#plugin-update-sources).
 
 ## Everyday editing
 
@@ -70,7 +76,7 @@ Live diagnostics cover the compiler's own findings in unsaved buffers. Run `vend
 - **No highlighting?** Check that the filename ends in `.ppphp` and is associated with **++PHP**, not PHP or plain text. Restart PhpStorm after installing or updating the plugin.
 - **Language server unavailable?** Check the configured local Node.js runtime. Desktop-launched IDEs may not inherit your shell's version-manager environment.
 - **Compiler unavailable?** Run `vendor/bin/ppphp --version` in the project terminal and check the PHP executable visible to the IDE. `PPPHP_COMPILER_PATH` can select a compiler, and `PPPHP_PHP_PATH` can select PHP; use absolute paths. On Windows, PHP must be available as `php.exe` unless explicitly configured.
-- **Unsaved diagnostics unavailable?** Check [compiler compatibility and installation instructions](../CHANGELOG.md#installing-a-release-candidate) first. Use `composer update atatusoft/ppphp` to update within your existing constraint; an exact older candidate pin must be changed using the matching release's installation command. If the project still requires the former package name, follow the [migration steps](compiler-installation.md#migrating-from-the-former-package-name) instead.
+- **Unsaved diagnostics unavailable?** Check the [compiler installation and update guide](compiler-installation.md).
 - **Undefined types from PHP files?** Rebuild the project and check that its generated output and build manifest exist. Do not add the entire build directory to the PHP include path as a workaround.
 - **PHPStan says “Cannot run program”?** Check PhpStorm's PHP interpreter and PHPStan executable settings. This is a separate quality-tool launch failure, not evidence that ++PHP live diagnostics ran.
 - **Blank code-style previews or startup errors?** See the [PhpStorm troubleshooting guide](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/docs/phpstorm-troubleshooting.md).
