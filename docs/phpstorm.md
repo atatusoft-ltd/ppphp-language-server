@@ -4,7 +4,7 @@ For a feature overview, see the [++PHP plugin](../editors/phpstorm/README.md). T
 
 ## Installation and setup
 
-1. Install the plugin ZIP through **Settings → Plugins → gear menu → Install Plugin from Disk…**, then restart PhpStorm. If you are building the plugin yourself, follow the [contributor build instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CONTRIBUTING.md#development-setup).
+1. Open **Settings → Plugins**, search Marketplace for **++PHP** by **Atatusoft**, install it, and restart PhpStorm if prompted. The [Marketplace listing](https://plugins.jetbrains.com/plugin/34151--php) shows compatible IDEs. If you are testing an unpublished package or building the plugin yourself, install its ZIP through **Settings → Plugins → gear menu → Install Plugin from Disk…** and follow the [contributor build instructions](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/CONTRIBUTING.md#development-setup).
 2. Configure a local Node.js runtime under **Settings → Languages & Frameworks → JavaScript Runtime**. Its supported range is recorded in the [language-server manifest](https://github.com/atatusoft-ltd/ppphp-language-server/blob/main/packages/language-server/package.json); IDE compatibility is declared by the plugin package.
 3. Open your project folder. For a new project, [install the stable compiler with Composer](compiler-installation.md#new-projects-and-updates). For an existing checkout, run `composer install` in the project terminal to restore its locked dependencies.
 4. For a new ++PHP project, create its configuration:
@@ -24,6 +24,12 @@ The compiler is discovered at `vendor/bin/ppphp` in your project, then on `PATH`
 ### Installing a release candidate
 
 If your project intentionally uses a compiler candidate, follow the [candidate installation guide](compiler-installation.md#installing-a-release-candidate).
+
+### Plugin updates
+
+PhpStorm records the repository used to install each plugin and checks that source for updates. Installing a ZIP from disk can leave its update source unknown. If PhpStorm displays **Choose where to get updates from**, open **Settings → Plugins**, select **++PHP**, and choose **JetBrains Marketplace** in **Additional Info → Updates from** to receive the public plugin's updates. Choose a custom repository only if you intentionally use and trust that source.
+
+For local package testing, continue installing each new ZIP manually. Selecting Marketplace enables updates from the public release when a newer compatible version is available. See [JetBrains' plugin update-source guidance](https://www.jetbrains.com/help/phpstorm/managing-plugins.html#plugin-update-sources).
 
 ## Everyday editing
 

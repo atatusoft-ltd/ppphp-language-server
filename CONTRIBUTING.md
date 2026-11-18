@@ -34,6 +34,16 @@ Use the checked-in Gradle wrapper directly when running the complete PhpStorm ve
 ./editors/phpstorm/gradlew -p editors/phpstorm check buildPlugin verifyPluginStructure verifyPluginProjectConfiguration verifyPlugin
 ```
 
+To test against an already installed IDE without downloading another copy, pass
+`-PlocalPlatformPath=/absolute/path/to/PhpStorm.app` to `check`. To verify an
+existing ZIP against that IDE, pass `-PverificationPath=/absolute/path/to/PhpStorm.app`
+and `-PverificationArchive=/absolute/path/to/plugin.zip` to `verifyPlugin`.
+The verifier's local path replaces its download matrix for that invocation;
+CI still verifies the full declared matrix. Set `PPPHP_BUILD_REPORTS` to an
+operating-system temporary directory to keep test logs and sandboxes outside
+the checkout. Release ZIPs must use the default minimum SDK, without a local
+platform override.
+
 ## Change flow
 
 Use `develop` for normal work and pull requests into `main`, keeping `main` release-ready. Do not create remote feature branches. Existing dependency-update PR branches may be updated in place to resolve their checks and reviews. Temporary working branches stay local. After merging, synchronize `develop` with `main` without rewriting shared history.

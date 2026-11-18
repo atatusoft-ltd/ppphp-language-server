@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [2026.4.2] - 2026-11-15
 
+- Recommend Marketplace installation and document PhpStorm's update-source selection for plugins installed from disk. Support native tests and binary verification against an already installed IDE without downloading a duplicate SDK.
 - Extend JetBrains compatibility through the 2026.3 IDE release branch instead of capping it at an old preview build. Verify PhpStorm and IntelliJ IDEA's current release, and select the native-test SDK independently of the package bound.
 - Remove automatic registration of the Composer namespace command in VS Code to prevent startup collisions. Direct language-server inference, the PhpStorm CLI and command discovery for other clients remain available.
 
